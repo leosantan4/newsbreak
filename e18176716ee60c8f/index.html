@@ -23,40 +23,6 @@
     --neutral-bg:#eceade;
     --shadow: 0 1px 2px rgba(30,26,10,.06), 0 8px 24px -12px rgba(30,26,10,.18);
   }
-  @media (prefers-color-scheme: dark){
-    :root:not([data-theme="light"]){
-      --bg:#100f0c;
-      --surface:#18170f;
-      --surface-raised:#1f1e15;
-      --ink:#ece7d8;
-      --muted:#948f7c;
-      --line:#2c2a1e;
-      --accent:#dba646;
-      --accent-ink:#2a1e08;
-      --good:#6cb383;
-      --good-bg:#1c2a1f;
-      --bad:#d17870;
-      --bad-bg:#2c1f1c;
-      --neutral-bg:#221f14;
-      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.5);
-    }
-  }
-  :root[data-theme="dark"]{
-    --bg:#100f0c;
-    --surface:#18170f;
-    --surface-raised:#1f1e15;
-    --ink:#ece7d8;
-    --muted:#948f7c;
-    --line:#2c2a1e;
-    --accent:#dba646;
-    --accent-ink:#2a1e08;
-    --good:#6cb383;
-    --good-bg:#1c2a1f;
-    --bad:#d17870;
-    --bad-bg:#2c1f1c;
-    --neutral-bg:#221f14;
-    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.5);
-  }
 
   *{box-sizing:border-box;}
   html,body{background:var(--bg);}
@@ -76,6 +42,13 @@
   @keyframes pulse{0%,100%{opacity:1;} 50%{opacity:.35;}}
   .live-dot.live{animation:pulse 2s ease-in-out infinite;}
 
+  .tabs{display:flex; gap:6px; margin-bottom:16px; flex-wrap:wrap;}
+  .tabs.period{margin-bottom:12px;}
+  .tab{border:1px solid var(--line); background:var(--surface-raised); color:var(--muted); font:inherit; font-size:13px; font-weight:600; padding:7px 14px; border-radius:9px; cursor:pointer;}
+  .tab:hover{color:var(--ink);}
+  .tab.active{background:var(--accent); border-color:var(--accent); color:var(--accent-ink);}
+  .tab.small{font-size:12px; padding:5px 11px; border-radius:7px;}
+
   .summary-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(215px,1fr)); gap:12px; margin-bottom:22px;}
   .card{background:var(--surface-raised); border:1px solid var(--line); border-radius:14px; padding:16px 18px; box-shadow:var(--shadow);}
   .card.total{background:linear-gradient(155deg, color-mix(in srgb, var(--accent) 14%, var(--surface-raised)), var(--surface-raised));}
@@ -87,28 +60,29 @@
   .roas-pill.good{background:var(--good-bg); color:var(--good);}
   .roas-pill.bad{background:var(--bad-bg); color:var(--bad);}
   .roas-pill.flat{background:var(--neutral-bg); color:var(--muted);}
-
-  .tabs{display:flex; gap:6px; margin-bottom:16px; flex-wrap:wrap;}
-  .tab{border:1px solid var(--line); background:var(--surface-raised); color:var(--muted); font:inherit; font-size:13px; font-weight:600; padding:7px 14px; border-radius:9px; cursor:pointer;}
-  .tab:hover{color:var(--ink);}
-  .tab.active{background:var(--accent); border-color:var(--accent); color:var(--accent-ink);}
+  .period-badge{font-size:9.5px; text-transform:uppercase; letter-spacing:.05em; background:var(--neutral-bg); color:var(--muted); padding:2px 7px; border-radius:5px;}
 
   .panel{background:var(--surface-raised); border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow); margin-bottom:16px; overflow:hidden;}
-  .panel-head{display:flex; align-items:baseline; justify-content:space-between; padding:16px 18px 4px;}
+  .panel-head{display:flex; align-items:center; justify-content:space-between; padding:16px 18px 4px; gap:10px; flex-wrap:wrap;}
   .panel-head h2{font-size:14px; font-weight:600; margin:0;}
   .panel-head span{font-size:12px; color:var(--muted);}
-  .chart-wrap{padding:6px 10px 14px;}
+  .panel-head-right{display:flex; align-items:center; gap:10px;}
+  .icon-btn{border:1px solid var(--line); background:var(--surface); color:var(--ink); font:inherit; font-size:12px; font-weight:600; padding:5px 11px; border-radius:7px; cursor:pointer;}
+  .icon-btn:hover{border-color:var(--accent);}
+
+  .chart-wrap{padding:6px 10px 4px;}
   svg{display:block; width:100%; height:auto;}
-  .chart-line{fill:none; stroke:var(--accent); stroke-width:2;}
-  .chart-line.fat{stroke:var(--good); stroke-dasharray:4 3;}
-  .chart-area{fill:var(--accent); opacity:.12;}
+  .chart-line{fill:none; stroke:var(--accent); stroke-width:2.25;}
+  .chart-area{fill:url(#chartGradient);}
   .chart-grid{stroke:var(--line); stroke-width:1;}
   .chart-label{fill:var(--muted); font-family:"IBM Plex Mono",monospace; font-size:9.5px;}
-  .chart-dot{fill:var(--accent); stroke:var(--surface-raised); stroke-width:2;}
-  .legend{display:flex; gap:16px; padding:0 18px 14px; font-size:11.5px; color:var(--muted);}
-  .legend span{display:inline-flex; align-items:center; gap:5px;}
-  .legend i{width:10px; height:2px; background:var(--accent); display:inline-block;}
-  .legend i.fat{background:var(--good); }
+  .chart-dot{fill:var(--accent); stroke:var(--surface-raised); stroke-width:1.5;}
+  .metric-toggle{display:flex; gap:4px;}
+  .chart-stats{display:grid; grid-template-columns:repeat(3,1fr); border-top:1px solid var(--line);}
+  .chart-stat{padding:12px 18px; text-align:center;}
+  .chart-stat + .chart-stat{border-left:1px solid var(--line);}
+  .chart-stat .label{font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); margin-bottom:4px;}
+  .chart-stat .value{font-size:16px; font-weight:600;}
 
   .table-scroll{overflow-x:auto;}
   table{width:100%; border-collapse:collapse; font-size:12.8px; min-width:640px;}
@@ -134,6 +108,22 @@
   .costs-total-row{background:var(--neutral-bg); border-radius:10px; padding:10px 14px;}
   .costs-total-row .label{font-size:10.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin-bottom:3px;}
   .costs-total-row .value{font-size:17px; font-weight:600;}
+
+  .sidebar-overlay{position:fixed; inset:0; background:rgba(20,17,8,.35); opacity:0; pointer-events:none; transition:opacity .2s ease; z-index:20;}
+  .sidebar-overlay.open{opacity:1; pointer-events:auto;}
+  .sidebar-panel{position:fixed; top:0; right:0; bottom:0; width:min(320px,88vw); background:var(--surface-raised); box-shadow:-8px 0 24px rgba(20,17,8,.15); transform:translateX(100%); transition:transform .22s ease; z-index:21; display:flex; flex-direction:column;}
+  .sidebar-panel.open{transform:translateX(0);}
+  .sidebar-head{display:flex; align-items:center; justify-content:space-between; padding:16px 18px; border-bottom:1px solid var(--line);}
+  .sidebar-head h3{margin:0; font-size:15px; font-weight:600;}
+  .sidebar-body{padding:16px 18px; overflow-y:auto; flex:1;}
+  .costs-edit-list{list-style:none; margin:0 0 16px; padding:0;}
+  .costs-edit-list li{display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 0; border-bottom:1px dashed var(--line); font-size:13px;}
+  .costs-edit-list .remove-btn{border:none; background:none; color:var(--bad); cursor:pointer; font-size:15px; line-height:1; padding:2px 4px;}
+  .cost-form{display:flex; flex-direction:column; gap:8px; margin-bottom:14px;}
+  .cost-form input{border:1px solid var(--line); border-radius:8px; padding:8px 10px; font:inherit; font-size:13px; background:var(--bg); color:var(--ink);}
+  .cost-form button{border:none; background:var(--accent); color:var(--accent-ink); font:inherit; font-weight:600; font-size:13px; padding:9px; border-radius:8px; cursor:pointer;}
+  .cost-form button:disabled{opacity:.5; cursor:not-allowed;}
+  .sidebar-note{font-size:12px; color:var(--muted); margin:0;}
 </style>
 </head>
 <body>
@@ -149,26 +139,31 @@
     </div>
   </header>
 
+  <div class="tabs period" id="periodTabs"></div>
+
   <section class="summary-grid" id="summaryGrid"></section>
 
   <div class="tabs" id="scopeTabs"></div>
 
   <section class="panel">
     <div class="panel-head">
-      <h2 id="chartTitle">Gasto — últimos 14 dias</h2>
-      <span id="chartRange"></span>
+      <h2 id="chartTitle">Receitas e gasto</h2>
+      <div class="panel-head-right">
+        <div class="metric-toggle" id="metricToggle"></div>
+        <span id="chartRange"></span>
+      </div>
     </div>
     <div class="chart-wrap" id="chartWrap"></div>
-    <div class="legend">
-      <span><i></i> Gasto</span>
-      <span><i class="fat"></i> Faturamento</span>
-    </div>
+    <div class="chart-stats" id="chartStats"></div>
   </section>
 
   <section class="panel">
     <div class="panel-head">
       <h2>Custos fixos mensais</h2>
-      <span id="costsRange"></span>
+      <div class="panel-head-right">
+        <span id="costsRange"></span>
+        <button class="icon-btn" id="openSidebar">ver detalhe</button>
+      </div>
     </div>
     <div class="costs-body" id="costsBody"></div>
   </section>
@@ -184,6 +179,23 @@
   <footer id="footerNote">Link privado — não compartilhe. Dados sincronizados a cada 30 min.</footer>
 </div>
 
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+<aside class="sidebar-panel" id="sidebarPanel">
+  <div class="sidebar-head">
+    <h3>Custos fixos</h3>
+    <button class="icon-btn" id="sidebarClose">Fechar</button>
+  </div>
+  <div class="sidebar-body">
+    <ul class="costs-edit-list" id="costsEditList"></ul>
+    <form class="cost-form" id="costForm">
+      <input type="text" id="costName" placeholder="Nome (ex: Vturb)" required disabled>
+      <input type="number" id="costValue" placeholder="Valor mensal (USD)" step="0.01" min="0" required disabled>
+      <button type="submit" disabled>Adicionar custo</button>
+    </form>
+    <p class="sidebar-note" id="sidebarNote">Edição disponível apenas no painel do Claude — aqui é somente leitura.</p>
+  </div>
+</aside>
+
 <script>
 (function(){
   const ACCOUNTS = [
@@ -192,13 +204,29 @@
     {key:'neia', label:'Neia'},
   ];
   const WEEKDAYS = ['Dom','Seg','Ter','Qua','Qui','Sex','Sab'];
+  const MONTHS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const PERIODS = [
+    {key:'today', label:'Hoje'},
+    {key:'yesterday', label:'Ontem'},
+    {key:'7d', label:'7 dias'},
+    {key:'14d', label:'14 dias'},
+    {key:'month', label:'Este mês'},
+  ];
   let scope = 'geral';
+  let period = 'today';
+  let metric = 'faturamento';
   let generatedAt = null;
   let fixedCosts = null;
   const data = {vini:{}, pretorian:{}, neia:{}};
 
   function todayKey(){
     return new Intl.DateTimeFormat('en-CA', {timeZone:'America/Sao_Paulo', year:'numeric', month:'2-digit', day:'2-digit'}).format(new Date());
+  }
+  function shiftDateKey(baseKey, deltaDays){
+    const [y,m,d] = baseKey.split('-').map(Number);
+    const dt = new Date(Date.UTC(y, m-1, d));
+    dt.setUTCDate(dt.getUTCDate() + deltaDays);
+    return dt.toISOString().slice(0,10);
   }
   function daysInMonth(dateStr){
     const [y,m] = dateStr.split('-').map(Number);
@@ -207,6 +235,14 @@
   function dailyFixedCost(dateStr){
     if (!fixedCosts || !fixedCosts.total) return 0;
     return fixedCosts.total / daysInMonth(dateStr);
+  }
+  function periodDates(p){
+    const tk = todayKey();
+    if (p === 'yesterday') return [shiftDateKey(tk,-1)];
+    if (p === '7d'){ const a=[]; for(let i=6;i>=0;i--) a.push(shiftDateKey(tk,-i)); return a; }
+    if (p === '14d'){ const a=[]; for(let i=13;i>=0;i--) a.push(shiftDateKey(tk,-i)); return a; }
+    if (p === 'month'){ const [y,m,d]=tk.split('-').map(Number); const a=[]; for(let day=1; day<=d; day++) a.push(y+'-'+String(m).padStart(2,'0')+'-'+String(day).padStart(2,'0')); return a; }
+    return [tk];
   }
 
   function fmtUSD(v){
@@ -218,6 +254,10 @@
     const [y,m,day] = d.split('-').map(Number);
     const wd = WEEKDAYS[new Date(Date.UTC(y,m-1,day)).getUTCDay()];
     return {wd, short: day + '/' + String(m).padStart(2,'0')};
+  }
+  function fmtDateChart(d){
+    const [,m,day] = d.split('-').map(Number);
+    return String(day).padStart(2,'0') + ' ' + MONTHS[m-1];
   }
 
   function sortedDates(map){ return Object.keys(map).sort(); }
@@ -250,6 +290,26 @@
     return data[scope];
   }
 
+  function aggregate(docsMap, dates){
+    let cost=0, click=0, ic=0, venda=0, fat=0, fixed=0, partial=false, any=false;
+    dates.forEach(d => {
+      const r = docsMap[d];
+      fixed += dailyFixedCost(d);
+      if (!r) return;
+      any = true;
+      cost += r.cost||0; click += r.click||0; ic += r.ic||0; venda += r.venda||0; fat += r.faturamento||0;
+      if (r.partial) partial = true;
+    });
+    return {
+      any, cost, click, ic, venda, faturamento:fat, partial,
+      cpc: click ? cost/click : 0,
+      custoIc: ic ? cost/ic : null,
+      cpa: venda ? cost/venda : null,
+      roas: cost ? fat/cost : null,
+      net: fat - cost - fixed,
+    };
+  }
+
   function roasClass(roas){
     if (roas === null || roas === undefined) return 'flat';
     return roas >= 1 ? 'good' : 'bad';
@@ -266,34 +326,37 @@
     else { dot.className='live-dot stale'; txt.textContent='desatualizado · última sync ' + label; }
   }
 
+  function renderPeriodTabs(){
+    const wrap = document.getElementById('periodTabs');
+    wrap.innerHTML = PERIODS.map(p => '<button class="tab small' + (period===p.key?' active':'') + '" data-period="' + p.key + '">' + p.label + '</button>').join('');
+    wrap.querySelectorAll('.tab').forEach(btn => btn.addEventListener('click', () => { period = btn.dataset.period; renderAll(); }));
+  }
+
   function renderSummary(){
     const grid = document.getElementById('summaryGrid');
-    const tk = todayKey();
+    const dates = periodDates(period);
+    const periodLabel = PERIODS.find(p => p.key === period).label;
     const cards = [{key:'geral', label:'Total (3 contas)', total:true}, ...ACCOUNTS];
     grid.innerHTML = cards.map(c => {
-      const doc = c.total ? geralDocs()[tk] : data[c.key][tk];
-      const cost = doc ? doc.cost : 0;
-      const ic = doc ? doc.ic : 0;
-      const venda = doc ? doc.venda : 0;
-      const cpa = doc && doc.cpa != null ? fmtUSD(doc.cpa) : '–';
-      const roas = doc ? doc.roas : null;
-      const rc = roasClass(roas);
-      const roasTxt = roas != null ? roas.toFixed(2)+'x' : '–';
+      const docs = c.total ? geralDocs() : data[c.key];
+      const agg = aggregate(docs, dates);
+      const rc = roasClass(agg.roas);
+      const roasTxt = agg.roas != null ? agg.roas.toFixed(2)+'x' : '–';
+      const cpaTxt = agg.cpa != null ? fmtUSD(agg.cpa) : '–';
       let netLine = '';
-      if (c.total && doc){
-        const net = doc.faturamento - doc.cost - dailyFixedCost(tk);
-        const netClass = net >= 0 ? 'good' : 'bad';
+      if (c.total){
+        const netClass = agg.net >= 0 ? 'good' : 'bad';
         netLine = '<div class="card-stats" style="margin-top:8px;">' +
-          '<span>Lucro líq. hoje <b class="num" style="color:var(--' + netClass + ')">' + fmtUSD(net) + '</b></span>' +
+          '<span>Lucro líq. <b class="num" style="color:var(--' + netClass + ')">' + fmtUSD(agg.net) + '</b></span>' +
         '</div>';
       }
       return '<div class="card' + (c.total?' total':'') + '">' +
-        '<div class="card-label"><span>' + c.label + '</span>' + (doc && doc.partial ? '<span class="badge-partial">hoje</span>' : '') + '</div>' +
-        '<div class="card-spend num">' + fmtUSD(cost) + '</div>' +
+        '<div class="card-label"><span>' + c.label + '</span><span class="period-badge">' + periodLabel + '</span></div>' +
+        '<div class="card-spend num">' + fmtUSD(agg.cost) + '</div>' +
         '<div class="card-stats">' +
-          '<span>IC <b class="num">' + ic + '</b></span>' +
-          '<span>Venda <b class="num">' + venda + '</b></span>' +
-          '<span>CPA <b class="num">' + cpa + '</b></span>' +
+          '<span>IC <b class="num">' + agg.ic + '</b></span>' +
+          '<span>Venda <b class="num">' + agg.venda + '</b></span>' +
+          '<span>CPA <b class="num">' + cpaTxt + '</b></span>' +
           '<span class="roas-pill ' + rc + ' num">' + roasTxt + '</span>' +
         '</div>' + netLine +
       '</div>';
@@ -307,25 +370,37 @@
     wrap.querySelectorAll('.tab').forEach(btn => btn.addEventListener('click', () => { scope = btn.dataset.scope; renderAll(); }));
   }
 
+  function renderMetricToggle(){
+    const wrap = document.getElementById('metricToggle');
+    const metrics = [{key:'faturamento', label:'Faturamento'}, {key:'cost', label:'Gasto'}];
+    wrap.innerHTML = metrics.map(m => '<button class="tab small' + (metric===m.key?' active':'') + '" data-metric="' + m.key + '">' + m.label + '</button>').join('');
+    wrap.querySelectorAll('.tab').forEach(btn => btn.addEventListener('click', () => { metric = btn.dataset.metric; renderChart(); }));
+  }
+
   function lastNDates(map, n){ return sortedDates(map).slice(-n); }
+
+  function chartDates(){
+    if (period === 'today' || period === 'yesterday') return lastNDates(scopeDocs(), 14);
+    return periodDates(period);
+  }
 
   function renderChart(){
     const docs = scopeDocs();
-    const dates = lastNDates(docs, 14);
-    document.getElementById('chartTitle').textContent = 'Gasto — últimos ' + dates.length + ' dias';
-    document.getElementById('chartRange').textContent = dates.length ? (fmtDate(dates[0]).short + ' – ' + fmtDate(dates[dates.length-1]).short) : '';
+    const dates = chartDates();
+    const label = metric === 'cost' ? 'Gasto' : 'Faturamento';
+    document.getElementById('chartTitle').textContent = label + ' — ' + dates.length + ' dias';
+    document.getElementById('chartRange').textContent = dates.length ? (fmtDateChart(dates[0]) + ' – ' + fmtDateChart(dates[dates.length-1])) : '';
     const wrap = document.getElementById('chartWrap');
-    if (!dates.length){ wrap.innerHTML = '<div class="empty-state">Sem dados ainda.</div>'; return; }
+    if (!dates.length){ wrap.innerHTML = '<div class="empty-state">Sem dados ainda.</div>'; document.getElementById('chartStats').innerHTML=''; return; }
 
-    const W = 760, H = 200, padL = 64, padR = 14, padT = 14, padB = 26;
-    const costs = dates.map(d => docs[d].cost);
-    const fats = dates.map(d => docs[d].faturamento);
-    const maxV = Math.max(1, ...costs, ...fats) * 1.12;
+    const values = dates.map(d => (docs[d] ? docs[d][metric] : 0) || 0);
+    const W = 760, H = 200, padL = 64, padR = 14, padT = 16, padB = 26;
+    const maxV = Math.max(1, ...values) * 1.15;
     const x = i => padL + (dates.length===1 ? 0 : i * (W - padL - padR) / (dates.length - 1));
     const y = v => padT + (H - padT - padB) * (1 - v / maxV);
 
-    const linePath = arr => arr.map((v,i) => (i===0?'M':'L') + x(i).toFixed(1) + ',' + y(v).toFixed(1)).join(' ');
-    const areaPath = arr => linePath(arr) + ' L' + x(arr.length-1).toFixed(1) + ',' + y(0).toFixed(1) + ' L' + x(0).toFixed(1) + ',' + y(0).toFixed(1) + ' Z';
+    const linePath = values.map((v,i) => (i===0?'M':'L') + x(i).toFixed(1) + ',' + y(v).toFixed(1)).join(' ');
+    const areaPath = linePath + ' L' + x(values.length-1).toFixed(1) + ',' + y(0).toFixed(1) + ' L' + x(0).toFixed(1) + ',' + y(0).toFixed(1) + ' Z';
 
     const gridLines = [0, .5, 1].map(f => {
       const v = maxV * f;
@@ -334,21 +409,32 @@
     }).join('');
 
     const xLabels = dates.map((d,i) => {
-      if (dates.length > 10 && i % 2 !== 0 && i !== dates.length-1) return '';
-      return '<text class="chart-label" x="' + x(i).toFixed(1) + '" y="' + (H-6) + '" text-anchor="middle">' + fmtDate(d).short + '</text>';
+      if (dates.length > 9 && i % 2 !== 0 && i !== dates.length-1) return '';
+      return '<text class="chart-label" x="' + x(i).toFixed(1) + '" y="' + (H-6) + '" text-anchor="middle">' + fmtDateChart(d) + '</text>';
     }).join('');
 
-    const lastI = dates.length - 1;
-    const svgHtml =
-      '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Gráfico de gasto e faturamento diário">' +
-        '<path class="chart-area" d="' + areaPath(costs) + '"/>' +
+    const dots = values.map((v,i) => '<circle class="chart-dot" cx="' + x(i).toFixed(1) + '" cy="' + y(v).toFixed(1) + '" r="3.2"/>').join('');
+
+    wrap.innerHTML =
+      '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Gráfico de ' + label.toLowerCase() + ' diário">' +
+        '<defs><linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">' +
+          '<stop offset="0%" stop-color="var(--accent)" stop-opacity="0.28"/>' +
+          '<stop offset="100%" stop-color="var(--accent)" stop-opacity="0"/>' +
+        '</linearGradient></defs>' +
+        '<path class="chart-area" d="' + areaPath + '"/>' +
         gridLines +
-        '<path class="chart-line fat" d="' + linePath(fats) + '"/>' +
-        '<path class="chart-line" d="' + linePath(costs) + '"/>' +
-        '<circle class="chart-dot" cx="' + x(lastI).toFixed(1) + '" cy="' + y(costs[lastI]).toFixed(1) + '" r="3.5"/>' +
+        '<path class="chart-line" d="' + linePath + '"/>' +
+        dots +
         xLabels +
       '</svg>';
-    wrap.innerHTML = svgHtml;
+
+    const total = values.reduce((a,b) => a+b, 0);
+    const avg = total / values.length;
+    const best = Math.max(...values);
+    document.getElementById('chartStats').innerHTML =
+      '<div class="chart-stat"><div class="label">Total do período</div><div class="value num">' + fmtUSD(total) + '</div></div>' +
+      '<div class="chart-stat"><div class="label">Média / dia</div><div class="value num">' + fmtUSD(avg) + '</div></div>' +
+      '<div class="chart-stat"><div class="label">Melhor dia</div><div class="value num">' + fmtUSD(best) + '</div></div>';
   }
 
   function renderTable(){
@@ -386,24 +472,35 @@
     if (!fixedCosts || !fixedCosts.items || !fixedCosts.items.length){
       wrap.innerHTML = '<div class="empty-state">Nenhum custo fixo cadastrado ainda.</div>';
       document.getElementById('costsRange').textContent = '';
-      return;
+    } else {
+      const tk = todayKey();
+      const daily = dailyFixedCost(tk);
+      document.getElementById('costsRange').textContent = fixedCosts.month || '';
+      const items = fixedCosts.items.map(it =>
+        '<li><span>' + it.name + '</span><span class="num">' + fmtUSD(it.value) + '</span></li>'
+      ).join('');
+      wrap.innerHTML =
+        '<ul class="costs-list">' + items + '</ul>' +
+        '<div class="costs-totals">' +
+          '<div class="costs-total-row"><div class="label">Total mensal</div><div class="value num">' + fmtUSD(fixedCosts.total) + '</div></div>' +
+          '<div class="costs-total-row"><div class="label">Equivalente diário</div><div class="value num">' + fmtUSD(daily) + '</div></div>' +
+        '</div>';
     }
-    const tk = todayKey();
-    const daily = dailyFixedCost(tk);
-    document.getElementById('costsRange').textContent = fixedCosts.month || '';
-    const items = fixedCosts.items.map(it =>
-      '<li><span>' + it.name + '</span><span class="num">' + fmtUSD(it.value) + '</span></li>'
-    ).join('');
-    wrap.innerHTML =
-      '<ul class="costs-list">' + items + '</ul>' +
-      '<div class="costs-totals">' +
-        '<div class="costs-total-row"><div class="label">Total mensal</div><div class="value num">' + fmtUSD(fixedCosts.total) + '</div></div>' +
-        '<div class="costs-total-row"><div class="label">Equivalente diário</div><div class="value num">' + fmtUSD(daily) + '</div></div>' +
-      '</div>';
+    renderCostsEditList();
+  }
+
+  function renderCostsEditList(){
+    const list = document.getElementById('costsEditList');
+    const items = (fixedCosts && fixedCosts.items) || [];
+    list.innerHTML = items.map(it =>
+      '<li><span>' + it.name + ' — <span class="num">' + fmtUSD(it.value) + '</span></span></li>'
+    ).join('') || '<li>Nenhum custo cadastrado.</li>';
   }
 
   function renderAll(){
+    renderPeriodTabs();
     renderTabs();
+    renderMetricToggle();
     renderSummary();
     renderChart();
     renderFixedCosts();
@@ -413,6 +510,17 @@
 
   renderAll();
   setInterval(renderLive, 30000);
+
+  document.getElementById('openSidebar').addEventListener('click', () => {
+    document.getElementById('sidebarOverlay').classList.add('open');
+    document.getElementById('sidebarPanel').classList.add('open');
+  });
+  function closeSidebar(){
+    document.getElementById('sidebarOverlay').classList.remove('open');
+    document.getElementById('sidebarPanel').classList.remove('open');
+  }
+  document.getElementById('sidebarClose').addEventListener('click', closeSidebar);
+  document.getElementById('sidebarOverlay').addEventListener('click', closeSidebar);
 
   function loadData(){
     fetch('./data.json', {cache:'no-store'}).then(r => r.json()).then(json => {
