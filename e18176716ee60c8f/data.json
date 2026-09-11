@@ -551,34 +551,36 @@
       }
     }
   },
-  "fixedCosts": {
-    "month": "Setembro/2026",
-    "total": 847.31,
-    "items": [
-      {
-        "name": "Ronin Assinatura",
-        "value": 250
-      },
-      {
-        "name": "Taxa de transferência Morgan → Citi",
-        "value": 25
-      },
-      {
-        "name": "Vturb",
-        "value": 116.06
-      },
-      {
-        "name": "RedTrack",
-        "value": 59.25
-      },
-      {
-        "name": "HidePages",
-        "value": 197
-      },
-      {
-        "name": "Editor",
-        "value": 200
-      }
-    ]
-  }
+  "costs": [
+    {
+      "date": "2026-09-01",
+      "name": "Ronin Assinatura",
+      "value": 250
+    },
+    {
+      "date": "2026-09-01",
+      "name": "Taxa de transferência Morgan → Citi",
+      "value": 25
+    },
+    {
+      "date": "2026-09-01",
+      "name": "Vturb",
+      "value": 116.06
+    },
+    {
+      "date": "2026-09-01",
+      "name": "RedTrack",
+      "value": 59.25
+    },
+    {
+      "date": "2026-09-01",
+      "name": "HidePages",
+      "value": 197
+    },
+    {
+      "date": "2026-09-01",
+      "name": "Editor",
+      "value": 200
+    }
+  ]
 }
