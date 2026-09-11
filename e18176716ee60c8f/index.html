@@ -317,7 +317,7 @@
     const wrap = document.getElementById('chartWrap');
     if (!dates.length){ wrap.innerHTML = '<div class="empty-state">Sem dados ainda.</div>'; return; }
 
-    const W = 760, H = 200, padL = 46, padR = 14, padT = 14, padB = 26;
+    const W = 760, H = 200, padL = 64, padR = 14, padT = 14, padB = 26;
     const costs = dates.map(d => docs[d].cost);
     const fats = dates.map(d => docs[d].faturamento);
     const maxV = Math.max(1, ...costs, ...fats) * 1.12;
