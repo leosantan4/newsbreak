@@ -1,0 +1,432 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Native Ads Console</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --bg:#f2f0e7;
+    --surface:#fbfaf4;
+    --surface-raised:#ffffff;
+    --ink:#1b1d17;
+    --muted:#6b6f61;
+    --line:#dedac9;
+    --accent:#a86a15;
+    --accent-ink:#3a2707;
+    --good:#2f7a52;
+    --good-bg:#e6f0e8;
+    --bad:#b23b34;
+    --bad-bg:#f7e7e5;
+    --neutral-bg:#eceade;
+    --shadow: 0 1px 2px rgba(30,26,10,.06), 0 8px 24px -12px rgba(30,26,10,.18);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#100f0c;
+      --surface:#18170f;
+      --surface-raised:#1f1e15;
+      --ink:#ece7d8;
+      --muted:#948f7c;
+      --line:#2c2a1e;
+      --accent:#dba646;
+      --accent-ink:#2a1e08;
+      --good:#6cb383;
+      --good-bg:#1c2a1f;
+      --bad:#d17870;
+      --bad-bg:#2c1f1c;
+      --neutral-bg:#221f14;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.5);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#100f0c;
+    --surface:#18170f;
+    --surface-raised:#1f1e15;
+    --ink:#ece7d8;
+    --muted:#948f7c;
+    --line:#2c2a1e;
+    --accent:#dba646;
+    --accent-ink:#2a1e08;
+    --good:#6cb383;
+    --good-bg:#1c2a1f;
+    --bad:#d17870;
+    --bad-bg:#2c1f1c;
+    --neutral-bg:#221f14;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.5);
+  }
+
+  *{box-sizing:border-box;}
+  html,body{background:var(--bg);}
+  body{color:var(--ink); font-family:"IBM Plex Sans",system-ui,sans-serif; margin:0;}
+  .num, .tabular{font-family:"IBM Plex Mono","SFMono-Regular",monospace; font-variant-numeric:tabular-nums;}
+
+  .app{max-width:1080px; margin:0 auto; padding:28px 20px 60px;}
+
+  header{display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:22px; flex-wrap:wrap;}
+  header h1{font-size:22px; font-weight:700; margin:0 0 4px; letter-spacing:-.01em;}
+  header p{margin:0; color:var(--muted); font-size:13.5px;}
+
+  .live-pill{display:inline-flex; align-items:center; gap:7px; padding:6px 12px 6px 10px; border-radius:999px; background:var(--surface-raised); border:1px solid var(--line); font-size:12.5px; color:var(--muted); box-shadow:var(--shadow); white-space:nowrap;}
+  .live-dot{width:7px; height:7px; border-radius:50%; background:var(--good); flex:none;}
+  .live-dot.stale{background:var(--bad);}
+  .live-dot.warm{background:var(--accent);}
+  @keyframes pulse{0%,100%{opacity:1;} 50%{opacity:.35;}}
+  .live-dot.live{animation:pulse 2s ease-in-out infinite;}
+
+  .summary-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(215px,1fr)); gap:12px; margin-bottom:22px;}
+  .card{background:var(--surface-raised); border:1px solid var(--line); border-radius:14px; padding:16px 18px; box-shadow:var(--shadow);}
+  .card.total{background:linear-gradient(155deg, color-mix(in srgb, var(--accent) 14%, var(--surface-raised)), var(--surface-raised));}
+  .card-label{font-size:11px; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); font-weight:600; margin-bottom:8px; display:flex; align-items:center; justify-content:space-between;}
+  .card-spend{font-size:26px; font-weight:600; margin-bottom:10px; letter-spacing:-.01em;}
+  .card-stats{display:flex; gap:14px; font-size:12.5px; color:var(--muted); flex-wrap:wrap;}
+  .card-stats b{color:var(--ink); font-weight:600;}
+  .roas-pill{display:inline-block; padding:1px 7px; border-radius:6px; font-size:11.5px; font-weight:600;}
+  .roas-pill.good{background:var(--good-bg); color:var(--good);}
+  .roas-pill.bad{background:var(--bad-bg); color:var(--bad);}
+  .roas-pill.flat{background:var(--neutral-bg); color:var(--muted);}
+
+  .tabs{display:flex; gap:6px; margin-bottom:16px; flex-wrap:wrap;}
+  .tab{border:1px solid var(--line); background:var(--surface-raised); color:var(--muted); font:inherit; font-size:13px; font-weight:600; padding:7px 14px; border-radius:9px; cursor:pointer;}
+  .tab:hover{color:var(--ink);}
+  .tab.active{background:var(--accent); border-color:var(--accent); color:var(--accent-ink);}
+
+  .panel{background:var(--surface-raised); border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow); margin-bottom:16px; overflow:hidden;}
+  .panel-head{display:flex; align-items:baseline; justify-content:space-between; padding:16px 18px 4px;}
+  .panel-head h2{font-size:14px; font-weight:600; margin:0;}
+  .panel-head span{font-size:12px; color:var(--muted);}
+  .chart-wrap{padding:6px 10px 14px;}
+  svg{display:block; width:100%; height:auto;}
+  .chart-line{fill:none; stroke:var(--accent); stroke-width:2;}
+  .chart-line.fat{stroke:var(--good); stroke-dasharray:4 3;}
+  .chart-area{fill:var(--accent); opacity:.12;}
+  .chart-grid{stroke:var(--line); stroke-width:1;}
+  .chart-label{fill:var(--muted); font-family:"IBM Plex Mono",monospace; font-size:9.5px;}
+  .chart-dot{fill:var(--accent); stroke:var(--surface-raised); stroke-width:2;}
+  .legend{display:flex; gap:16px; padding:0 18px 14px; font-size:11.5px; color:var(--muted);}
+  .legend span{display:inline-flex; align-items:center; gap:5px;}
+  .legend i{width:10px; height:2px; background:var(--accent); display:inline-block;}
+  .legend i.fat{background:var(--good); }
+
+  .table-scroll{overflow-x:auto;}
+  table{width:100%; border-collapse:collapse; font-size:12.8px; min-width:640px;}
+  thead th{text-align:right; font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); font-weight:600; padding:9px 12px; border-bottom:1px solid var(--line); white-space:nowrap;}
+  thead th:first-child, thead th:nth-child(2){text-align:left;}
+  tbody td{text-align:right; padding:8px 12px; border-bottom:1px solid var(--line); white-space:nowrap;}
+  tbody td:first-child, tbody td:nth-child(2){text-align:left;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr.today{background:color-mix(in srgb, var(--accent) 8%, transparent);}
+  .badge-partial{font-size:9.5px; text-transform:uppercase; letter-spacing:.04em; background:var(--neutral-bg); color:var(--muted); padding:1px 6px; border-radius:5px; margin-left:6px;}
+  .cell-muted{color:var(--muted);}
+  .weekday{color:var(--muted); font-weight:400;}
+
+  footer{color:var(--muted); font-size:11.5px; text-align:center; margin-top:18px;}
+  .empty-state{padding:40px 20px; text-align:center; color:var(--muted); font-size:13px;}
+
+  .costs-body{display:flex; gap:24px; flex-wrap:wrap; padding:4px 18px 16px;}
+  .costs-list{flex:1 1 260px; list-style:none; margin:0; padding:0; font-size:13px;}
+  .costs-list li{display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px dashed var(--line);}
+  .costs-list li:last-child{border-bottom:none;}
+  .costs-list li span:first-child{color:var(--muted);}
+  .costs-totals{flex:0 0 200px; display:flex; flex-direction:column; gap:10px; justify-content:center;}
+  .costs-total-row{background:var(--neutral-bg); border-radius:10px; padding:10px 14px;}
+  .costs-total-row .label{font-size:10.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin-bottom:3px;}
+  .costs-total-row .value{font-size:17px; font-weight:600;}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div>
+      <h1>Native Ads — Painel Diário</h1>
+      <p>Gasto e conversão das contas NewsBreak · Vini, Pretorian, Neia</p>
+    </div>
+    <div class="live-pill" id="livePill">
+      <span class="live-dot warm" id="liveDot"></span>
+      <span id="liveText">conectando…</span>
+    </div>
+  </header>
+
+  <section class="summary-grid" id="summaryGrid"></section>
+
+  <div class="tabs" id="scopeTabs"></div>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2 id="chartTitle">Gasto — últimos 14 dias</h2>
+      <span id="chartRange"></span>
+    </div>
+    <div class="chart-wrap" id="chartWrap"></div>
+    <div class="legend">
+      <span><i></i> Gasto</span>
+      <span><i class="fat"></i> Faturamento</span>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Custos fixos mensais</h2>
+      <span id="costsRange"></span>
+    </div>
+    <div class="costs-body" id="costsBody"></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2 id="tableTitle">Detalhe diário</h2>
+      <span>valores em USD</span>
+    </div>
+    <div class="table-scroll" id="tableWrap"></div>
+  </section>
+
+  <footer id="footerNote">Link privado — não compartilhe. Dados sincronizados a cada 30 min.</footer>
+</div>
+
+<script>
+(function(){
+  const ACCOUNTS = [
+    {key:'vini', label:'Vini'},
+    {key:'pretorian', label:'Pretorian'},
+    {key:'neia', label:'Neia'},
+  ];
+  const WEEKDAYS = ['Dom','Seg','Ter','Qua','Qui','Sex','Sab'];
+  let scope = 'geral';
+  let generatedAt = null;
+  let fixedCosts = null;
+  const data = {vini:{}, pretorian:{}, neia:{}};
+
+  function todayKey(){
+    return new Intl.DateTimeFormat('en-CA', {timeZone:'America/Sao_Paulo', year:'numeric', month:'2-digit', day:'2-digit'}).format(new Date());
+  }
+  function daysInMonth(dateStr){
+    const [y,m] = dateStr.split('-').map(Number);
+    return new Date(Date.UTC(y, m, 0)).getUTCDate();
+  }
+  function dailyFixedCost(dateStr){
+    if (!fixedCosts || !fixedCosts.total) return 0;
+    return fixedCosts.total / daysInMonth(dateStr);
+  }
+
+  function fmtUSD(v){
+    if (v === null || v === undefined) return '–';
+    const s = Math.abs(v).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+    return (v < 0 ? '-$' : '$') + s;
+  }
+  function fmtDate(d){
+    const [y,m,day] = d.split('-').map(Number);
+    const wd = WEEKDAYS[new Date(Date.UTC(y,m-1,day)).getUTCDay()];
+    return {wd, short: day + '/' + String(m).padStart(2,'0')};
+  }
+
+  function sortedDates(map){ return Object.keys(map).sort(); }
+
+  function geralDocs(){
+    const dates = new Set();
+    ACCOUNTS.forEach(a => sortedDates(data[a.key]).forEach(d => dates.add(d)));
+    const out = {};
+    Array.from(dates).sort().forEach(d => {
+      let cost=0, click=0, ic=0, venda=0, fat=0, partial=false;
+      ACCOUNTS.forEach(a => {
+        const row = data[a.key][d];
+        if (!row) return;
+        cost += row.cost||0; click += row.click||0; ic += row.ic||0; venda += row.venda||0; fat += row.faturamento||0;
+        if (row.partial) partial = true;
+      });
+      out[d] = {
+        date:d, cost, click, ic, venda, faturamento:fat, partial,
+        cpc: click ? cost/click : 0,
+        custoIc: ic ? cost/ic : null,
+        cpa: venda ? cost/venda : null,
+        roas: cost ? fat/cost : null,
+      };
+    });
+    return out;
+  }
+
+  function scopeDocs(){
+    if (scope === 'geral') return geralDocs();
+    return data[scope];
+  }
+
+  function roasClass(roas){
+    if (roas === null || roas === undefined) return 'flat';
+    return roas >= 1 ? 'good' : 'bad';
+  }
+
+  function renderLive(){
+    const dot = document.getElementById('liveDot');
+    const txt = document.getElementById('liveText');
+    if (!generatedAt){ dot.className='live-dot warm'; txt.textContent='aguardando primeira sincronização'; return; }
+    const mins = Math.round((Date.now() - new Date(generatedAt).getTime())/60000);
+    let label = mins <= 1 ? 'agora mesmo' : mins + ' min atrás';
+    if (mins < 45){ dot.className='live-dot live'; txt.textContent='ao vivo · atualizado ' + label; }
+    else if (mins < 150){ dot.className='live-dot warm'; txt.textContent='atualizado ' + label; }
+    else { dot.className='live-dot stale'; txt.textContent='desatualizado · última sync ' + label; }
+  }
+
+  function renderSummary(){
+    const grid = document.getElementById('summaryGrid');
+    const tk = todayKey();
+    const cards = [{key:'geral', label:'Total (3 contas)', total:true}, ...ACCOUNTS];
+    grid.innerHTML = cards.map(c => {
+      const doc = c.total ? geralDocs()[tk] : data[c.key][tk];
+      const cost = doc ? doc.cost : 0;
+      const ic = doc ? doc.ic : 0;
+      const venda = doc ? doc.venda : 0;
+      const cpa = doc && doc.cpa != null ? fmtUSD(doc.cpa) : '–';
+      const roas = doc ? doc.roas : null;
+      const rc = roasClass(roas);
+      const roasTxt = roas != null ? roas.toFixed(2)+'x' : '–';
+      let netLine = '';
+      if (c.total && doc){
+        const net = doc.faturamento - doc.cost - dailyFixedCost(tk);
+        const netClass = net >= 0 ? 'good' : 'bad';
+        netLine = '<div class="card-stats" style="margin-top:8px;">' +
+          '<span>Lucro líq. hoje <b class="num" style="color:var(--' + netClass + ')">' + fmtUSD(net) + '</b></span>' +
+        '</div>';
+      }
+      return '<div class="card' + (c.total?' total':'') + '">' +
+        '<div class="card-label"><span>' + c.label + '</span>' + (doc && doc.partial ? '<span class="badge-partial">hoje</span>' : '') + '</div>' +
+        '<div class="card-spend num">' + fmtUSD(cost) + '</div>' +
+        '<div class="card-stats">' +
+          '<span>IC <b class="num">' + ic + '</b></span>' +
+          '<span>Venda <b class="num">' + venda + '</b></span>' +
+          '<span>CPA <b class="num">' + cpa + '</b></span>' +
+          '<span class="roas-pill ' + rc + ' num">' + roasTxt + '</span>' +
+        '</div>' + netLine +
+      '</div>';
+    }).join('');
+  }
+
+  function renderTabs(){
+    const wrap = document.getElementById('scopeTabs');
+    const tabs = [{key:'geral', label:'Geral'}, ...ACCOUNTS];
+    wrap.innerHTML = tabs.map(t => '<button class="tab' + (scope===t.key?' active':'') + '" data-scope="' + t.key + '">' + t.label + '</button>').join('');
+    wrap.querySelectorAll('.tab').forEach(btn => btn.addEventListener('click', () => { scope = btn.dataset.scope; renderAll(); }));
+  }
+
+  function lastNDates(map, n){ return sortedDates(map).slice(-n); }
+
+  function renderChart(){
+    const docs = scopeDocs();
+    const dates = lastNDates(docs, 14);
+    document.getElementById('chartTitle').textContent = 'Gasto — últimos ' + dates.length + ' dias';
+    document.getElementById('chartRange').textContent = dates.length ? (fmtDate(dates[0]).short + ' – ' + fmtDate(dates[dates.length-1]).short) : '';
+    const wrap = document.getElementById('chartWrap');
+    if (!dates.length){ wrap.innerHTML = '<div class="empty-state">Sem dados ainda.</div>'; return; }
+
+    const W = 760, H = 200, padL = 46, padR = 14, padT = 14, padB = 26;
+    const costs = dates.map(d => docs[d].cost);
+    const fats = dates.map(d => docs[d].faturamento);
+    const maxV = Math.max(1, ...costs, ...fats) * 1.12;
+    const x = i => padL + (dates.length===1 ? 0 : i * (W - padL - padR) / (dates.length - 1));
+    const y = v => padT + (H - padT - padB) * (1 - v / maxV);
+
+    const linePath = arr => arr.map((v,i) => (i===0?'M':'L') + x(i).toFixed(1) + ',' + y(v).toFixed(1)).join(' ');
+    const areaPath = arr => linePath(arr) + ' L' + x(arr.length-1).toFixed(1) + ',' + y(0).toFixed(1) + ' L' + x(0).toFixed(1) + ',' + y(0).toFixed(1) + ' Z';
+
+    const gridLines = [0, .5, 1].map(f => {
+      const v = maxV * f;
+      return '<line class="chart-grid" x1="' + padL + '" x2="' + (W-padR) + '" y1="' + y(v).toFixed(1) + '" y2="' + y(v).toFixed(1) + '"/>' +
+             '<text class="chart-label" x="' + (padL-8) + '" y="' + (y(v)+3).toFixed(1) + '" text-anchor="end">' + fmtUSD(v) + '</text>';
+    }).join('');
+
+    const xLabels = dates.map((d,i) => {
+      if (dates.length > 10 && i % 2 !== 0 && i !== dates.length-1) return '';
+      return '<text class="chart-label" x="' + x(i).toFixed(1) + '" y="' + (H-6) + '" text-anchor="middle">' + fmtDate(d).short + '</text>';
+    }).join('');
+
+    const lastI = dates.length - 1;
+    const svgHtml =
+      '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Gráfico de gasto e faturamento diário">' +
+        '<path class="chart-area" d="' + areaPath(costs) + '"/>' +
+        gridLines +
+        '<path class="chart-line fat" d="' + linePath(fats) + '"/>' +
+        '<path class="chart-line" d="' + linePath(costs) + '"/>' +
+        '<circle class="chart-dot" cx="' + x(lastI).toFixed(1) + '" cy="' + y(costs[lastI]).toFixed(1) + '" r="3.5"/>' +
+        xLabels +
+      '</svg>';
+    wrap.innerHTML = svgHtml;
+  }
+
+  function renderTable(){
+    const docs = scopeDocs();
+    const dates = lastNDates(docs, 14).slice().reverse();
+    const showNet = scope === 'geral';
+    document.getElementById('tableTitle').textContent = 'Detalhe diário — ' + (scope==='geral' ? 'Geral (3 contas)' : ACCOUNTS.find(a=>a.key===scope).label);
+    const tbody = dates.map(d => {
+      const r = docs[d];
+      const {wd, short} = fmtDate(d);
+      const roasTxt = r.roas != null ? r.roas.toFixed(2)+'x' : '–';
+      const netCell = showNet ? '<td class="num">' + fmtUSD(r.faturamento - r.cost - dailyFixedCost(d)) + '</td>' : '';
+      return '<tr class="' + (r.partial ? 'today' : '') + '">' +
+        '<td class="weekday">' + wd + '</td>' +
+        '<td class="num">' + short + (r.partial ? '<span class="badge-partial">parcial</span>' : '') + '</td>' +
+        '<td class="num">' + fmtUSD(r.cost) + '</td>' +
+        '<td class="num cell-muted">' + fmtUSD(r.cpc) + '</td>' +
+        '<td class="num">' + r.ic + '</td>' +
+        '<td class="num cell-muted">' + fmtUSD(r.custoIc) + '</td>' +
+        '<td class="num">' + r.venda + '</td>' +
+        '<td class="num">' + fmtUSD(r.cpa) + '</td>' +
+        '<td class="num ' + (r.roas!=null && r.roas>=1 ? 'roas-pill good' : r.roas!=null ? 'roas-pill bad':'') + '">' + roasTxt + '</td>' +
+        netCell +
+      '</tr>';
+    }).join('');
+    const netHead = showNet ? '<th>Lucro líq.</th>' : '';
+    document.getElementById('tableWrap').innerHTML =
+      '<table><thead><tr>' +
+        '<th></th><th>Data</th><th>Gasto</th><th>CPC</th><th>IC</th><th>Custo/IC</th><th>Venda</th><th>CPA</th><th>ROAS</th>' + netHead +
+      '</tr></thead><tbody>' + (tbody || '<tr><td colspan="10" class="empty-state">Sem dados ainda.</td></tr>') + '</tbody></table>';
+  }
+
+  function renderFixedCosts(){
+    const wrap = document.getElementById('costsBody');
+    if (!fixedCosts || !fixedCosts.items || !fixedCosts.items.length){
+      wrap.innerHTML = '<div class="empty-state">Nenhum custo fixo cadastrado ainda.</div>';
+      document.getElementById('costsRange').textContent = '';
+      return;
+    }
+    const tk = todayKey();
+    const daily = dailyFixedCost(tk);
+    document.getElementById('costsRange').textContent = fixedCosts.month || '';
+    const items = fixedCosts.items.map(it =>
+      '<li><span>' + it.name + '</span><span class="num">' + fmtUSD(it.value) + '</span></li>'
+    ).join('');
+    wrap.innerHTML =
+      '<ul class="costs-list">' + items + '</ul>' +
+      '<div class="costs-totals">' +
+        '<div class="costs-total-row"><div class="label">Total mensal</div><div class="value num">' + fmtUSD(fixedCosts.total) + '</div></div>' +
+        '<div class="costs-total-row"><div class="label">Equivalente diário</div><div class="value num">' + fmtUSD(daily) + '</div></div>' +
+      '</div>';
+  }
+
+  function renderAll(){
+    renderTabs();
+    renderSummary();
+    renderChart();
+    renderFixedCosts();
+    renderTable();
+    renderLive();
+  }
+
+  renderAll();
+  setInterval(renderLive, 30000);
+
+  function loadData(){
+    fetch('./data.json', {cache:'no-store'}).then(r => r.json()).then(json => {
+      generatedAt = json.generatedAt;
+      ACCOUNTS.forEach(a => { data[a.key] = json.accounts[a.key] || {}; });
+      fixedCosts = json.fixedCosts || null;
+      renderAll();
+    }).catch(() => {
+      document.getElementById('footerNote').textContent = 'Não foi possível carregar os dados agora — tente recarregar a página.';
+    });
+  }
+  loadData();
+  setInterval(loadData, 5 * 60 * 1000);
+})();
+</script>
+</body>
+</html>
