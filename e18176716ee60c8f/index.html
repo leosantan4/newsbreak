@@ -240,7 +240,7 @@
     {key:'month', label:'Este mês'},
   ];
   const COSTS_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/costs';
-  const DATA_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/data';
+  const DATA_API = './data.json';
   const COSTS_API_KEY = 'HrcFGQUO4Wq_smjouctnZuDZxIatbjPT';
   let view = 'painel';
   let scope = 'geral';
@@ -628,7 +628,7 @@
     loadCosts();
   }
   loadData();
-  setInterval(loadData, 60 * 1000);
+  setInterval(loadData, 2 * 60 * 1000);
   setInterval(loadCosts, 30000);
 })();
 </script>
