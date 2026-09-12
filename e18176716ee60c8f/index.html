@@ -194,19 +194,19 @@
         <form class="cost-form-grid" id="costForm">
           <div>
             <label for="costDate">Data</label>
-            <input type="date" id="costDate" disabled>
+            <input type="date" id="costDate">
           </div>
           <div>
             <label for="costName">Descrição</label>
-            <input type="text" id="costName" placeholder="Ex: Vturb" disabled>
+            <input type="text" id="costName" placeholder="Ex: Vturb">
           </div>
           <div>
             <label for="costValue">Valor (USD)</label>
-            <input type="number" id="costValue" placeholder="0,00" step="0.01" min="0" disabled>
+            <input type="number" id="costValue" placeholder="0,00" step="0.01" min="0">
           </div>
-          <button type="submit" disabled>Adicionar</button>
+          <button type="submit">Adicionar</button>
         </form>
-        <p class="costs-note" id="costsNote">Edição disponível apenas no painel do Claude — aqui é somente leitura.</p>
+        <p class="costs-note" id="costsNote"></p>
       </section>
 
       <section class="panel">
@@ -239,6 +239,8 @@
     {key:'14d', label:'14 dias'},
     {key:'month', label:'Este mês'},
   ];
+  const COSTS_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/costs';
+  const COSTS_API_KEY = 'HrcFGQUO4Wq_smjouctnZuDZxIatbjPT';
   let view = 'painel';
   let scope = 'geral';
   let period = 'today';
@@ -513,11 +515,13 @@
 
     const sorted = costs.slice().sort((a,b) => b.date.localeCompare(a.date));
     const rows = sorted.map(c =>
-      '<tr><td class="num">' + fmtDateShort(c.date) + '</td><td>' + c.name + '</td><td class="num">' + fmtUSD(c.value) + '</td><td></td></tr>'
+      '<tr><td class="num">' + fmtDateShort(c.date) + '</td><td>' + c.name + '</td><td class="num">' + fmtUSD(c.value) + '</td>' +
+      '<td class="num"><button class="remove-btn" data-id="' + c.id + '">remover</button></td></tr>'
     ).join('');
     document.getElementById('costsTableWrap').innerHTML =
       '<table><thead><tr><th style="text-align:left;">Data</th><th style="text-align:left;">Descrição</th><th>Valor</th><th></th></tr></thead><tbody>' +
       (rows || '<tr><td colspan="4" class="empty-state">Nenhum custo lançado ainda.</td></tr>') + '</tbody></table>';
+    document.querySelectorAll('.remove-btn').forEach(btn => btn.addEventListener('click', () => deleteCost(btn.dataset.id)));
   }
 
   function renderDRE(){
@@ -571,21 +575,60 @@
 
   document.querySelectorAll('.nav-item').forEach(btn => btn.addEventListener('click', () => { view = btn.dataset.view; renderAll(); }));
 
+  document.getElementById('costDate').value = todayKey();
+  document.getElementById('costForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const dateVal = document.getElementById('costDate').value;
+    const name = document.getElementById('costName').value.trim();
+    const value = parseFloat(document.getElementById('costValue').value);
+    const note = document.getElementById('costsNote');
+    if (!dateVal || !name || !isFinite(value)) return;
+    note.textContent = 'Salvando…';
+    fetch(COSTS_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY },
+      body: JSON.stringify({ date: dateVal, name, value }),
+    }).then(r => { if (!r.ok) throw new Error(); return r.json(); })
+      .then(json => {
+        costs = json.costs || [];
+        document.getElementById('costForm').reset();
+        document.getElementById('costDate').value = todayKey();
+        note.textContent = '';
+        renderAll();
+      })
+      .catch(() => { note.textContent = 'Não consegui salvar — tenta de novo.'; });
+  });
+
+  function deleteCost(id){
+    fetch(COSTS_API + '/' + id, { method: 'DELETE', headers: { 'X-Access-Key': COSTS_API_KEY } })
+      .then(r => r.json())
+      .then(json => { costs = json.costs || []; renderAll(); })
+      .catch(() => {});
+  }
+
   renderAll();
   setInterval(renderLive, 30000);
+
+  function loadCosts(){
+    fetch(COSTS_API, { cache: 'no-store' }).then(r => r.json()).then(json => {
+      costs = json.costs || [];
+      renderAll();
+    }).catch(() => {});
+  }
 
   function loadData(){
     fetch('./data.json', {cache:'no-store'}).then(r => r.json()).then(json => {
       generatedAt = json.generatedAt;
       ACCOUNTS.forEach(a => { data[a.key] = json.accounts[a.key] || {}; });
-      costs = json.costs || [];
       renderAll();
     }).catch(() => {
       document.getElementById('footerNote').textContent = 'Não foi possível carregar os dados agora — tente recarregar a página.';
     });
+    loadCosts();
   }
   loadData();
   setInterval(loadData, 5 * 60 * 1000);
+  setInterval(loadCosts, 30000);
 })();
 </script>
 </body>
