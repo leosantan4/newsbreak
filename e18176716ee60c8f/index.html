@@ -240,6 +240,7 @@
     {key:'month', label:'Este mês'},
   ];
   const COSTS_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/costs';
+  const DATA_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/data';
   const COSTS_API_KEY = 'HrcFGQUO4Wq_smjouctnZuDZxIatbjPT';
   let view = 'painel';
   let scope = 'geral';
@@ -617,7 +618,7 @@
   }
 
   function loadData(){
-    fetch('./data.json', {cache:'no-store'}).then(r => r.json()).then(json => {
+    fetch(DATA_API, {cache:'no-store'}).then(r => r.json()).then(json => {
       generatedAt = json.generatedAt;
       ACCOUNTS.forEach(a => { data[a.key] = json.accounts[a.key] || {}; });
       renderAll();
@@ -627,7 +628,7 @@
     loadCosts();
   }
   loadData();
-  setInterval(loadData, 5 * 60 * 1000);
+  setInterval(loadData, 60 * 1000);
   setInterval(loadCosts, 30000);
 })();
 </script>
