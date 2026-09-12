@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-12T15:54:39.237Z",
+  "generatedAt": "2026-09-12T23:34:45.371609+00:00",
   "accounts": {
     "vini": {
       "2026-08-20": {
@@ -22,9 +22,9 @@
         "ic": 1,
         "custoIc": 2.98,
         "venda": 0,
-        "faturamento": 0,
+        "faturamento": 0.0,
         "cpa": null,
-        "roas": 0
+        "roas": 0.0
       },
       "2026-08-21": {
         "click": 7858,
@@ -46,7 +46,7 @@
         "ic": 10,
         "custoIc": 20.25,
         "venda": 1,
-        "faturamento": 265,
+        "faturamento": 265.0,
         "cpa": 202.51,
         "roas": 1.3086
       },
@@ -58,7 +58,7 @@
         "ic": 9,
         "custoIc": 49.31,
         "venda": 1,
-        "faturamento": 265,
+        "faturamento": 265.0,
         "cpa": 443.75,
         "roas": 0.5972
       },
@@ -119,9 +119,9 @@
         "ic": 0,
         "custoIc": null,
         "venda": 0,
-        "faturamento": 0,
+        "faturamento": 0.0,
         "cpa": null,
-        "roas": 0
+        "roas": 0.0
       },
       "2026-09-06": {
         "date": "2026-09-06",
@@ -131,7 +131,7 @@
         "ic": 16,
         "custoIc": 23.64,
         "venda": 1,
-        "faturamento": 265,
+        "faturamento": 265.0,
         "cpa": 378.23,
         "roas": 0.7006
       },
@@ -155,7 +155,7 @@
         "ic": 35,
         "custoIc": 26.58,
         "venda": 4,
-        "faturamento": 1060,
+        "faturamento": 1060.0,
         "cpa": 232.55,
         "roas": 1.1395
       },
@@ -167,9 +167,9 @@
         "ic": 0,
         "custoIc": null,
         "venda": 0,
-        "faturamento": 0,
+        "faturamento": 0.0,
         "cpa": null,
-        "roas": 0
+        "roas": 0.0
       },
       "2026-08-24": {
         "click": 4739,
@@ -203,9 +203,9 @@
         "ic": 1,
         "custoIc": 0.85,
         "venda": 0,
-        "faturamento": 0,
+        "faturamento": 0.0,
         "cpa": null,
-        "roas": 0
+        "roas": 0.0
       },
       "2026-09-04": {
         "date": "2026-09-04",
@@ -215,7 +215,7 @@
         "ic": 31,
         "custoIc": 21.93,
         "venda": 6,
-        "faturamento": 1590,
+        "faturamento": 1590.0,
         "cpa": 113.32,
         "roas": 2.3386
       },
@@ -249,9 +249,9 @@
         "click": 6892,
         "cpc": 0.1097,
         "ic": 54,
-        "custoIc": 14,
+        "custoIc": 14.0,
         "venda": 9,
-        "faturamento": 2385,
+        "faturamento": 2385.0,
         "cpa": 84.01,
         "roas": 3.1543
       },
@@ -263,9 +263,9 @@
         "ic": 0,
         "custoIc": null,
         "venda": 0,
-        "faturamento": 0,
+        "faturamento": 0.0,
         "cpa": null,
-        "roas": 0
+        "roas": 0.0
       },
       "2026-08-23": {
         "click": 4375,
@@ -281,15 +281,15 @@
       },
       "2026-09-12": {
         "date": "2026-09-12",
-        "cost": 136.79,
-        "click": 1131,
-        "cpc": 0.1209,
-        "ic": 1,
-        "custoIc": 136.79,
+        "cost": 205.71,
+        "click": 1676,
+        "cpc": 0.1227,
+        "ic": 2,
+        "custoIc": 102.86,
         "venda": 0,
-        "faturamento": 0,
+        "faturamento": 0.0,
         "cpa": null,
-        "roas": 0,
+        "roas": 0.0,
         "partial": true
       }
     },
@@ -302,9 +302,9 @@
         "ic": 0,
         "custoIc": null,
         "venda": 0,
-        "faturamento": 0,
+        "faturamento": 0.0,
         "cpa": null,
-        "roas": 0
+        "roas": 0.0
       },
       "2026-09-07": {
         "date": "2026-09-07",
@@ -314,7 +314,7 @@
         "ic": 9,
         "custoIc": 21.41,
         "venda": 3,
-        "faturamento": 795,
+        "faturamento": 795.0,
         "cpa": 64.24,
         "roas": 4.1252
       },
@@ -326,7 +326,7 @@
         "ic": 24,
         "custoIc": 27.84,
         "venda": 3,
-        "faturamento": 795,
+        "faturamento": 795.0,
         "cpa": 222.72,
         "roas": 1.1898
       },
@@ -374,7 +374,7 @@
         "ic": 30,
         "custoIc": 25.51,
         "venda": 3,
-        "faturamento": 795,
+        "faturamento": 795.0,
         "cpa": 255.13,
         "roas": 1.0387
       },
@@ -386,7 +386,7 @@
         "ic": 13,
         "custoIc": 20.75,
         "venda": 2,
-        "faturamento": 530,
+        "faturamento": 530.0,
         "cpa": 134.88,
         "roas": 1.9647
       },
@@ -410,7 +410,7 @@
         "ic": 73,
         "custoIc": 20.89,
         "venda": 14,
-        "faturamento": 3710,
+        "faturamento": 3710.0,
         "cpa": 108.9,
         "roas": 2.4334
       },
@@ -422,9 +422,9 @@
         "ic": 0,
         "custoIc": null,
         "venda": 0,
-        "faturamento": 0,
+        "faturamento": 0.0,
         "cpa": null,
-        "roas": 0
+        "roas": 0.0
       },
       "2026-09-08": {
         "date": "2026-09-08",
@@ -434,9 +434,9 @@
         "ic": 0,
         "custoIc": null,
         "venda": 0,
-        "faturamento": 0,
+        "faturamento": 0.0,
         "cpa": null,
-        "roas": 0
+        "roas": 0.0
       },
       "2026-09-04": {
         "date": "2026-09-04",
@@ -446,7 +446,7 @@
         "ic": 14,
         "custoIc": 36.13,
         "venda": 2,
-        "faturamento": 530,
+        "faturamento": 530.0,
         "cpa": 252.9,
         "roas": 1.0479
       },
@@ -470,21 +470,21 @@
         "ic": 0,
         "custoIc": null,
         "venda": 0,
-        "faturamento": 0,
+        "faturamento": 0.0,
         "cpa": null,
-        "roas": 0
+        "roas": 0.0
       },
       "2026-09-12": {
         "date": "2026-09-12",
-        "cost": 185.13,
-        "click": 1156,
-        "cpc": 0.1601,
-        "ic": 7,
-        "custoIc": 26.45,
-        "venda": 1,
-        "faturamento": 265,
-        "cpa": 185.13,
-        "roas": 1.4314,
+        "cost": 544.6,
+        "click": 3555,
+        "cpc": 0.1532,
+        "ic": 19,
+        "custoIc": 28.66,
+        "venda": 2,
+        "faturamento": 530.0,
+        "cpa": 272.3,
+        "roas": 0.9732,
         "partial": true
       }
     },
@@ -497,9 +497,9 @@
         "ic": 8,
         "custoIc": 33.3,
         "venda": 0,
-        "faturamento": 0,
+        "faturamento": 0.0,
         "cpa": null,
-        "roas": 0
+        "roas": 0.0
       },
       "2026-09-11": {
         "date": "2026-09-11",
@@ -509,7 +509,7 @@
         "ic": 14,
         "custoIc": 56.52,
         "venda": 4,
-        "faturamento": 1060,
+        "faturamento": 1060.0,
         "cpa": 197.84,
         "roas": 1.3395
       },
@@ -521,7 +521,7 @@
         "ic": 12,
         "custoIc": 43.42,
         "venda": 4,
-        "faturamento": 1060,
+        "faturamento": 1060.0,
         "cpa": 130.26,
         "roas": 2.0344
       },
@@ -533,7 +533,7 @@
         "ic": 30,
         "custoIc": 21.39,
         "venda": 5,
-        "faturamento": 1325,
+        "faturamento": 1325.0,
         "cpa": 128.34,
         "roas": 2.0648
       },
@@ -545,7 +545,7 @@
         "ic": 17,
         "custoIc": 28.42,
         "venda": 2,
-        "faturamento": 530,
+        "faturamento": 530.0,
         "cpa": 241.57,
         "roas": 1.097
       },
@@ -557,7 +557,7 @@
         "ic": 16,
         "custoIc": 28.34,
         "venda": 1,
-        "faturamento": 265,
+        "faturamento": 265.0,
         "cpa": 453.44,
         "roas": 0.5844
       },
@@ -569,21 +569,21 @@
         "ic": 5,
         "custoIc": 84.9,
         "venda": 1,
-        "faturamento": 265,
+        "faturamento": 265.0,
         "cpa": 424.5,
         "roas": 0.6243
       },
       "2026-09-12": {
         "date": "2026-09-12",
-        "cost": 184.57,
-        "click": 1135,
-        "cpc": 0.1626,
+        "cost": 412.82,
+        "click": 2590,
+        "cpc": 0.1594,
         "ic": 5,
-        "custoIc": 36.91,
+        "custoIc": 82.56,
         "venda": 2,
-        "faturamento": 530,
-        "cpa": 92.28,
-        "roas": 2.8716,
+        "faturamento": 530.0,
+        "cpa": 206.41,
+        "roas": 1.2839,
         "partial": true
       }
     }
