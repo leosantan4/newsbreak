@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-13T22:30:15.140810+00:00",
+  "generatedAt": "2026-09-13T22:32:32.042851+00:00",
   "accounts": {
     "vini": {
       "2026-08-20": {
@@ -2505,23 +2505,23 @@
       "adAccountId": "2092651194715607042",
       "adAccountName": "NB_RN_GL_CQZ-408433",
       "objective": "WEB_CONVERSION",
-      "activeBudget": 200.0,
-      "status": "ON",
-      "onlineStatus": "ACTIVE",
-      "adSetsOn": 1,
+      "activeBudget": null,
+      "status": "OFF",
+      "onlineStatus": "INACTIVE",
+      "adSetsOn": 0,
       "adSetsTotal": 1,
-      "reallyActive": true,
+      "reallyActive": false,
       "adSets": [
         {
           "id": "2099020473190838274",
           "name": "C5-433 - 13/09",
-          "status": "ON",
-          "onlineStatus": "ACTIVE",
+          "status": "OFF",
+          "onlineStatus": "INACTIVE",
           "budget": 200.0,
           "budgetType": "DAILY",
-          "adsOn": 1,
+          "adsOn": 0,
           "adsTotal": 1,
-          "reallyActive": true
+          "reallyActive": false
         }
       ]
     },
