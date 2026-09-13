@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-13T22:10:46.175353+00:00",
+  "generatedAt": "2026-09-13T22:14:54.926746+00:00",
   "accounts": {
     "vini": {
       "2026-08-20": {
@@ -296,8 +296,8 @@
         "cost": 267.23,
         "click": 4074,
         "cpc": 0.0656,
-        "ic": 9,
-        "custoIc": 29.69,
+        "ic": 10,
+        "custoIc": 26.72,
         "venda": 0,
         "faturamento": 0.0,
         "cpa": null,
@@ -503,8 +503,8 @@
         "cost": 407.94,
         "click": 3617,
         "cpc": 0.1128,
-        "ic": 18,
-        "custoIc": 22.66,
+        "ic": 21,
+        "custoIc": 19.43,
         "venda": 4,
         "faturamento": 1060.0,
         "cpa": 101.99,
@@ -632,23 +632,23 @@
       "adAccountId": "2089224172058898433",
       "adAccountName": "NB_RN_GL_CQZ-512397",
       "objective": "WEB_CONVERSION",
-      "activeBudget": 200.0,
+      "activeBudget": null,
       "status": "OFF",
       "onlineStatus": "INACTIVE",
-      "adSetsOn": 1,
+      "adSetsOn": 0,
       "adSetsTotal": 1,
       "reallyActive": false,
       "adSets": [
         {
           "id": "2099017321754390529",
           "name": "C16-397 - 13/09",
-          "status": "ON",
-          "onlineStatus": "ACTIVE",
+          "status": "OFF",
+          "onlineStatus": "INACTIVE",
           "budget": 200.0,
           "budgetType": "DAILY",
-          "adsOn": 1,
+          "adsOn": 0,
           "adsTotal": 1,
-          "reallyActive": true
+          "reallyActive": false
         }
       ]
     },
@@ -1064,23 +1064,23 @@
       "adAccountId": "2089223281998229505",
       "adAccountName": "NB_RN_GL_CQZ-191971",
       "objective": "WEB_CONVERSION",
-      "activeBudget": 200.0,
+      "activeBudget": null,
       "status": "OFF",
       "onlineStatus": "INACTIVE",
-      "adSetsOn": 1,
+      "adSetsOn": 0,
       "adSetsTotal": 1,
       "reallyActive": false,
       "adSets": [
         {
           "id": "2099013362826342401",
           "name": "C11-971 - 13/09",
-          "status": "ON",
-          "onlineStatus": "ACTIVE",
+          "status": "OFF",
+          "onlineStatus": "INACTIVE",
           "budget": 200.0,
           "budgetType": "DAILY",
-          "adsOn": 1,
+          "adsOn": 0,
           "adsTotal": 1,
-          "reallyActive": true
+          "reallyActive": false
         }
       ]
     },
@@ -1334,23 +1334,23 @@
       "adAccountId": "2089224773448671234",
       "adAccountName": "NB_RN_GL_CQZ-580227",
       "objective": "WEB_CONVERSION",
-      "activeBudget": 200.0,
+      "activeBudget": null,
       "status": "OFF",
       "onlineStatus": "INACTIVE",
-      "adSetsOn": 1,
+      "adSetsOn": 0,
       "adSetsTotal": 1,
       "reallyActive": false,
       "adSets": [
         {
           "id": "2099015165636182018",
           "name": "C19-227 - 13/09",
-          "status": "ON",
-          "onlineStatus": "ACTIVE",
+          "status": "OFF",
+          "onlineStatus": "INACTIVE",
           "budget": 200.0,
           "budgetType": "DAILY",
-          "adsOn": 1,
+          "adsOn": 0,
           "adsTotal": 1,
-          "reallyActive": true
+          "reallyActive": false
         }
       ]
     },
@@ -1847,23 +1847,23 @@
       "adAccountId": "2089225287603232770",
       "adAccountName": "NB_RN_GL_CQZ-489699",
       "objective": "WEB_CONVERSION",
-      "activeBudget": 200.0,
+      "activeBudget": null,
       "status": "OFF",
       "onlineStatus": "INACTIVE",
-      "adSetsOn": 1,
+      "adSetsOn": 0,
       "adSetsTotal": 1,
       "reallyActive": false,
       "adSets": [
         {
           "id": "2099014505708584962",
           "name": "C13-699 - 13/09",
-          "status": "ON",
-          "onlineStatus": "ACTIVE",
+          "status": "OFF",
+          "onlineStatus": "INACTIVE",
           "budget": 200.0,
           "budgetType": "DAILY",
-          "adsOn": 1,
+          "adsOn": 0,
           "adsTotal": 1,
-          "reallyActive": true
+          "reallyActive": false
         }
       ]
     },
