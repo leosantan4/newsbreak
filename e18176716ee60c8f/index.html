@@ -141,9 +141,12 @@
         <h1>Native Ads — Painel Diário</h1>
         <p>Gasto e conversão das contas NewsBreak · Vini, Pretorian, Neia</p>
       </div>
-      <div class="live-pill" id="livePill">
-        <span class="live-dot warm" id="liveDot"></span>
-        <span id="liveText">conectando…</span>
+      <div class="panel-head-right">
+        <button class="icon-btn" id="syncNowBtn">↻ Atualizar agora</button>
+        <div class="live-pill" id="livePill">
+          <span class="live-dot warm" id="liveDot"></span>
+          <span id="liveText">conectando…</span>
+        </div>
       </div>
     </header>
 
@@ -254,6 +257,7 @@
     {key:'month', label:'Este mês'},
   ];
   const COSTS_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/costs';
+  const SYNC_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/sync-now';
   const DATA_API = './data.json';
   const COSTS_API_KEY = 'HrcFGQUO4Wq_smjouctnZuDZxIatbjPT';
   let view = 'painel';
@@ -670,6 +674,30 @@
 
   renderAll();
   setInterval(renderLive, 30000);
+
+  document.getElementById('syncNowBtn').addEventListener('click', () => {
+    const btn = document.getElementById('syncNowBtn');
+    btn.disabled = true;
+    btn.textContent = 'Sincronizando…';
+    fetch(SYNC_API, { method: 'POST', headers: { 'X-Access-Key': COSTS_API_KEY } })
+      .then(r => r.json())
+      .then(res => {
+        if (res.ok) {
+          btn.textContent = 'Disparado — atualiza em ~1 min';
+          setTimeout(loadData, 50000);
+          setTimeout(loadData, 80000);
+        } else if (res.error === 'cooldown') {
+          btn.textContent = 'Aguarde ' + Math.ceil((res.retryInMs||0)/1000) + 's…';
+        } else {
+          btn.textContent = 'Falhou — tenta de novo';
+        }
+        setTimeout(() => { btn.disabled = false; btn.textContent = '↻ Atualizar agora'; }, 10000);
+      })
+      .catch(() => {
+        btn.textContent = 'Falhou — tenta de novo';
+        setTimeout(() => { btn.disabled = false; btn.textContent = '↻ Atualizar agora'; }, 5000);
+      });
+  });
 
   function loadCosts(){
     fetch(COSTS_API, { cache: 'no-store' }).then(r => r.json()).then(json => {
