@@ -130,6 +130,7 @@
   <nav class="sidenav" id="sidenav">
     <div class="sidenav-brand">Native Ads</div>
     <button class="nav-item" data-view="painel"><span class="ic">▦</span>Painel</button>
+    <button class="nav-item" data-view="campanhas"><span class="ic">▶</span>Campanhas</button>
     <button class="nav-item" data-view="dre"><span class="ic">▤</span>DRE Mensal</button>
     <button class="nav-item" data-view="custos"><span class="ic">$</span>Custos Fixos</button>
   </nav>
@@ -171,6 +172,19 @@
           <span>valores em USD</span>
         </div>
         <div class="table-scroll" id="tableWrap"></div>
+      </section>
+    </div>
+
+    <div id="campanhasView" hidden>
+      <section class="panel">
+        <div class="panel-head">
+          <h2 id="campStatsHead">Campanhas</h2>
+          <div class="panel-head-right">
+            <div class="tabs" id="campFilterTabs" style="margin:0;"></div>
+          </div>
+        </div>
+        <p class="dre-intro">Uma campanha só conta como <b>ativa de verdade</b> quando a campanha, pelo menos um conjunto e pelo menos um anúncio dentro dele estão todos ligados. "Liga mas não entrega" é quando o botão tá ON só na campanha, mas nada por dentro está rodando.</p>
+        <div class="table-scroll" id="campWrap"></div>
       </section>
     </div>
 
@@ -248,7 +262,10 @@
   let metric = 'faturamento';
   let generatedAt = null;
   let costs = [];
+  let campaigns = [];
+  let campFilter = 'active';
   const data = {vini:{}, pretorian:{}, neia:{}};
+  const ACCOUNT_LABEL = {vini:'Vini', pretorian:'Pretorian', neia:'Neia'};
 
   function todayKey(){
     return new Intl.DateTimeFormat('en-CA', {timeZone:'America/Sao_Paulo', year:'numeric', month:'2-digit', day:'2-digit'}).format(new Date());
@@ -362,6 +379,7 @@
       btn.classList.toggle('active', btn.dataset.view === view);
     });
     document.getElementById('painelView').hidden = view !== 'painel';
+    document.getElementById('campanhasView').hidden = view !== 'campanhas';
     document.getElementById('dreView').hidden = view !== 'dre';
     document.getElementById('custosView').hidden = view !== 'custos';
   }
@@ -561,6 +579,48 @@
       '</tr></thead><tbody>' + rows + '</tbody></table>';
   }
 
+  function campStatus(c){
+    if (c.reallyActive) return {label:'Ativa', cls:'good'};
+    if (c.status === 'ON') return {label:'Liga mas não entrega', cls:'bad'};
+    return {label:'Pausada', cls:'flat'};
+  }
+
+  function renderCampFilterTabs(){
+    const wrap = document.getElementById('campFilterTabs');
+    const opts = [{key:'active', label:'Só ativas'}, {key:'all', label:'Todas'}];
+    wrap.innerHTML = opts.map(o => '<button class="tab small' + (campFilter===o.key?' active':'') + '" data-camp-filter="' + o.key + '">' + o.label + '</button>').join('');
+    wrap.querySelectorAll('.tab').forEach(btn => btn.addEventListener('click', () => { campFilter = btn.dataset.campFilter; renderCampanhas(); }));
+  }
+
+  function renderCampanhas(){
+    renderCampFilterTabs();
+    const activeCount = campaigns.filter(c => c.reallyActive).length;
+    const mismatchCount = campaigns.filter(c => c.status === 'ON' && !c.reallyActive).length;
+    document.getElementById('campStatsHead').textContent =
+      'Campanhas — ' + activeCount + ' ativa' + (activeCount===1?'':'s') + ' de ' + campaigns.length +
+      (mismatchCount ? ' · ' + mismatchCount + ' ligada' + (mismatchCount===1?'':'s') + ' sem entregar' : '');
+
+    const list = campFilter === 'active'
+      ? campaigns.filter(c => c.reallyActive || (c.status === 'ON' && !c.reallyActive))
+      : campaigns.slice();
+    list.sort((a,b) => (b.reallyActive - a.reallyActive) || a.name.localeCompare(b.name));
+
+    const rows = list.map(c => {
+      const st = campStatus(c);
+      return '<tr>' +
+        '<td>' + (ACCOUNT_LABEL[c.accountKey] || c.accountKey) + '</td>' +
+        '<td>' + c.name + '<div class="cell-muted" style="font-size:11px;">' + c.adAccountName + '</div></td>' +
+        '<td class="num roas-pill ' + st.cls + '">' + st.label + '</td>' +
+        '<td class="num">' + c.adSetsOn + ' / ' + c.adSetsTotal + '</td>' +
+        '<td class="num">' + fmtUSD(c.activeBudget) + (c.activeBudget!=null ? '/dia' : '') + '</td>' +
+      '</tr>';
+    }).join('');
+
+    document.getElementById('campWrap').innerHTML =
+      '<table><thead><tr><th style="text-align:left;">Conta</th><th style="text-align:left;">Campanha</th><th>Status</th><th>Conjuntos on</th><th>Orçamento</th></tr></thead><tbody>' +
+      (rows || '<tr><td colspan="5" class="empty-state">Nenhuma campanha encontrada.</td></tr>') + '</tbody></table>';
+  }
+
   function renderAll(){
     renderNav();
     renderPeriodTabs();
@@ -571,6 +631,7 @@
     renderTable();
     renderCustosView();
     renderDRE();
+    renderCampanhas();
     renderLive();
   }
 
@@ -621,6 +682,7 @@
     fetch(DATA_API, {cache:'no-store'}).then(r => r.json()).then(json => {
       generatedAt = json.generatedAt;
       ACCOUNTS.forEach(a => { data[a.key] = json.accounts[a.key] || {}; });
+      campaigns = json.campaigns || [];
       renderAll();
     }).catch(() => {
       document.getElementById('footerNote').textContent = 'Não foi possível carregar os dados agora — tente recarregar a página.';

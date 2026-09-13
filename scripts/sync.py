@@ -4,11 +4,16 @@ Pulls fresh NewsBreak data for the 3 configured accounts and merges it into
 e18176716ee60c8f/data.json, preserving any existing entry dated before
 2026-09-01 (hand-corrected historical August data) untouched.
 
+Also pulls the campaign/ad-set/ad hierarchy and computes each campaign's
+"real" active status (campaign ON, with at least one ON ad set, with at
+least one ON ad inside it) so the dashboard doesn't have to guess.
+
 Reads tokens from env vars: NEWSBREAK_TOKEN_VINI, NEWSBREAK_TOKEN_PRETORIAN,
 NEWSBREAK_TOKEN_NEIA (set as GitHub Actions repo secrets).
 """
 import json
 import os
+import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 
@@ -21,14 +26,15 @@ ACCOUNTS = {
 }
 
 PRESERVE_BEFORE = "2026-09-01"
+BASE = "https://business.newsbreak.com/business-api/v1"
 
 
-def fetch_report(token, date_range):
+def fetch_report(token, date_range, dimensions=None):
     body = json.dumps({
         "name": "gha sync",
         "timezone": "America/Sao_Paulo",
         "dateRange": date_range,
-        "dimensions": ["DATE"],
+        "dimensions": dimensions or ["DATE"],
         "metrics": ["COST", "CLICK", "CPC"],
         "eventMetrics": [
             {"eventType": "initiate_checkout", "metrics": ["COUNT", "CPA"]},
@@ -36,7 +42,7 @@ def fetch_report(token, date_range):
         ],
     }).encode()
     req = urllib.request.Request(
-        "https://business.newsbreak.com/business-api/v1/reports/getIntegratedReport",
+        f"{BASE}/reports/getIntegratedReport",
         data=body,
         headers={"Content-Type": "application/json", "Access-Token": token},
         method="POST",
@@ -64,10 +70,108 @@ def row_to_doc(r):
     }
 
 
+def get_ad_accounts(token):
+    """Discover this token's ad account ids/names via a report call
+    (there's no simple 'list my ad accounts' endpoint without org-admin)."""
+    rows = fetch_report(token, "LAST_30_DAYS", dimensions=["AD_ACCOUNT"])
+    seen = {}
+    for r in rows:
+        seen[r["adAccountId"]] = r.get("adAccount", r["adAccountId"])
+    return seen
+
+
+def get_list(path, token, ad_account_id):
+    """GET .../getList with pagination, pageSize=500."""
+    rows = []
+    page = 1
+    while True:
+        qs = urllib.parse.urlencode({
+            "adAccountId": ad_account_id,
+            "pageNo": page,
+            "pageSize": 500,
+        })
+        req = urllib.request.Request(
+            f"{BASE}/{path}/getList?{qs}",
+            headers={"Content-Type": "application/json", "Access-Token": token},
+            method="GET",
+        )
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            data = json.loads(resp.read())["data"]
+        rows.extend(data["list"])
+        if not data.get("hasNext"):
+            break
+        page += 1
+    return rows
+
+
+def build_campaigns(token, account_key):
+    campaigns = []
+    ad_accounts = get_ad_accounts(token)
+    for ad_account_id, ad_account_name in ad_accounts.items():
+        raw_campaigns = get_list("campaign", token, ad_account_id)
+        raw_adsets = get_list("ad-set", token, ad_account_id)
+        raw_ads = get_list("ad", token, ad_account_id)
+
+        adsets_by_campaign = {}
+        for a in raw_adsets:
+            if a.get("onlineStatus") == "DELETED":
+                continue
+            adsets_by_campaign.setdefault(a["campaignId"], []).append(a)
+
+        ads_by_adset = {}
+        for a in raw_ads:
+            if a.get("onlineStatus") == "DELETED":
+                continue
+            ads_by_adset.setdefault(a["adSetId"], []).append(a)
+
+        for c in raw_campaigns:
+            if c.get("onlineStatus") == "DELETED":
+                continue
+            my_adsets = adsets_by_campaign.get(c["id"], [])
+            adset_summaries = []
+            any_adset_really_on = False
+            for a in my_adsets:
+                my_ads = ads_by_adset.get(a["id"], [])
+                ads_on = sum(1 for ad in my_ads if ad.get("status") == "ON")
+                adset_really_on = a.get("status") == "ON" and ads_on > 0
+                if adset_really_on:
+                    any_adset_really_on = True
+                adset_summaries.append({
+                    "id": a["id"],
+                    "name": a["name"],
+                    "status": a.get("status"),
+                    "onlineStatus": a.get("onlineStatus"),
+                    "budget": (a["budget"] / 100) if a.get("budget") is not None else None,
+                    "budgetType": a.get("budgetType"),
+                    "adsOn": ads_on,
+                    "adsTotal": len(my_ads),
+                    "reallyActive": adset_really_on,
+                })
+            really_active = c.get("status") == "ON" and any_adset_really_on
+            active_budget = sum(a["budget"] for a in adset_summaries if a["reallyActive"] and a["budget"])
+            campaigns.append({
+                "id": c["id"],
+                "name": c["name"],
+                "accountKey": account_key,
+                "adAccountId": ad_account_id,
+                "adAccountName": ad_account_name,
+                "objective": c.get("objective"),
+                "activeBudget": round(active_budget, 2) if active_budget else None,
+                "status": c.get("status"),
+                "onlineStatus": c.get("onlineStatus"),
+                "adSetsOn": sum(1 for a in adset_summaries if a["status"] == "ON"),
+                "adSetsTotal": len(adset_summaries),
+                "reallyActive": really_active,
+                "adSets": adset_summaries,
+            })
+    return campaigns
+
+
 def main():
     with open(DATA_PATH) as f:
         current = json.load(f)
 
+    all_campaigns = []
     for key, env_var in ACCOUNTS.items():
         token = os.environ[env_var]
         existing = current["accounts"].setdefault(key, {})
@@ -82,6 +186,9 @@ def main():
             doc["partial"] = True
             existing[r["date"]] = doc
 
+        all_campaigns.extend(build_campaigns(token, key))
+
+    current["campaigns"] = all_campaigns
     current["generatedAt"] = datetime.now(timezone.utc).isoformat()
 
     with open(DATA_PATH, "w", encoding="utf-8") as f:
