@@ -117,6 +117,10 @@
 
   .dre-intro{padding:4px 18px 14px; font-size:12.5px; color:var(--muted);}
 
+  .alert-banner{display:flex; align-items:center; gap:10px; background:var(--bad-bg); border:1px solid var(--bad); color:var(--bad); padding:14px 18px; border-radius:12px; margin-bottom:20px; font-size:14px; font-weight:600; line-height:1.5;}
+  .alert-banner .ic{font-size:18px; flex:none;}
+  .alert-banner b{font-weight:700;}
+
   @media (max-width: 720px){
     .shell{flex-direction:column;}
     .sidenav{position:static; width:100%; min-height:0; flex-direction:row; overflow-x:auto; border-right:none; border-bottom:1px solid var(--line);}
@@ -150,6 +154,8 @@
         </div>
       </div>
     </header>
+
+    <div class="alert-banner" id="alertBanner" hidden></div>
 
     <div id="painelView">
       <div class="tabs period" id="periodTabs"></div>
@@ -741,8 +747,31 @@
   function deleteTopup(id){
     fetch(TOPUPS_API + '/' + id, { method: 'DELETE', headers: { 'X-Access-Key': COSTS_API_KEY } })
       .then(r => r.json())
-      .then(json => { topups = json.topups || []; renderSaldo(); })
+      .then(json => { topups = json.topups || []; renderSaldo(); renderAlertBanner(); })
       .catch(() => {});
+  }
+
+  function isFriday(){
+    const tk = todayKey();
+    const [y,m,d] = tk.split('-').map(Number);
+    return new Date(Date.UTC(y,m-1,d)).getUTCDay() === 5;
+  }
+
+  function renderAlertBanner(){
+    const banner = document.getElementById('alertBanner');
+    const friday = isFriday();
+    const threshold = friday ? 500 : 300;
+    const results = Object.keys(subAccounts)
+      .map(id => ({id, ...computeBalance(id)}))
+      .filter(r => r.hasTopup && r.balance <= threshold);
+    if (!results.length){ banner.hidden = true; return; }
+    results.sort((a,b) => a.balance - b.balance);
+    const label = friday
+      ? 'Sexta-feira — saldo abaixo de $500'
+      : 'Saldo baixo — abaixo de $300';
+    banner.hidden = false;
+    banner.innerHTML = '<span class="ic">⚠️</span><span><b>' + label + ':</b> ' +
+      results.map(r => r.name + ' (' + fmtUSD(r.balance) + ')').join(' · ') + '</span>';
   }
 
   function renderAll(){
@@ -757,6 +786,7 @@
     renderDRE();
     renderCampanhas();
     renderSaldo();
+    renderAlertBanner();
     renderLive();
   }
 
@@ -815,6 +845,7 @@
         document.getElementById('topupDate').value = todayKey();
         note.textContent = '';
         renderSaldo();
+        renderAlertBanner();
       })
       .catch(() => { note.textContent = 'Não consegui salvar — tenta de novo.'; });
   });
@@ -857,6 +888,7 @@
     fetch(TOPUPS_API, { cache: 'no-store' }).then(r => r.json()).then(json => {
       topups = json.topups || [];
       renderSaldo();
+      renderAlertBanner();
     }).catch(() => {});
   }
 
