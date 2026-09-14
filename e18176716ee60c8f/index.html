@@ -126,15 +126,34 @@
 
   @media (max-width: 720px){
     .shell{flex-direction:column;}
-    .sidenav{position:static; width:100%; min-height:0; height:auto; flex-direction:row; align-items:center; overflow-x:auto; overflow-y:hidden; border-right:none; border-bottom:1px solid var(--line); padding:10px 10px; gap:6px; -webkit-overflow-scrolling:touch;}
+    .sidenav{
+      position:fixed; top:auto; left:0; right:0; bottom:0; width:100%; min-height:0; height:auto;
+      flex-direction:row; align-items:stretch; justify-content:space-around;
+      overflow-x:visible; overflow-y:visible;
+      border-right:none; border-top:1px solid var(--line); border-bottom:none;
+      padding:6px 4px calc(6px + env(safe-area-inset-bottom, 0px)); gap:2px;
+      box-shadow:0 -2px 14px -6px rgba(30,26,10,.18);
+      z-index:50;
+    }
     .sidenav-brand{display:none;}
-    .nav-item{width:auto; flex:none; white-space:nowrap; padding:8px 12px;}
-    .content{padding:16px 14px 40px; max-width:100%;}
+    .nav-item{flex-direction:column; width:auto; flex:1 1 0; white-space:nowrap; gap:3px; padding:7px 2px 6px; border-radius:10px; font-size:10.5px; font-weight:600;}
+    .nav-item .ic{font-size:17px; width:auto;}
+    .nav-item.active{background:var(--neutral-bg); color:var(--accent);}
+    .content{padding:14px 14px calc(90px + env(safe-area-inset-bottom, 0px)); max-width:100%;}
     header{flex-direction:column; align-items:flex-start; gap:10px;}
-    .panel-head-right{flex-wrap:wrap;}
+    header h1{font-size:17px;}
+    header p{font-size:12px;}
+    .panel-head-right{flex-wrap:wrap; width:100%; justify-content:space-between; gap:8px;}
+    .live-pill{font-size:11px; padding:5px 10px 5px 8px;}
     .summary-grid{grid-template-columns:1fr;}
-    .cost-form-grid{grid-template-columns:1fr;}
+    .tabs{flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; margin:0 -2px 12px; padding:0 2px 4px;}
+    .tabs::-webkit-scrollbar{display:none;}
+    .tabs .tab{flex:none;}
+    .panel-head{padding:14px 16px 4px;}
+    .panel-head h2{font-size:13px;}
+    .cost-form-grid{grid-template-columns:1fr; padding:14px 16px;}
     table{font-size:12px;}
+    thead th, tbody td{padding:7px 9px;}
   }
 </style>
 </head>
