@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-14T14:35:16.699767+00:00",
+  "generatedAt": "2026-09-14T15:00:17.394030+00:00",
   "accounts": {
     "vini": {
       "2026-08-20": {
@@ -305,9 +305,9 @@
       },
       "2026-09-14": {
         "date": "2026-09-14",
-        "cost": 0.41,
-        "click": 5,
-        "cpc": 0.081,
+        "cost": 25.79,
+        "click": 471,
+        "cpc": 0.0547,
         "ic": 0,
         "custoIc": null,
         "venda": 0,
@@ -524,11 +524,11 @@
       },
       "2026-09-14": {
         "date": "2026-09-14",
-        "cost": 7.23,
-        "click": 65,
-        "cpc": 0.1112,
+        "cost": 17.68,
+        "click": 160,
+        "cpc": 0.1105,
         "ic": 2,
-        "custoIc": 3.61,
+        "custoIc": 8.84,
         "venda": 0,
         "faturamento": 0.0,
         "cpa": null,
@@ -647,9 +647,9 @@
       },
       "2026-09-14": {
         "date": "2026-09-14",
-        "cost": 0.0,
-        "click": 0,
-        "cpc": 0,
+        "cost": 41.11,
+        "click": 299,
+        "cpc": 0.1375,
         "ic": 0,
         "custoIc": null,
         "venda": 0,
@@ -668,23 +668,23 @@
       "adAccountId": "2089224172058898433",
       "adAccountName": "NB_RN_GL_CQZ-512397",
       "objective": "WEB_CONVERSION",
-      "activeBudget": null,
+      "activeBudget": 200.0,
       "status": "ON",
-      "onlineStatus": "WARNING",
-      "adSetsOn": 0,
+      "onlineStatus": "ACTIVE",
+      "adSetsOn": 1,
       "adSetsTotal": 1,
-      "reallyActive": false,
+      "reallyActive": true,
       "adSets": [
         {
           "id": "2099323080930689026",
           "name": "C17-397 - 14/09",
-          "status": "OFF",
-          "onlineStatus": "INACTIVE",
+          "status": "ON",
+          "onlineStatus": "ACTIVE",
           "budget": 200.0,
           "budgetType": "DAILY",
           "adsOn": 1,
           "adsTotal": 1,
-          "reallyActive": false
+          "reallyActive": true
         }
       ]
     },
@@ -1127,23 +1127,23 @@
       "adAccountId": "2089223281998229505",
       "adAccountName": "NB_RN_GL_CQZ-191971",
       "objective": "WEB_CONVERSION",
-      "activeBudget": null,
+      "activeBudget": 1000.0,
       "status": "ON",
-      "onlineStatus": "WARNING",
-      "adSetsOn": 0,
+      "onlineStatus": "ACTIVE",
+      "adSetsOn": 1,
       "adSetsTotal": 1,
-      "reallyActive": false,
+      "reallyActive": true,
       "adSets": [
         {
           "id": "2099324463234875394",
           "name": "C12-971 - 14/09",
-          "status": "OFF",
-          "onlineStatus": "INACTIVE",
-          "budget": 200.0,
+          "status": "ON",
+          "onlineStatus": "ACTIVE",
+          "budget": 1000.0,
           "budgetType": "DAILY",
           "adsOn": 1,
           "adsTotal": 1,
-          "reallyActive": false
+          "reallyActive": true
         }
       ]
     },
@@ -1424,23 +1424,23 @@
       "adAccountId": "2089224773448671234",
       "adAccountName": "NB_RN_GL_CQZ-580227",
       "objective": "WEB_CONVERSION",
-      "activeBudget": null,
+      "activeBudget": 200.0,
       "status": "ON",
-      "onlineStatus": "WARNING",
-      "adSetsOn": 0,
+      "onlineStatus": "ACTIVE",
+      "adSetsOn": 1,
       "adSetsTotal": 1,
-      "reallyActive": false,
+      "reallyActive": true,
       "adSets": [
         {
           "id": "2099322180626018305",
           "name": "C20-227 - 14/09",
-          "status": "OFF",
-          "onlineStatus": "INACTIVE",
+          "status": "ON",
+          "onlineStatus": "ACTIVE",
           "budget": 200.0,
           "budgetType": "DAILY",
           "adsOn": 1,
           "adsTotal": 1,
-          "reallyActive": false
+          "reallyActive": true
         }
       ]
     },
@@ -1964,23 +1964,23 @@
       "adAccountId": "2089225287603232770",
       "adAccountName": "NB_RN_GL_CQZ-489699",
       "objective": "WEB_CONVERSION",
-      "activeBudget": null,
+      "activeBudget": 200.0,
       "status": "ON",
-      "onlineStatus": "WARNING",
-      "adSetsOn": 0,
+      "onlineStatus": "ACTIVE",
+      "adSetsOn": 1,
       "adSetsTotal": 1,
-      "reallyActive": false,
+      "reallyActive": true,
       "adSets": [
         {
           "id": "2099321416285417474",
           "name": "C14-699 - 14/09",
-          "status": "OFF",
-          "onlineStatus": "INACTIVE",
+          "status": "ON",
+          "onlineStatus": "ACTIVE",
           "budget": 200.0,
           "budgetType": "DAILY",
           "adsOn": 1,
           "adsTotal": 1,
-          "reallyActive": false
+          "reallyActive": true
         }
       ]
     },
@@ -3940,7 +3940,7 @@
         "2026-09-11": 91.71,
         "2026-09-12": 49.26,
         "2026-09-13": 58.07,
-        "2026-09-14": 0.1
+        "2026-09-14": 6.04
       }
     },
     "2089225287603232770": {
@@ -3971,7 +3971,7 @@
         "2026-09-11": 134.91,
         "2026-09-12": 56.24,
         "2026-09-13": 96.0,
-        "2026-09-14": 0.14
+        "2026-09-14": 5.47
       }
     },
     "2089224172058898433": {
@@ -3995,7 +3995,7 @@
         "2026-09-11": 90.09,
         "2026-09-12": 52.44,
         "2026-09-13": 98.07,
-        "2026-09-14": 0.02
+        "2026-09-14": 5.82
       }
     },
     "2089223281998229505": {
@@ -4021,7 +4021,7 @@
         "2026-09-11": 140.77,
         "2026-09-12": 55.5,
         "2026-09-13": 53.91,
-        "2026-09-14": 0.15
+        "2026-09-14": 8.45
       }
     },
     "2092651615328956418": {
@@ -4041,7 +4041,7 @@
         "2026-09-11": 175.69,
         "2026-09-12": 162.88,
         "2026-09-13": 75.39,
-        "2026-09-14": 0.01
+        "2026-09-14": 0.05
       }
     },
     "2092651430510989314": {
@@ -4099,7 +4099,7 @@
         "2026-09-11": 60.09,
         "2026-09-12": 149.64,
         "2026-09-13": 535.57,
-        "2026-09-14": 4.88
+        "2026-09-14": 5.0
       }
     },
     "2092651194715607042": {
@@ -4117,7 +4117,7 @@
         "2026-09-11": 178.09,
         "2026-09-12": 150.31,
         "2026-09-13": 110.38,
-        "2026-09-14": 2.01
+        "2026-09-14": 12.3
       }
     },
     "2095652240399503361": {
@@ -4131,7 +4131,8 @@
         "2026-09-10": 58.55,
         "2026-09-11": 91.08,
         "2026-09-12": 103.5,
-        "2026-09-13": 0.22
+        "2026-09-13": 0.22,
+        "2026-09-14": 7.72
       }
     },
     "2095651834350579713": {
@@ -4145,7 +4146,8 @@
         "2026-09-10": 152.66,
         "2026-09-11": 59.13,
         "2026-09-12": 80.93,
-        "2026-09-13": 0.14
+        "2026-09-13": 0.14,
+        "2026-09-14": 6.19
       }
     },
     "2095653440758976514": {
@@ -4160,7 +4162,7 @@
         "2026-09-11": 400.71,
         "2026-09-12": 106.25,
         "2026-09-13": 0.58,
-        "2026-09-14": 0.0
+        "2026-09-14": 10.51
       }
     },
     "2095653665779191809": {
@@ -4174,7 +4176,8 @@
         "2026-09-10": 269.03,
         "2026-09-11": 175.86,
         "2026-09-12": 81.38,
-        "2026-09-13": 0.18
+        "2026-09-13": 0.18,
+        "2026-09-14": 9.05
       }
     },
     "2095653063225479170": {
@@ -4188,7 +4191,8 @@
         "2026-09-10": 0.18,
         "2026-09-11": 89.04,
         "2026-09-12": 55.27,
-        "2026-09-13": 0.02
+        "2026-09-13": 0.02,
+        "2026-09-14": 7.63
       }
     }
   }
