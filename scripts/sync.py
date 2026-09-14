@@ -28,6 +28,10 @@ ACCOUNTS = {
 PRESERVE_BEFORE = "2026-09-01"
 BASE = "https://business.newsbreak.com/business-api/v1"
 
+# NewsBreak's reported "cost" is only 97% of what's actually charged — the
+# platform keeps a 3% fee on top. Real cost = reported cost / 0.97.
+FEE_FACTOR = 1 / 0.97
+
 
 def fetch_report(token, date_range, dimensions=None):
     body = json.dumps({
@@ -54,13 +58,13 @@ def fetch_report(token, date_range, dimensions=None):
 def row_to_doc(r):
     ic = r["eventCount"].get("initiate_checkout", 0)
     venda = r["eventCount"].get("complete_payment", 0)
-    cost = r["costDecimal"] / 100
+    cost = (r["costDecimal"] / 100) * FEE_FACTOR
     fat = r.get("eventValueDecimal", {}).get("complete_payment", 0) / 100
     return {
         "date": r["date"],
         "cost": round(cost, 2),
         "click": r["click"],
-        "cpc": round(r["cpcDecimal"] / 100, 4) if r["click"] else 0,
+        "cpc": round((r["cpcDecimal"] / 100) * FEE_FACTOR, 4) if r["click"] else 0,
         "ic": ic,
         "custoIc": round(cost / ic, 2) if ic else None,
         "venda": venda,
@@ -113,7 +117,7 @@ def build_subaccount_costs(token, existing_sub_accounts):
         acc_id = r["adAccountId"]
         acc = existing_sub_accounts.setdefault(acc_id, {"name": r.get("adAccount", acc_id), "costByDate": {}})
         acc["name"] = r.get("adAccount", acc["name"])
-        acc["costByDate"][r["date"]] = round(r["costDecimal"] / 100, 2)
+        acc["costByDate"][r["date"]] = round((r["costDecimal"] / 100) * FEE_FACTOR, 2)
     return existing_sub_accounts
 
 
