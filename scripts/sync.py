@@ -116,6 +116,8 @@ def build_subaccount_costs(token, existing_sub_accounts):
     history = fetch_report(token, "LAST_30_DAYS", dimensions=["DATE", "AD_ACCOUNT"])
     today = fetch_report(token, "TODAY", dimensions=["DATE", "AD_ACCOUNT"])
     for r in history + today:
+        if r["date"] < PRESERVE_BEFORE:
+            continue  # don't clobber the hand-corrected Aug 27-31 split (see fix_subaccount_august.py)
         acc_id = r["adAccountId"]
         acc = existing_sub_accounts.setdefault(acc_id, {"name": r.get("adAccount", acc_id), "costByDate": {}})
         acc["name"] = r.get("adAccount", acc["name"])
