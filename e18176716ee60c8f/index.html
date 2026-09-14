@@ -680,17 +680,19 @@
   function computeBalance(accId){
     const acc = subAccounts[accId];
     if (!acc) return null;
+    const allDates = Object.keys(acc.costByDate);
+    const totalSpendAllTime = allDates.reduce((a,d) => a + (acc.costByDate[d]||0), 0);
     const accTopups = topups.filter(t => t.accountId === accId);
-    if (!accTopups.length) return {hasTopup:false, name:acc.name};
+    if (!accTopups.length) return {hasTopup:false, name:acc.name, totalSpendAllTime};
     const totalTopup = accTopups.reduce((a,t) => a + t.amount, 0);
     const earliest = accTopups.map(t => t.date).sort()[0];
-    const dates = Object.keys(acc.costByDate).filter(d => d >= earliest).sort();
+    const dates = allDates.filter(d => d >= earliest).sort();
     const totalSpend = dates.reduce((a,d) => a + (acc.costByDate[d]||0), 0);
     const last7 = dates.slice(-7);
     const avgDaily = last7.length ? last7.reduce((a,d) => a + (acc.costByDate[d]||0), 0) / last7.length : 0;
     const balance = totalTopup - totalSpend;
     const daysLeft = avgDaily > 0 ? balance / avgDaily : null;
-    return {hasTopup:true, name:acc.name, totalTopup, totalSpend, balance, avgDaily, daysLeft};
+    return {hasTopup:true, name:acc.name, totalTopup, totalSpend, totalSpendAllTime, balance, avgDaily, daysLeft};
   }
 
   function renderTopupAccountSelect(){
@@ -707,31 +709,25 @@
     const results = ids.map(id => ({id, ...computeBalance(id)})).filter(r => r.name);
     results.sort((a,b) => {
       if (a.hasTopup !== b.hasTopup) return b.hasTopup - a.hasTopup;
-      if (a.daysLeft == null && b.daysLeft == null) return a.name.localeCompare(b.name);
-      if (a.daysLeft == null) return 1;
-      if (b.daysLeft == null) return -1;
-      return a.daysLeft - b.daysLeft;
+      if (a.hasTopup) return a.balance - b.balance;
+      return a.name.localeCompare(b.name);
     });
     const totalBalance = results.filter(r => r.hasTopup).reduce((a,r) => a + r.balance, 0);
     document.getElementById('saldoTotalHead').textContent = 'Total projetado: ' + fmtUSD(totalBalance);
 
     const rows = results.map(r => {
       if (!r.hasTopup) {
-        return '<tr><td>' + r.name + '</td><td colspan="4" class="cell-muted">Sem depósito registrado</td></tr>';
+        return '<tr><td>' + r.name + '</td><td class="cell-muted">Sem depósito registrado</td><td class="num cell-muted">' + fmtUSD(r.totalSpendAllTime) + '</td></tr>';
       }
-      const low = r.daysLeft != null && r.daysLeft < 3;
-      const daysTxt = r.daysLeft != null ? r.daysLeft.toFixed(1).replace('.',',') + ' dias' : '–';
       return '<tr>' +
         '<td>' + r.name + '</td>' +
         '<td class="num ' + (r.balance < 0 ? 'roas-pill bad' : '') + '">' + fmtUSD(r.balance) + '</td>' +
-        '<td class="num cell-muted">' + fmtUSD(r.totalTopup) + '</td>' +
-        '<td class="num cell-muted">' + fmtUSD(r.totalSpend) + '</td>' +
-        '<td class="num ' + (low ? 'roas-pill bad' : 'cell-muted') + '">' + daysTxt + '</td>' +
+        '<td class="num cell-muted">' + fmtUSD(r.totalSpendAllTime) + '</td>' +
       '</tr>';
     }).join('');
     document.getElementById('saldoWrap').innerHTML =
-      '<table><thead><tr><th style="text-align:left;">Conta</th><th>Saldo projetado</th><th>Depósitos</th><th>Gasto desde 1º depósito</th><th>Dias restantes</th></tr></thead><tbody>' +
-      (rows || '<tr><td colspan="5" class="empty-state">Nenhuma conta ainda.</td></tr>') + '</tbody></table>';
+      '<table><thead><tr><th style="text-align:left;">Conta</th><th>Saldo</th><th>Gasto total</th></tr></thead><tbody>' +
+      (rows || '<tr><td colspan="3" class="empty-state">Nenhuma conta ainda.</td></tr>') + '</tbody></table>';
 
     const sortedTopups = topups.slice().sort((a,b) => b.date.localeCompare(a.date));
     const topupRows = sortedTopups.map(t =>
