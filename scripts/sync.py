@@ -104,6 +104,19 @@ def get_list(path, token, ad_account_id):
     return rows
 
 
+def build_subaccount_costs(token, existing_sub_accounts):
+    """Per-sub-account daily cost, so account balances (topup - spend) can be
+    computed. Merges into existing_sub_accounts, keyed by ad account id."""
+    history = fetch_report(token, "LAST_30_DAYS", dimensions=["DATE", "AD_ACCOUNT"])
+    today = fetch_report(token, "TODAY", dimensions=["DATE", "AD_ACCOUNT"])
+    for r in history + today:
+        acc_id = r["adAccountId"]
+        acc = existing_sub_accounts.setdefault(acc_id, {"name": r.get("adAccount", acc_id), "costByDate": {}})
+        acc["name"] = r.get("adAccount", acc["name"])
+        acc["costByDate"][r["date"]] = round(r["costDecimal"] / 100, 2)
+    return existing_sub_accounts
+
+
 def build_campaigns(token, account_key):
     campaigns = []
     ad_accounts = get_ad_accounts(token)
@@ -172,6 +185,7 @@ def main():
         current = json.load(f)
 
     all_campaigns = []
+    sub_accounts = current.setdefault("subAccounts", {})
     for key, env_var in ACCOUNTS.items():
         token = os.environ[env_var]
         existing = current["accounts"].setdefault(key, {})
@@ -187,6 +201,7 @@ def main():
             existing[r["date"]] = doc
 
         all_campaigns.extend(build_campaigns(token, key))
+        build_subaccount_costs(token, sub_accounts)
 
     current["campaigns"] = all_campaigns
     current["generatedAt"] = datetime.now(timezone.utc).isoformat()

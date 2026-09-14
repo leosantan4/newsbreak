@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-14T01:51:12.290596+00:00",
+  "generatedAt": "2026-09-14T02:02:58.323980+00:00",
   "accounts": {
     "vini": {
       "2026-08-20": {
@@ -1058,276 +1058,6 @@
       ]
     },
     {
-      "id": "2099013010552455169",
-      "name": "C11-971 - 13/09",
-      "accountKey": "vini",
-      "adAccountId": "2089223281998229505",
-      "adAccountName": "NB_RN_GL_CQZ-191971",
-      "objective": "WEB_CONVERSION",
-      "activeBudget": null,
-      "status": "OFF",
-      "onlineStatus": "INACTIVE",
-      "adSetsOn": 0,
-      "adSetsTotal": 1,
-      "reallyActive": false,
-      "adSets": [
-        {
-          "id": "2099013362826342401",
-          "name": "C11-971 - 13/09",
-          "status": "OFF",
-          "onlineStatus": "INACTIVE",
-          "budget": 200.0,
-          "budgetType": "DAILY",
-          "adsOn": 0,
-          "adsTotal": 1,
-          "reallyActive": false
-        }
-      ]
-    },
-    {
-      "id": "2098592630191419394",
-      "name": "C10-971 - 12/09",
-      "accountKey": "vini",
-      "adAccountId": "2089223281998229505",
-      "adAccountName": "NB_RN_GL_CQZ-191971",
-      "objective": "WEB_CONVERSION",
-      "activeBudget": null,
-      "status": "OFF",
-      "onlineStatus": "INACTIVE",
-      "adSetsOn": 0,
-      "adSetsTotal": 1,
-      "reallyActive": false,
-      "adSets": [
-        {
-          "id": "2098592741336281090",
-          "name": "New ad setC10-971 - 12/09",
-          "status": "OFF",
-          "onlineStatus": "INACTIVE",
-          "budget": 200.0,
-          "budgetType": "DAILY",
-          "adsOn": 0,
-          "adsTotal": 1,
-          "reallyActive": false
-        }
-      ]
-    },
-    {
-      "id": "2096790957467676673",
-      "name": "C9-971 - 12/09",
-      "accountKey": "vini",
-      "adAccountId": "2089223281998229505",
-      "adAccountName": "NB_RN_GL_CQZ-191971",
-      "objective": "WEB_CONVERSION",
-      "activeBudget": null,
-      "status": "OFF",
-      "onlineStatus": "INACTIVE",
-      "adSetsOn": 0,
-      "adSetsTotal": 1,
-      "reallyActive": false,
-      "adSets": [
-        {
-          "id": "2096791102727360513",
-          "name": "C8-971 - 07/09",
-          "status": "OFF",
-          "onlineStatus": "INACTIVE",
-          "budget": 200.0,
-          "budgetType": "DAILY",
-          "adsOn": 0,
-          "adsTotal": 1,
-          "reallyActive": false
-        }
-      ]
-    },
-    {
-      "id": "2094261561872285697",
-      "name": "C7-971 - 31/08 (03/09) 30+",
-      "accountKey": "vini",
-      "adAccountId": "2089223281998229505",
-      "adAccountName": "NB_RN_GL_CQZ-191971",
-      "objective": "WEB_CONVERSION",
-      "activeBudget": null,
-      "status": "OFF",
-      "onlineStatus": "INACTIVE",
-      "adSetsOn": 0,
-      "adSetsTotal": 1,
-      "reallyActive": false,
-      "adSets": [
-        {
-          "id": "2094261565991317505",
-          "name": "C7-971 - 31/08 (03/09) 30+",
-          "status": "OFF",
-          "onlineStatus": "INACTIVE",
-          "budget": 200.0,
-          "budgetType": "DAILY",
-          "adsOn": 0,
-          "adsTotal": 1,
-          "reallyActive": false
-        }
-      ]
-    },
-    {
-      "id": "2093913672268578817",
-      "name": "C06-971 - 30/08",
-      "accountKey": "vini",
-      "adAccountId": "2089223281998229505",
-      "adAccountName": "NB_RN_GL_CQZ-191971",
-      "objective": "WEB_CONVERSION",
-      "activeBudget": null,
-      "status": "OFF",
-      "onlineStatus": "INACTIVE",
-      "adSetsOn": 0,
-      "adSetsTotal": 1,
-      "reallyActive": false,
-      "adSets": [
-        {
-          "id": "2093914264105844738",
-          "name": "C06-971 - 30/08",
-          "status": "OFF",
-          "onlineStatus": "INACTIVE",
-          "budget": 200.0,
-          "budgetType": "DAILY",
-          "adsOn": 0,
-          "adsTotal": 1,
-          "reallyActive": false
-        }
-      ]
-    },
-    {
-      "id": "2093572542494830594",
-      "name": "C05-971 - 29/08",
-      "accountKey": "vini",
-      "adAccountId": "2089223281998229505",
-      "adAccountName": "NB_RN_GL_CQZ-191971",
-      "objective": "WEB_CONVERSION",
-      "activeBudget": null,
-      "status": "OFF",
-      "onlineStatus": "INACTIVE",
-      "adSetsOn": 0,
-      "adSetsTotal": 1,
-      "reallyActive": false,
-      "adSets": [
-        {
-          "id": "2093572679753203714",
-          "name": "C05-971 - 29/08",
-          "status": "OFF",
-          "onlineStatus": "INACTIVE",
-          "budget": 200.0,
-          "budgetType": "DAILY",
-          "adsOn": 0,
-          "adsTotal": 1,
-          "reallyActive": false
-        }
-      ]
-    },
-    {
-      "id": "2093167421604655106",
-      "name": "C4-971 - 28/08",
-      "accountKey": "vini",
-      "adAccountId": "2089223281998229505",
-      "adAccountName": "NB_RN_GL_CQZ-191971",
-      "objective": "WEB_CONVERSION",
-      "activeBudget": null,
-      "status": "OFF",
-      "onlineStatus": "INACTIVE",
-      "adSetsOn": 0,
-      "adSetsTotal": 1,
-      "reallyActive": false,
-      "adSets": [
-        {
-          "id": "2093167426210947074",
-          "name": "C4-971 - 28/08",
-          "status": "OFF",
-          "onlineStatus": "INACTIVE",
-          "budget": 200.0,
-          "budgetType": "DAILY",
-          "adsOn": 0,
-          "adsTotal": 1,
-          "reallyActive": false
-        }
-      ]
-    },
-    {
-      "id": "2093166553405644802",
-      "name": "C3-971 - 28/08",
-      "accountKey": "vini",
-      "adAccountId": "2089223281998229505",
-      "adAccountName": "NB_RN_GL_CQZ-191971",
-      "objective": "WEB_CONVERSION",
-      "activeBudget": null,
-      "status": "OFF",
-      "onlineStatus": "INACTIVE",
-      "adSetsOn": 0,
-      "adSetsTotal": 1,
-      "reallyActive": false,
-      "adSets": [
-        {
-          "id": "2093166651556552705",
-          "name": "C3-971 - 28/08",
-          "status": "OFF",
-          "onlineStatus": "INACTIVE",
-          "budget": 200.0,
-          "budgetType": "DAILY",
-          "adsOn": 0,
-          "adsTotal": 1,
-          "reallyActive": false
-        }
-      ]
-    },
-    {
-      "id": "2092417386983350274",
-      "name": "C2 - 971 - 26/08",
-      "accountKey": "vini",
-      "adAccountId": "2089223281998229505",
-      "adAccountName": "NB_RN_GL_CQZ-191971",
-      "objective": "WEB_CONVERSION",
-      "activeBudget": null,
-      "status": "OFF",
-      "onlineStatus": "INACTIVE",
-      "adSetsOn": 0,
-      "adSetsTotal": 1,
-      "reallyActive": false,
-      "adSets": [
-        {
-          "id": "2092417391823577089",
-          "name": "C2 - 971 - 26/08",
-          "status": "OFF",
-          "onlineStatus": "INACTIVE",
-          "budget": 200.0,
-          "budgetType": "DAILY",
-          "adsOn": 0,
-          "adsTotal": 1,
-          "reallyActive": false
-        }
-      ]
-    },
-    {
-      "id": "2092076930538520577",
-      "name": "C1 - 971 - 25/08",
-      "accountKey": "vini",
-      "adAccountId": "2089223281998229505",
-      "adAccountName": "NB_RN_GL_CQZ-191971",
-      "objective": "WEB_CONVERSION",
-      "activeBudget": null,
-      "status": "OFF",
-      "onlineStatus": "INACTIVE",
-      "adSetsOn": 0,
-      "adSetsTotal": 1,
-      "reallyActive": false,
-      "adSets": [
-        {
-          "id": "2092077100892995586",
-          "name": "C1 - 971 - 25/08",
-          "status": "OFF",
-          "onlineStatus": "INACTIVE",
-          "budget": 200.0,
-          "budgetType": "DAILY",
-          "adsOn": 0,
-          "adsTotal": 1,
-          "reallyActive": false
-        }
-      ]
-    },
-    {
       "id": "2099015040398458881",
       "name": "C19-227 - 13/09",
       "accountKey": "vini",
@@ -1830,6 +1560,276 @@
         {
           "id": "2089883926267711490",
           "name": "C1 - 19/08",
+          "status": "OFF",
+          "onlineStatus": "INACTIVE",
+          "budget": 200.0,
+          "budgetType": "DAILY",
+          "adsOn": 0,
+          "adsTotal": 1,
+          "reallyActive": false
+        }
+      ]
+    },
+    {
+      "id": "2099013010552455169",
+      "name": "C11-971 - 13/09",
+      "accountKey": "vini",
+      "adAccountId": "2089223281998229505",
+      "adAccountName": "NB_RN_GL_CQZ-191971",
+      "objective": "WEB_CONVERSION",
+      "activeBudget": null,
+      "status": "OFF",
+      "onlineStatus": "INACTIVE",
+      "adSetsOn": 0,
+      "adSetsTotal": 1,
+      "reallyActive": false,
+      "adSets": [
+        {
+          "id": "2099013362826342401",
+          "name": "C11-971 - 13/09",
+          "status": "OFF",
+          "onlineStatus": "INACTIVE",
+          "budget": 200.0,
+          "budgetType": "DAILY",
+          "adsOn": 0,
+          "adsTotal": 1,
+          "reallyActive": false
+        }
+      ]
+    },
+    {
+      "id": "2098592630191419394",
+      "name": "C10-971 - 12/09",
+      "accountKey": "vini",
+      "adAccountId": "2089223281998229505",
+      "adAccountName": "NB_RN_GL_CQZ-191971",
+      "objective": "WEB_CONVERSION",
+      "activeBudget": null,
+      "status": "OFF",
+      "onlineStatus": "INACTIVE",
+      "adSetsOn": 0,
+      "adSetsTotal": 1,
+      "reallyActive": false,
+      "adSets": [
+        {
+          "id": "2098592741336281090",
+          "name": "New ad setC10-971 - 12/09",
+          "status": "OFF",
+          "onlineStatus": "INACTIVE",
+          "budget": 200.0,
+          "budgetType": "DAILY",
+          "adsOn": 0,
+          "adsTotal": 1,
+          "reallyActive": false
+        }
+      ]
+    },
+    {
+      "id": "2096790957467676673",
+      "name": "C9-971 - 12/09",
+      "accountKey": "vini",
+      "adAccountId": "2089223281998229505",
+      "adAccountName": "NB_RN_GL_CQZ-191971",
+      "objective": "WEB_CONVERSION",
+      "activeBudget": null,
+      "status": "OFF",
+      "onlineStatus": "INACTIVE",
+      "adSetsOn": 0,
+      "adSetsTotal": 1,
+      "reallyActive": false,
+      "adSets": [
+        {
+          "id": "2096791102727360513",
+          "name": "C8-971 - 07/09",
+          "status": "OFF",
+          "onlineStatus": "INACTIVE",
+          "budget": 200.0,
+          "budgetType": "DAILY",
+          "adsOn": 0,
+          "adsTotal": 1,
+          "reallyActive": false
+        }
+      ]
+    },
+    {
+      "id": "2094261561872285697",
+      "name": "C7-971 - 31/08 (03/09) 30+",
+      "accountKey": "vini",
+      "adAccountId": "2089223281998229505",
+      "adAccountName": "NB_RN_GL_CQZ-191971",
+      "objective": "WEB_CONVERSION",
+      "activeBudget": null,
+      "status": "OFF",
+      "onlineStatus": "INACTIVE",
+      "adSetsOn": 0,
+      "adSetsTotal": 1,
+      "reallyActive": false,
+      "adSets": [
+        {
+          "id": "2094261565991317505",
+          "name": "C7-971 - 31/08 (03/09) 30+",
+          "status": "OFF",
+          "onlineStatus": "INACTIVE",
+          "budget": 200.0,
+          "budgetType": "DAILY",
+          "adsOn": 0,
+          "adsTotal": 1,
+          "reallyActive": false
+        }
+      ]
+    },
+    {
+      "id": "2093913672268578817",
+      "name": "C06-971 - 30/08",
+      "accountKey": "vini",
+      "adAccountId": "2089223281998229505",
+      "adAccountName": "NB_RN_GL_CQZ-191971",
+      "objective": "WEB_CONVERSION",
+      "activeBudget": null,
+      "status": "OFF",
+      "onlineStatus": "INACTIVE",
+      "adSetsOn": 0,
+      "adSetsTotal": 1,
+      "reallyActive": false,
+      "adSets": [
+        {
+          "id": "2093914264105844738",
+          "name": "C06-971 - 30/08",
+          "status": "OFF",
+          "onlineStatus": "INACTIVE",
+          "budget": 200.0,
+          "budgetType": "DAILY",
+          "adsOn": 0,
+          "adsTotal": 1,
+          "reallyActive": false
+        }
+      ]
+    },
+    {
+      "id": "2093572542494830594",
+      "name": "C05-971 - 29/08",
+      "accountKey": "vini",
+      "adAccountId": "2089223281998229505",
+      "adAccountName": "NB_RN_GL_CQZ-191971",
+      "objective": "WEB_CONVERSION",
+      "activeBudget": null,
+      "status": "OFF",
+      "onlineStatus": "INACTIVE",
+      "adSetsOn": 0,
+      "adSetsTotal": 1,
+      "reallyActive": false,
+      "adSets": [
+        {
+          "id": "2093572679753203714",
+          "name": "C05-971 - 29/08",
+          "status": "OFF",
+          "onlineStatus": "INACTIVE",
+          "budget": 200.0,
+          "budgetType": "DAILY",
+          "adsOn": 0,
+          "adsTotal": 1,
+          "reallyActive": false
+        }
+      ]
+    },
+    {
+      "id": "2093167421604655106",
+      "name": "C4-971 - 28/08",
+      "accountKey": "vini",
+      "adAccountId": "2089223281998229505",
+      "adAccountName": "NB_RN_GL_CQZ-191971",
+      "objective": "WEB_CONVERSION",
+      "activeBudget": null,
+      "status": "OFF",
+      "onlineStatus": "INACTIVE",
+      "adSetsOn": 0,
+      "adSetsTotal": 1,
+      "reallyActive": false,
+      "adSets": [
+        {
+          "id": "2093167426210947074",
+          "name": "C4-971 - 28/08",
+          "status": "OFF",
+          "onlineStatus": "INACTIVE",
+          "budget": 200.0,
+          "budgetType": "DAILY",
+          "adsOn": 0,
+          "adsTotal": 1,
+          "reallyActive": false
+        }
+      ]
+    },
+    {
+      "id": "2093166553405644802",
+      "name": "C3-971 - 28/08",
+      "accountKey": "vini",
+      "adAccountId": "2089223281998229505",
+      "adAccountName": "NB_RN_GL_CQZ-191971",
+      "objective": "WEB_CONVERSION",
+      "activeBudget": null,
+      "status": "OFF",
+      "onlineStatus": "INACTIVE",
+      "adSetsOn": 0,
+      "adSetsTotal": 1,
+      "reallyActive": false,
+      "adSets": [
+        {
+          "id": "2093166651556552705",
+          "name": "C3-971 - 28/08",
+          "status": "OFF",
+          "onlineStatus": "INACTIVE",
+          "budget": 200.0,
+          "budgetType": "DAILY",
+          "adsOn": 0,
+          "adsTotal": 1,
+          "reallyActive": false
+        }
+      ]
+    },
+    {
+      "id": "2092417386983350274",
+      "name": "C2 - 971 - 26/08",
+      "accountKey": "vini",
+      "adAccountId": "2089223281998229505",
+      "adAccountName": "NB_RN_GL_CQZ-191971",
+      "objective": "WEB_CONVERSION",
+      "activeBudget": null,
+      "status": "OFF",
+      "onlineStatus": "INACTIVE",
+      "adSetsOn": 0,
+      "adSetsTotal": 1,
+      "reallyActive": false,
+      "adSets": [
+        {
+          "id": "2092417391823577089",
+          "name": "C2 - 971 - 26/08",
+          "status": "OFF",
+          "onlineStatus": "INACTIVE",
+          "budget": 200.0,
+          "budgetType": "DAILY",
+          "adsOn": 0,
+          "adsTotal": 1,
+          "reallyActive": false
+        }
+      ]
+    },
+    {
+      "id": "2092076930538520577",
+      "name": "C1 - 971 - 25/08",
+      "accountKey": "vini",
+      "adAccountId": "2089223281998229505",
+      "adAccountName": "NB_RN_GL_CQZ-191971",
+      "objective": "WEB_CONVERSION",
+      "activeBudget": null,
+      "status": "OFF",
+      "onlineStatus": "INACTIVE",
+      "adSetsOn": 0,
+      "adSetsTotal": 1,
+      "reallyActive": false,
+      "adSets": [
+        {
+          "id": "2092077100892995586",
+          "name": "C1 - 971 - 25/08",
           "status": "OFF",
           "onlineStatus": "INACTIVE",
           "budget": 200.0,
@@ -3147,6 +3147,33 @@
       ]
     },
     {
+      "id": "2099316184647663618",
+      "name": "C5-177 Neia - 14/09 ",
+      "accountKey": "neia",
+      "adAccountId": "2095653665779191809",
+      "adAccountName": "NB_RN_GL_CQZ-403117",
+      "objective": "WEB_CONVERSION",
+      "activeBudget": 200.0,
+      "status": "ON",
+      "onlineStatus": "WARNING",
+      "adSetsOn": 1,
+      "adSetsTotal": 1,
+      "reallyActive": true,
+      "adSets": [
+        {
+          "id": "2099316315235807233",
+          "name": "C5-177 Neia - 14/09 ",
+          "status": "ON",
+          "onlineStatus": "WARNING",
+          "budget": 200.0,
+          "budgetType": "DAILY",
+          "adsOn": 1,
+          "adsTotal": 1,
+          "reallyActive": true
+        }
+      ]
+    },
+    {
       "id": "2098596936026157057",
       "name": "C4-177 Neia - 12/09 ",
       "accountKey": "neia",
@@ -3417,29 +3444,56 @@
       ]
     },
     {
+      "id": "2099317143549444098",
+      "name": "C5-207 Neia - 14/09",
+      "accountKey": "neia",
+      "adAccountId": "2095653440758976514",
+      "adAccountName": "NB_RN_GL_CQZ-138207",
+      "objective": "WEB_CONVERSION",
+      "activeBudget": 200.0,
+      "status": "ON",
+      "onlineStatus": "WARNING",
+      "adSetsOn": 1,
+      "adSetsTotal": 1,
+      "reallyActive": true,
+      "adSets": [
+        {
+          "id": "2099317509926092802",
+          "name": "C5-207 Neia - 14/09",
+          "status": "ON",
+          "onlineStatus": "READY",
+          "budget": 200.0,
+          "budgetType": "DAILY",
+          "adsOn": 1,
+          "adsTotal": 1,
+          "reallyActive": true
+        }
+      ]
+    },
+    {
       "id": "2098594066971226114",
       "name": "C4-207 Neia - 12/09",
       "accountKey": "neia",
       "adAccountId": "2095653440758976514",
       "adAccountName": "NB_RN_GL_CQZ-138207",
       "objective": "WEB_CONVERSION",
-      "activeBudget": 200.0,
+      "activeBudget": null,
       "status": "OFF",
       "onlineStatus": "INACTIVE",
-      "adSetsOn": 1,
+      "adSetsOn": 0,
       "adSetsTotal": 1,
       "reallyActive": false,
       "adSets": [
         {
           "id": "2098595027177435138",
           "name": "C4-207 Neia - 12/09",
-          "status": "ON",
-          "onlineStatus": "ACTIVE",
+          "status": "OFF",
+          "onlineStatus": "INACTIVE",
           "budget": 200.0,
           "budgetType": "DAILY",
-          "adsOn": 1,
+          "adsOn": 0,
           "adsTotal": 1,
-          "reallyActive": true
+          "reallyActive": false
         }
       ]
     },
@@ -3507,15 +3561,15 @@
       "activeBudget": null,
       "status": "OFF",
       "onlineStatus": "INACTIVE",
-      "adSetsOn": 1,
+      "adSetsOn": 0,
       "adSetsTotal": 1,
       "reallyActive": false,
       "adSets": [
         {
           "id": "2096065262955761666",
           "name": "C1-207 Neia - 05/09 45+",
-          "status": "ON",
-          "onlineStatus": "WARNING",
+          "status": "OFF",
+          "onlineStatus": "INACTIVE",
           "budget": 600.0,
           "budgetType": "DAILY",
           "adsOn": 0,
@@ -3632,5 +3686,275 @@
         }
       ]
     }
-  ]
+  ],
+  "subAccounts": {
+    "2089224773448671234": {
+      "name": "NB_RN_GL_CQZ-580227",
+      "costByDate": {
+        "2026-08-20": 27.43,
+        "2026-08-21": 1.25,
+        "2026-08-22": 267.05,
+        "2026-08-23": 405.63,
+        "2026-08-24": 304.52,
+        "2026-08-25": 38.9,
+        "2026-08-26": 373.31,
+        "2026-08-27": 145.96,
+        "2026-08-28": 161.54,
+        "2026-08-29": 180.52,
+        "2026-08-30": 192.9,
+        "2026-08-31": 154.52,
+        "2026-09-01": 1.43,
+        "2026-09-02": 0.09,
+        "2026-09-03": 194.19,
+        "2026-09-04": 81.24,
+        "2026-09-05": 115.71,
+        "2026-09-06": 62.08,
+        "2026-09-07": 59.14,
+        "2026-09-08": 0.54,
+        "2026-09-09": 0.0,
+        "2026-09-11": 88.96,
+        "2026-09-12": 47.79,
+        "2026-09-13": 56.08
+      }
+    },
+    "2089225287603232770": {
+      "name": "NB_RN_GL_CQZ-489699",
+      "costByDate": {
+        "2026-08-20": 1.32,
+        "2026-08-21": 357.79,
+        "2026-08-22": 348.66,
+        "2026-08-23": 199.62,
+        "2026-08-24": 264.29,
+        "2026-08-25": 299.37,
+        "2026-08-26": 440.15,
+        "2026-08-27": 136.01,
+        "2026-08-28": 0.29,
+        "2026-08-29": 156.07,
+        "2026-08-30": 45.24,
+        "2026-08-31": 149.41,
+        "2026-09-01": 0.61,
+        "2026-09-02": 0.0,
+        "2026-09-03": 193.13,
+        "2026-09-04": 198.97,
+        "2026-09-05": 156.07,
+        "2026-09-06": 62.74,
+        "2026-09-07": 58.3,
+        "2026-09-08": 0.04,
+        "2026-09-09": 0.02,
+        "2026-09-10": 0.05,
+        "2026-09-11": 130.86,
+        "2026-09-12": 54.56,
+        "2026-09-13": 93.0
+      }
+    },
+    "2089224172058898433": {
+      "name": "NB_RN_GL_CQZ-512397",
+      "costByDate": {
+        "2026-08-25": 742.88,
+        "2026-08-26": 566.35,
+        "2026-08-27": 235.24,
+        "2026-08-28": 126.53,
+        "2026-08-29": 70.06,
+        "2026-08-30": 47.05,
+        "2026-08-31": 153.98,
+        "2026-09-01": 0.33,
+        "2026-09-02": 0.03,
+        "2026-09-03": 193.42,
+        "2026-09-04": 198.47,
+        "2026-09-05": 460.38,
+        "2026-09-06": 116.71,
+        "2026-09-07": 53.27,
+        "2026-09-08": 0.1,
+        "2026-09-11": 87.39,
+        "2026-09-12": 50.87,
+        "2026-09-13": 95.05
+      }
+    },
+    "2089223281998229505": {
+      "name": "NB_RN_GL_CQZ-191971",
+      "costByDate": {
+        "2026-08-25": 174.04,
+        "2026-08-26": 527.1,
+        "2026-08-27": 576.81,
+        "2026-08-28": 132.54,
+        "2026-08-29": 65.38,
+        "2026-08-30": 87.67,
+        "2026-08-31": 154.91,
+        "2026-09-01": 0.6,
+        "2026-09-02": 0.13,
+        "2026-09-03": 175.38,
+        "2026-09-04": 201.22,
+        "2026-09-05": 198.06,
+        "2026-09-06": 136.71,
+        "2026-09-07": 31.81,
+        "2026-09-08": 0.17,
+        "2026-09-09": 0.01,
+        "2026-09-10": 0.01,
+        "2026-09-11": 136.55,
+        "2026-09-12": 53.83,
+        "2026-09-13": 52.22
+      }
+    },
+    "2092651615328956418": {
+      "name": "NB_RN_GL_CQZ-251353",
+      "costByDate": {
+        "2026-08-27": 292.09,
+        "2026-08-28": 91.27,
+        "2026-08-29": 113.33,
+        "2026-08-30": 87.17,
+        "2026-08-31": 0.31,
+        "2026-09-04": 51.77,
+        "2026-09-05": 599.12,
+        "2026-09-06": 125.55,
+        "2026-09-07": 58.42,
+        "2026-09-08": 0.46,
+        "2026-09-10": 464.5,
+        "2026-09-11": 170.42,
+        "2026-09-12": 157.99,
+        "2026-09-13": 73.02
+      }
+    },
+    "2092651430510989314": {
+      "name": "NB_RN_GL_CQZ-690602",
+      "costByDate": {
+        "2026-08-29": 72.28,
+        "2026-08-30": 170.13,
+        "2026-08-31": 0.51,
+        "2026-09-01": 0.0,
+        "2026-09-04": 53.84,
+        "2026-09-05": 114.55,
+        "2026-09-06": 0.24,
+        "2026-09-07": 58.18,
+        "2026-09-08": 0.0,
+        "2026-09-11": 105.53,
+        "2026-09-12": 101.74,
+        "2026-09-13": 72.77
+      }
+    },
+    "2092650872932954114": {
+      "name": "NB_RN_GL_CQZ-104328",
+      "costByDate": {
+        "2026-08-29": 179.18,
+        "2026-08-30": 112.64,
+        "2026-08-31": 1.33,
+        "2026-09-01": 0.04,
+        "2026-09-02": 0.63,
+        "2026-09-04": 177.22,
+        "2026-09-05": 165.52,
+        "2026-09-06": 15.75,
+        "2026-09-07": 9.3,
+        "2026-09-08": 0.0,
+        "2026-09-10": 62.87,
+        "2026-09-11": 161.17,
+        "2026-09-12": 159.74,
+        "2026-09-13": 73.37
+      }
+    },
+    "2092650262376353794": {
+      "name": "NB_RN_GL_CQZ-720946",
+      "costByDate": {
+        "2026-08-29": 179.88,
+        "2026-08-30": 186.3,
+        "2026-08-31": 0.29,
+        "2026-09-01": 0.0,
+        "2026-09-04": 42.21,
+        "2026-09-05": 188.66,
+        "2026-09-06": 5.09,
+        "2026-09-07": 55.82,
+        "2026-09-08": 0.05,
+        "2026-09-09": 0.04,
+        "2026-09-10": 122.67,
+        "2026-09-11": 58.29,
+        "2026-09-12": 145.15,
+        "2026-09-13": 347.17
+      }
+    },
+    "2092651194715607042": {
+      "name": "NB_RN_GL_CQZ-408433",
+      "costByDate": {
+        "2026-08-29": 118.01,
+        "2026-08-30": 86.05,
+        "2026-08-31": 0.03,
+        "2026-09-04": 180.76,
+        "2026-09-05": 456.77,
+        "2026-09-06": 123.12,
+        "2026-09-07": 11.0,
+        "2026-09-08": 0.15,
+        "2026-09-10": 115.34,
+        "2026-09-11": 172.74,
+        "2026-09-12": 145.8,
+        "2026-09-13": 106.95
+      }
+    },
+    "2095652240399503361": {
+      "name": "NB_RN_GL_CQZ-066436",
+      "costByDate": {
+        "2026-09-05": 183.55,
+        "2026-09-06": 166.76,
+        "2026-09-07": 38.69,
+        "2026-09-08": 97.55,
+        "2026-09-09": 70.25,
+        "2026-09-10": 56.8,
+        "2026-09-11": 88.35,
+        "2026-09-12": 100.4,
+        "2026-09-13": 0.21
+      }
+    },
+    "2095651834350579713": {
+      "name": "NB_RN_GL_CQZ-326258",
+      "costByDate": {
+        "2026-09-05": 136.82,
+        "2026-09-06": 112.43,
+        "2026-09-07": 50.57,
+        "2026-09-08": 61.82,
+        "2026-09-09": 179.77,
+        "2026-09-10": 148.08,
+        "2026-09-11": 57.35,
+        "2026-09-12": 78.51,
+        "2026-09-13": 0.13
+      }
+    },
+    "2095653440758976514": {
+      "name": "NB_RN_GL_CQZ-138207",
+      "costByDate": {
+        "2026-09-05": 55.03,
+        "2026-09-06": 124.22,
+        "2026-09-07": 64.7,
+        "2026-09-08": 101.19,
+        "2026-09-09": 65.5,
+        "2026-09-10": 55.04,
+        "2026-09-11": 388.69,
+        "2026-09-12": 103.06,
+        "2026-09-13": 0.43
+      }
+    },
+    "2095653665779191809": {
+      "name": "NB_RN_GL_CQZ-403117",
+      "costByDate": {
+        "2026-09-05": 53.3,
+        "2026-09-06": 119.24,
+        "2026-09-07": 55.52,
+        "2026-09-08": 65.98,
+        "2026-09-09": 74.89,
+        "2026-09-10": 260.96,
+        "2026-09-11": 170.59,
+        "2026-09-12": 78.93,
+        "2026-09-13": 0.17
+      }
+    },
+    "2095653063225479170": {
+      "name": "NB_RN_GL_CQZ-891521",
+      "costByDate": {
+        "2026-09-05": 54.43,
+        "2026-09-06": 119.05,
+        "2026-09-07": 56.91,
+        "2026-09-08": 97.96,
+        "2026-09-09": 63.03,
+        "2026-09-10": 0.17,
+        "2026-09-11": 86.37,
+        "2026-09-12": 53.61,
+        "2026-09-13": 0.02
+      }
+    }
+  }
 }

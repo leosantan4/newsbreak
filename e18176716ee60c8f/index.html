@@ -133,6 +133,7 @@
     <button class="nav-item" data-view="campanhas"><span class="ic">▶</span>Campanhas</button>
     <button class="nav-item" data-view="dre"><span class="ic">▤</span>DRE Mensal</button>
     <button class="nav-item" data-view="custos"><span class="ic">$</span>Custos Fixos</button>
+    <button class="nav-item" data-view="saldo"><span class="ic">◒</span>Saldo</button>
   </nav>
 
   <main class="content">
@@ -235,6 +236,47 @@
       </section>
     </div>
 
+    <div id="saldoView" hidden>
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Registrar depósito (topup)</h2>
+          <span></span>
+        </div>
+        <form class="cost-form-grid" id="topupForm">
+          <div>
+            <label for="topupAccount">Conta</label>
+            <select id="topupAccount"></select>
+          </div>
+          <div>
+            <label for="topupDate">Data</label>
+            <input type="date" id="topupDate">
+          </div>
+          <div>
+            <label for="topupValue">Valor (USD)</label>
+            <input type="number" id="topupValue" placeholder="0,00" step="0.01" min="0">
+          </div>
+          <button type="submit">Registrar</button>
+        </form>
+        <p class="costs-note" id="topupNote">Saldo projetado = depósitos − gasto (gasto já sincroniza sozinho pela API; sem API de saldo real, então isso é uma projeção, não o número exato do painel da NewsBreak).</p>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Saldo projetado por conta</h2>
+          <span id="saldoTotalHead"></span>
+        </div>
+        <div class="table-scroll" id="saldoWrap"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Depósitos lançados</h2>
+          <span></span>
+        </div>
+        <div class="table-scroll" id="topupsTableWrap"></div>
+      </section>
+    </div>
+
     <footer id="footerNote">Link privado — não compartilhe. Dados sincronizados a cada 30 min.</footer>
   </main>
 </div>
@@ -257,6 +299,7 @@
     {key:'month', label:'Este mês'},
   ];
   const COSTS_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/costs';
+  const TOPUPS_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/topups';
   const SYNC_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/sync-now';
   const DATA_API = './data.json';
   const COSTS_API_KEY = 'HrcFGQUO4Wq_smjouctnZuDZxIatbjPT';
@@ -268,6 +311,8 @@
   let costs = [];
   let campaigns = [];
   let campFilter = 'active';
+  let subAccounts = {};
+  let topups = [];
   const data = {vini:{}, pretorian:{}, neia:{}};
   const ACCOUNT_LABEL = {vini:'Vini', pretorian:'Pretorian', neia:'Neia'};
 
@@ -386,6 +431,7 @@
     document.getElementById('campanhasView').hidden = view !== 'campanhas';
     document.getElementById('dreView').hidden = view !== 'dre';
     document.getElementById('custosView').hidden = view !== 'custos';
+    document.getElementById('saldoView').hidden = view !== 'saldo';
   }
 
   function renderPeriodTabs(){
@@ -625,6 +671,80 @@
       (rows || '<tr><td colspan="5" class="empty-state">Nenhuma campanha encontrada.</td></tr>') + '</tbody></table>';
   }
 
+  function computeBalance(accId){
+    const acc = subAccounts[accId];
+    if (!acc) return null;
+    const accTopups = topups.filter(t => t.accountId === accId);
+    if (!accTopups.length) return {hasTopup:false, name:acc.name};
+    const totalTopup = accTopups.reduce((a,t) => a + t.amount, 0);
+    const earliest = accTopups.map(t => t.date).sort()[0];
+    const dates = Object.keys(acc.costByDate).filter(d => d >= earliest).sort();
+    const totalSpend = dates.reduce((a,d) => a + (acc.costByDate[d]||0), 0);
+    const last7 = dates.slice(-7);
+    const avgDaily = last7.length ? last7.reduce((a,d) => a + (acc.costByDate[d]||0), 0) / last7.length : 0;
+    const balance = totalTopup - totalSpend;
+    const daysLeft = avgDaily > 0 ? balance / avgDaily : null;
+    return {hasTopup:true, name:acc.name, totalTopup, totalSpend, balance, avgDaily, daysLeft};
+  }
+
+  function renderTopupAccountSelect(){
+    const sel = document.getElementById('topupAccount');
+    if (sel.dataset.filled) return;
+    const ids = Object.keys(subAccounts).sort((a,b) => subAccounts[a].name.localeCompare(subAccounts[b].name));
+    sel.innerHTML = ids.map(id => '<option value="' + id + '">' + subAccounts[id].name + '</option>').join('');
+    if (ids.length) sel.dataset.filled = '1';
+  }
+
+  function renderSaldo(){
+    renderTopupAccountSelect();
+    const ids = Object.keys(subAccounts);
+    const results = ids.map(id => ({id, ...computeBalance(id)})).filter(r => r.name);
+    results.sort((a,b) => {
+      if (a.hasTopup !== b.hasTopup) return b.hasTopup - a.hasTopup;
+      if (a.daysLeft == null && b.daysLeft == null) return a.name.localeCompare(b.name);
+      if (a.daysLeft == null) return 1;
+      if (b.daysLeft == null) return -1;
+      return a.daysLeft - b.daysLeft;
+    });
+    const totalBalance = results.filter(r => r.hasTopup).reduce((a,r) => a + r.balance, 0);
+    document.getElementById('saldoTotalHead').textContent = 'Total projetado: ' + fmtUSD(totalBalance);
+
+    const rows = results.map(r => {
+      if (!r.hasTopup) {
+        return '<tr><td>' + r.name + '</td><td colspan="4" class="cell-muted">Sem depósito registrado</td></tr>';
+      }
+      const low = r.daysLeft != null && r.daysLeft < 3;
+      const daysTxt = r.daysLeft != null ? r.daysLeft.toFixed(1).replace('.',',') + ' dias' : '–';
+      return '<tr>' +
+        '<td>' + r.name + '</td>' +
+        '<td class="num ' + (r.balance < 0 ? 'roas-pill bad' : '') + '">' + fmtUSD(r.balance) + '</td>' +
+        '<td class="num cell-muted">' + fmtUSD(r.totalTopup) + '</td>' +
+        '<td class="num cell-muted">' + fmtUSD(r.totalSpend) + '</td>' +
+        '<td class="num ' + (low ? 'roas-pill bad' : 'cell-muted') + '">' + daysTxt + '</td>' +
+      '</tr>';
+    }).join('');
+    document.getElementById('saldoWrap').innerHTML =
+      '<table><thead><tr><th style="text-align:left;">Conta</th><th>Saldo projetado</th><th>Depósitos</th><th>Gasto desde 1º depósito</th><th>Dias restantes</th></tr></thead><tbody>' +
+      (rows || '<tr><td colspan="5" class="empty-state">Nenhuma conta ainda.</td></tr>') + '</tbody></table>';
+
+    const sortedTopups = topups.slice().sort((a,b) => b.date.localeCompare(a.date));
+    const topupRows = sortedTopups.map(t =>
+      '<tr><td class="num">' + fmtDateShort(t.date) + '</td><td>' + t.accountName + '</td><td class="num">' + fmtUSD(t.amount) + '</td>' +
+      '<td class="num"><button class="remove-btn" data-topup-id="' + t.id + '">remover</button></td></tr>'
+    ).join('');
+    document.getElementById('topupsTableWrap').innerHTML =
+      '<table><thead><tr><th style="text-align:left;">Data</th><th style="text-align:left;">Conta</th><th>Valor</th><th></th></tr></thead><tbody>' +
+      (topupRows || '<tr><td colspan="4" class="empty-state">Nenhum depósito lançado ainda.</td></tr>') + '</tbody></table>';
+    document.querySelectorAll('[data-topup-id]').forEach(btn => btn.addEventListener('click', () => deleteTopup(btn.dataset.topupId)));
+  }
+
+  function deleteTopup(id){
+    fetch(TOPUPS_API + '/' + id, { method: 'DELETE', headers: { 'X-Access-Key': COSTS_API_KEY } })
+      .then(r => r.json())
+      .then(json => { topups = json.topups || []; renderSaldo(); })
+      .catch(() => {});
+  }
+
   function renderAll(){
     renderNav();
     renderPeriodTabs();
@@ -636,6 +756,7 @@
     renderCustosView();
     renderDRE();
     renderCampanhas();
+    renderSaldo();
     renderLive();
   }
 
@@ -672,6 +793,32 @@
       .catch(() => {});
   }
 
+  document.getElementById('topupDate').value = todayKey();
+  document.getElementById('topupForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const sel = document.getElementById('topupAccount');
+    const accountId = sel.value;
+    const accountName = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].textContent : accountId;
+    const dateVal = document.getElementById('topupDate').value;
+    const amount = parseFloat(document.getElementById('topupValue').value);
+    const note = document.getElementById('topupNote');
+    if (!accountId || !dateVal || !isFinite(amount)) return;
+    note.textContent = 'Salvando…';
+    fetch(TOPUPS_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY },
+      body: JSON.stringify({ accountId, accountName, date: dateVal, amount }),
+    }).then(r => { if (!r.ok) throw new Error(); return r.json(); })
+      .then(json => {
+        topups = json.topups || [];
+        document.getElementById('topupValue').value = '';
+        document.getElementById('topupDate').value = todayKey();
+        note.textContent = '';
+        renderSaldo();
+      })
+      .catch(() => { note.textContent = 'Não consegui salvar — tenta de novo.'; });
+  });
+
   renderAll();
   setInterval(renderLive, 30000);
 
@@ -706,16 +853,25 @@
     }).catch(() => {});
   }
 
+  function loadTopups(){
+    fetch(TOPUPS_API, { cache: 'no-store' }).then(r => r.json()).then(json => {
+      topups = json.topups || [];
+      renderSaldo();
+    }).catch(() => {});
+  }
+
   function loadData(){
     fetch(DATA_API, {cache:'no-store'}).then(r => r.json()).then(json => {
       generatedAt = json.generatedAt;
       ACCOUNTS.forEach(a => { data[a.key] = json.accounts[a.key] || {}; });
       campaigns = json.campaigns || [];
+      subAccounts = json.subAccounts || {};
       renderAll();
     }).catch(() => {
       document.getElementById('footerNote').textContent = 'Não foi possível carregar os dados agora — tente recarregar a página.';
     });
     loadCosts();
+    loadTopups();
   }
   loadData();
   setInterval(loadData, 2 * 60 * 1000);
