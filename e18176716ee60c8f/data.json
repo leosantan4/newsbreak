@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-14T20:46:24.456044+00:00",
+  "generatedAt": "2026-09-14T21:01:12.984617+00:00",
   "accounts": {
     "vini": {
       "2026-08-20": {
@@ -1425,11 +1425,11 @@
       "adAccountName": "NB_RN_GL_CQZ-580227",
       "objective": "WEB_CONVERSION",
       "activeBudget": 200.0,
-      "status": "ON",
-      "onlineStatus": "ACTIVE",
+      "status": "OFF",
+      "onlineStatus": "INACTIVE",
       "adSetsOn": 1,
       "adSetsTotal": 1,
-      "reallyActive": true,
+      "reallyActive": false,
       "adSets": [
         {
           "id": "2099322180626018305",
