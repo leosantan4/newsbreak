@@ -268,7 +268,7 @@
 
       <section class="panel">
         <div class="panel-head">
-          <h2>Saldo projetado por conta</h2>
+          <h2>Saldo por conta</h2>
           <span id="saldoTotalHead"></span>
         </div>
         <div class="table-scroll" id="saldoWrap"></div>
@@ -714,7 +714,7 @@
     });
     const totalBalance = results.filter(r => r.hasTopup).reduce((a,r) => a + r.balance, 0);
     const totalSpendAll = results.reduce((a,r) => a + (r.totalSpendAllTime||0), 0);
-    document.getElementById('saldoTotalHead').textContent = 'Total projetado: ' + fmtUSD(totalBalance);
+    document.getElementById('saldoTotalHead').textContent = 'Gasto total geral: ' + fmtUSD(totalSpendAll);
 
     const rows = results.map(r => {
       if (!r.hasTopup) {
