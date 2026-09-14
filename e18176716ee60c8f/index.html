@@ -714,7 +714,6 @@
     });
     const totalBalance = results.filter(r => r.hasTopup).reduce((a,r) => a + r.balance, 0);
     const totalSpendAll = results.reduce((a,r) => a + (r.totalSpendAllTime||0), 0);
-    document.getElementById('saldoTotalHead').textContent = 'Gasto total geral: ' + fmtUSD(totalSpendAll);
 
     const rows = results.map(r => {
       if (!r.hasTopup) {
