@@ -123,9 +123,15 @@
 
   @media (max-width: 720px){
     .shell{flex-direction:column;}
-    .sidenav{position:static; width:100%; min-height:0; flex-direction:row; overflow-x:auto; border-right:none; border-bottom:1px solid var(--line);}
+    .sidenav{position:static; width:100%; min-height:0; height:auto; flex-direction:row; align-items:center; overflow-x:auto; overflow-y:hidden; border-right:none; border-bottom:1px solid var(--line); padding:10px 10px; gap:6px; -webkit-overflow-scrolling:touch;}
     .sidenav-brand{display:none;}
-    .content{padding:20px 16px 48px; max-width:100%;}
+    .nav-item{width:auto; flex:none; white-space:nowrap; padding:8px 12px;}
+    .content{padding:16px 14px 40px; max-width:100%;}
+    header{flex-direction:column; align-items:flex-start; gap:10px;}
+    .panel-head-right{flex-wrap:wrap;}
+    .summary-grid{grid-template-columns:1fr;}
+    .cost-form-grid{grid-template-columns:1fr;}
+    table{font-size:12px;}
   }
 </style>
 </head>
