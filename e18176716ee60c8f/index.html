@@ -309,14 +309,22 @@
   const SYNC_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/sync-now';
   const DATA_API = './data.json';
   const COSTS_API_KEY = 'HrcFGQUO4Wq_smjouctnZuDZxIatbjPT';
-  let view = 'painel';
-  let scope = 'geral';
-  let period = 'today';
-  let metric = 'faturamento';
+
+  function loadPref(key, fallback){
+    try { return localStorage.getItem('nb_' + key) || fallback; } catch { return fallback; }
+  }
+  function savePref(key, value){
+    try { localStorage.setItem('nb_' + key, value); } catch {}
+  }
+
+  let view = loadPref('view', 'painel');
+  let scope = loadPref('scope', 'geral');
+  let period = loadPref('period', 'today');
+  let metric = loadPref('metric', 'faturamento');
+  let campFilter = loadPref('campFilter', 'active');
   let generatedAt = null;
   let costs = [];
   let campaigns = [];
-  let campFilter = 'active';
   let subAccounts = {};
   let topups = [];
   const data = {vini:{}, pretorian:{}, neia:{}};
@@ -443,7 +451,7 @@
   function renderPeriodTabs(){
     const wrap = document.getElementById('periodTabs');
     wrap.innerHTML = PERIODS.map(p => '<button class="tab small' + (period===p.key?' active':'') + '" data-period="' + p.key + '">' + p.label + '</button>').join('');
-    wrap.querySelectorAll('.tab').forEach(btn => btn.addEventListener('click', () => { period = btn.dataset.period; renderAll(); }));
+    wrap.querySelectorAll('.tab').forEach(btn => btn.addEventListener('click', () => { period = btn.dataset.period; savePref('period', period); renderAll(); }));
   }
 
   function renderSummary(){
@@ -481,14 +489,14 @@
     const wrap = document.getElementById('scopeTabs');
     const tabs = [{key:'geral', label:'Geral'}, ...ACCOUNTS];
     wrap.innerHTML = tabs.map(t => '<button class="tab' + (scope===t.key?' active':'') + '" data-scope="' + t.key + '">' + t.label + '</button>').join('');
-    wrap.querySelectorAll('.tab').forEach(btn => btn.addEventListener('click', () => { scope = btn.dataset.scope; renderAll(); }));
+    wrap.querySelectorAll('.tab').forEach(btn => btn.addEventListener('click', () => { scope = btn.dataset.scope; savePref('scope', scope); renderAll(); }));
   }
 
   function renderMetricToggle(){
     const wrap = document.getElementById('metricToggle');
     const metrics = [{key:'faturamento', label:'Faturamento'}, {key:'cost', label:'Gasto'}];
     wrap.innerHTML = metrics.map(m => '<button class="tab small' + (metric===m.key?' active':'') + '" data-metric="' + m.key + '">' + m.label + '</button>').join('');
-    wrap.querySelectorAll('.tab').forEach(btn => btn.addEventListener('click', () => { metric = btn.dataset.metric; renderChart(); }));
+    wrap.querySelectorAll('.tab').forEach(btn => btn.addEventListener('click', () => { metric = btn.dataset.metric; savePref('metric', metric); renderChart(); }));
   }
 
   function lastNDates(map, n){ return sortedDates(map).slice(-n); }
@@ -645,7 +653,7 @@
     const wrap = document.getElementById('campFilterTabs');
     const opts = [{key:'active', label:'Só ativas'}, {key:'all', label:'Todas'}];
     wrap.innerHTML = opts.map(o => '<button class="tab small' + (campFilter===o.key?' active':'') + '" data-camp-filter="' + o.key + '">' + o.label + '</button>').join('');
-    wrap.querySelectorAll('.tab').forEach(btn => btn.addEventListener('click', () => { campFilter = btn.dataset.campFilter; renderCampanhas(); }));
+    wrap.querySelectorAll('.tab').forEach(btn => btn.addEventListener('click', () => { campFilter = btn.dataset.campFilter; savePref('campFilter', campFilter); renderCampanhas(); }));
   }
 
   function renderCampanhas(){
@@ -791,7 +799,7 @@
     renderLive();
   }
 
-  document.querySelectorAll('.nav-item').forEach(btn => btn.addEventListener('click', () => { view = btn.dataset.view; renderAll(); }));
+  document.querySelectorAll('.nav-item').forEach(btn => btn.addEventListener('click', () => { view = btn.dataset.view; savePref('view', view); renderAll(); }));
 
   document.getElementById('costDate').value = todayKey();
   document.getElementById('costForm').addEventListener('submit', (e) => {
