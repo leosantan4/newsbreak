@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-14T15:35:48.914122+00:00",
+  "generatedAt": "2026-09-14T15:39:41.737190+00:00",
   "accounts": {
     "vini": {
       "2026-08-20": {
@@ -1129,7 +1129,7 @@
       "objective": "WEB_CONVERSION",
       "activeBudget": 1000.0,
       "status": "ON",
-      "onlineStatus": "ACTIVE",
+      "onlineStatus": "WARNING",
       "adSetsOn": 1,
       "adSetsTotal": 1,
       "reallyActive": true,
@@ -1138,7 +1138,7 @@
           "id": "2099324463234875394",
           "name": "C12-971 - 14/09",
           "status": "ON",
-          "onlineStatus": "ACTIVE",
+          "onlineStatus": "WARNING",
           "budget": 1000.0,
           "budgetType": "DAILY",
           "adsOn": 1,
@@ -3299,7 +3299,7 @@
       "objective": "WEB_CONVERSION",
       "activeBudget": 200.0,
       "status": "ON",
-      "onlineStatus": "ACTIVE",
+      "onlineStatus": "WARNING",
       "adSetsOn": 1,
       "adSetsTotal": 1,
       "reallyActive": true,
@@ -3308,7 +3308,7 @@
           "id": "2099316315235807233",
           "name": "C5-177 Neia - 14/09 ",
           "status": "ON",
-          "onlineStatus": "ACTIVE",
+          "onlineStatus": "WARNING",
           "budget": 200.0,
           "budgetType": "DAILY",
           "adsOn": 1,
