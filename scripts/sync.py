@@ -30,7 +30,9 @@ BASE = "https://business.newsbreak.com/business-api/v1"
 
 # NewsBreak's reported "cost" is only 97% of what's actually charged — the
 # platform keeps a 3% fee on top. Real cost = reported cost / 0.97.
-FEE_FACTOR = 1 / 0.97
+# PAUSED per user request on 2026-09-14 pending validation against investor
+# contributions ("aportes") — set back to 1/0.97 to re-enable.
+FEE_FACTOR = 1.0
 
 
 def fetch_report(token, date_range, dimensions=None):
