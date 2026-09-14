@@ -108,7 +108,9 @@
   .empty-state{padding:40px 20px; text-align:center; color:var(--muted); font-size:13px;}
 
   .cost-form-grid{display:grid; grid-template-columns:140px 1fr 140px auto; gap:10px; align-items:end; padding:16px 18px; border-bottom:1px solid var(--line);}
-  #topupForm{grid-template-columns:1fr 150px 150px auto;}
+  @media (min-width: 721px){
+    #topupForm{grid-template-columns:1fr 150px 150px auto;}
+  }
   .cost-form-grid label{display:block; font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); margin-bottom:5px;}
   .cost-form-grid input, .cost-form-grid select{width:100%; border:1px solid var(--line); border-radius:8px; padding:9px 10px; font:inherit; font-size:13px; background:var(--bg); color:var(--ink); min-width:0;}
   .cost-form-grid button{border:none; background:var(--accent); color:var(--accent-ink); font:inherit; font-weight:600; font-size:13px; padding:10px 18px; border-radius:8px; cursor:pointer; white-space:nowrap;}
