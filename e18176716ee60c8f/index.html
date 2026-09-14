@@ -713,6 +713,7 @@
       return a.name.localeCompare(b.name);
     });
     const totalBalance = results.filter(r => r.hasTopup).reduce((a,r) => a + r.balance, 0);
+    const totalSpendAll = results.reduce((a,r) => a + (r.totalSpendAllTime||0), 0);
     document.getElementById('saldoTotalHead').textContent = 'Total projetado: ' + fmtUSD(totalBalance);
 
     const rows = results.map(r => {
@@ -725,9 +726,14 @@
         '<td class="num cell-muted">' + fmtUSD(r.totalSpendAllTime) + '</td>' +
       '</tr>';
     }).join('');
+    const totalRow = '<tr style="font-weight:700; border-top:2px solid var(--line);">' +
+      '<td>TOTAL</td>' +
+      '<td class="num">' + fmtUSD(totalBalance) + '</td>' +
+      '<td class="num">' + fmtUSD(totalSpendAll) + '</td>' +
+    '</tr>';
     document.getElementById('saldoWrap').innerHTML =
       '<table><thead><tr><th style="text-align:left;">Conta</th><th>Saldo</th><th>Gasto total</th></tr></thead><tbody>' +
-      (rows || '<tr><td colspan="3" class="empty-state">Nenhuma conta ainda.</td></tr>') + '</tbody></table>';
+      (rows || '<tr><td colspan="3" class="empty-state">Nenhuma conta ainda.</td></tr>') + totalRow + '</tbody></table>';
 
     const sortedTopups = topups.slice().sort((a,b) => b.date.localeCompare(a.date));
     const topupRows = sortedTopups.map(t =>
