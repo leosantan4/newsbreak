@@ -9,13 +9,19 @@ Also pulls the campaign/ad-set/ad hierarchy and computes each campaign's
 least one ON ad inside it) so the dashboard doesn't have to guess.
 
 Reads tokens from env vars: NEWSBREAK_TOKEN_VINI, NEWSBREAK_TOKEN_PRETORIAN,
-NEWSBREAK_TOKEN_NEIA (set as GitHub Actions repo secrets).
+NEWSBREAK_TOKEN_NEIA, REDTRACK_API_KEY (set as GitHub Actions repo secrets).
+
+Venda/faturamento (and the cpa/roas derived from them) come from RedTrack,
+not NewsBreak's own pixel — NewsBreak's "complete_payment" event undercounts
+or overcounts real sales on several days (confirmed 2026-09-14/15/16), while
+RedTrack sees the actual checkout postback. NewsBreak stays the cost source.
 """
 import json
 import os
 import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 DATA_PATH = os.path.join(os.path.dirname(__file__), "..", "e18176716ee60c8f", "data.json")
 
@@ -36,6 +42,8 @@ def display_name(account_key, raw_name):
 
 PRESERVE_BEFORE = "2026-09-01"
 BASE = "https://business.newsbreak.com/business-api/v1"
+REDTRACK_BASE = "https://api.redtrack.io"
+REDTRACK_SOURCE_MAP = {"VINI": "vini", "PRETORIAN": "pretorian", "NEIA": "neia"}
 
 # NewsBreak's reported "cost" is only 97% of what's actually charged — the
 # platform keeps a 3% fee on top. Real cost = reported cost / 0.97.
@@ -83,6 +91,67 @@ def row_to_doc(r):
         "cpa": round(cost / venda, 2) if venda else None,
         "roas": round(fat / cost, 4) if cost else None,
     }
+
+
+def redtrack_account_key(source_title):
+    upper = (source_title or "").upper()
+    for needle, key in REDTRACK_SOURCE_MAP.items():
+        if needle in upper:
+            return key
+    return None
+
+
+def fetch_redtrack_report(date_from, date_to):
+    api_key = os.environ["REDTRACK_API_KEY"]
+    qs = urllib.parse.urlencode({
+        "api_key": api_key,
+        "group": "source,date",
+        "date_from": date_from,
+        "date_to": date_to,
+        "timezone": "America/Sao_Paulo",
+    })
+    req = urllib.request.Request(f"{REDTRACK_BASE}/report?{qs}", method="GET")
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        return json.loads(resp.read())
+
+
+def build_redtrack_overrides():
+    """Returns (by_account, earliest): by_account[key][date] = {venda, faturamento};
+    earliest[key] = first date RedTrack has any row for that account. Dates
+    before that per account are left on NewsBreak's numbers — the RedTrack
+    campaign may not have existed yet, so a "no row" there doesn't mean
+    zero sales."""
+    today = datetime.now(ZoneInfo("America/Sao_Paulo")).strftime("%Y-%m-%d")
+    rows = fetch_redtrack_report(PRESERVE_BEFORE, today)
+    by_account, earliest = {}, {}
+    for r in rows:
+        key = redtrack_account_key(r.get("source"))
+        if not key:
+            continue
+        date = r["date"]
+        by_account.setdefault(key, {})[date] = {
+            "venda": r.get("convtype1", 0) or 0,
+            "faturamento": round(r.get("revenuetype1", 0) or 0, 2),
+        }
+        if key not in earliest or date < earliest[key]:
+            earliest[key] = date
+    return by_account, earliest
+
+
+def apply_redtrack_overrides(existing, account_key, redtrack_by_account, redtrack_earliest):
+    start = redtrack_earliest.get(account_key)
+    if not start:
+        return
+    overrides = redtrack_by_account.get(account_key, {})
+    for date, doc in existing.items():
+        if date < start:
+            continue
+        o = overrides.get(date, {"venda": 0, "faturamento": 0})
+        doc["venda"] = o["venda"]
+        doc["faturamento"] = o["faturamento"]
+        doc["cpa"] = round(doc["cost"] / o["venda"], 2) if o["venda"] else None
+        doc["roas"] = round(o["faturamento"] / doc["cost"], 4) if doc["cost"] else None
+        doc["vendaSource"] = "redtrack"
 
 
 def get_ad_accounts(token):
@@ -203,6 +272,8 @@ def main():
     with open(DATA_PATH) as f:
         current = json.load(f)
 
+    redtrack_by_account, redtrack_earliest = build_redtrack_overrides()
+
     all_campaigns = []
     sub_accounts = current.setdefault("subAccounts", {})
     for key, env_var in ACCOUNTS.items():
@@ -218,6 +289,8 @@ def main():
             doc = row_to_doc(r)
             doc["partial"] = True
             existing[r["date"]] = doc
+
+        apply_redtrack_overrides(existing, key, redtrack_by_account, redtrack_earliest)
 
         all_campaigns.extend(build_campaigns(token, key))
         build_subaccount_costs(token, key, sub_accounts)

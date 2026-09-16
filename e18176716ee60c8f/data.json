@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-16T21:39:07.534863+00:00",
+  "generatedAt": "2026-09-16T22:00:59.515753+00:00",
   "accounts": {
     "vini": {
       "2026-08-20": {
@@ -22,9 +22,10 @@
         "ic": 1,
         "custoIc": 2.98,
         "venda": 0,
-        "faturamento": 0.0,
+        "faturamento": 0,
         "cpa": null,
-        "roas": 0.0
+        "roas": 0.0,
+        "vendaSource": "redtrack"
       },
       "2026-08-21": {
         "click": 7858,
@@ -46,9 +47,10 @@
         "ic": 10,
         "custoIc": 20.25,
         "venda": 1,
-        "faturamento": 265.0,
+        "faturamento": 265,
         "cpa": 202.51,
-        "roas": 1.3086
+        "roas": 1.3086,
+        "vendaSource": "redtrack"
       },
       "2026-09-11": {
         "date": "2026-09-11",
@@ -58,9 +60,10 @@
         "ic": 9,
         "custoIc": 49.31,
         "venda": 1,
-        "faturamento": 265.0,
+        "faturamento": 265,
         "cpa": 443.75,
-        "roas": 0.5972
+        "roas": 0.5972,
+        "vendaSource": "redtrack"
       },
       "2026-08-26": {
         "click": 13046,
@@ -119,9 +122,10 @@
         "ic": 0,
         "custoIc": null,
         "venda": 0,
-        "faturamento": 0.0,
+        "faturamento": 0,
         "cpa": null,
-        "roas": 0.0
+        "roas": 0.0,
+        "vendaSource": "redtrack"
       },
       "2026-09-06": {
         "date": "2026-09-06",
@@ -131,9 +135,10 @@
         "ic": 16,
         "custoIc": 23.64,
         "venda": 1,
-        "faturamento": 265.0,
+        "faturamento": 265,
         "cpa": 378.23,
-        "roas": 0.7006
+        "roas": 0.7006,
+        "vendaSource": "redtrack"
       },
       "2026-08-28": {
         "click": 3018,
@@ -155,9 +160,10 @@
         "ic": 35,
         "custoIc": 26.58,
         "venda": 4,
-        "faturamento": 1060.0,
-        "cpa": 232.55,
-        "roas": 1.1395
+        "faturamento": 1060,
+        "cpa": 232.56,
+        "roas": 1.1395,
+        "vendaSource": "redtrack"
       },
       "2026-09-09": {
         "date": "2026-09-09",
@@ -167,9 +173,10 @@
         "ic": 0,
         "custoIc": null,
         "venda": 0,
-        "faturamento": 0.0,
+        "faturamento": 0,
         "cpa": null,
-        "roas": 0.0
+        "roas": 0.0,
+        "vendaSource": "redtrack"
       },
       "2026-08-24": {
         "click": 4739,
@@ -203,9 +210,10 @@
         "ic": 1,
         "custoIc": 0.85,
         "venda": 0,
-        "faturamento": 0.0,
+        "faturamento": 0,
         "cpa": null,
-        "roas": 0.0
+        "roas": 0.0,
+        "vendaSource": "redtrack"
       },
       "2026-09-04": {
         "date": "2026-09-04",
@@ -215,9 +223,10 @@
         "ic": 31,
         "custoIc": 21.93,
         "venda": 6,
-        "faturamento": 1590.0,
-        "cpa": 113.32,
-        "roas": 2.3386
+        "faturamento": 1590,
+        "cpa": 113.31,
+        "roas": 2.3386,
+        "vendaSource": "redtrack"
       },
       "2026-08-29": {
         "click": 4069,
@@ -251,9 +260,10 @@
         "ic": 54,
         "custoIc": 14.0,
         "venda": 9,
-        "faturamento": 2385.0,
+        "faturamento": 2385,
         "cpa": 84.01,
-        "roas": 3.1543
+        "roas": 3.1543,
+        "vendaSource": "redtrack"
       },
       "2026-09-02": {
         "date": "2026-09-02",
@@ -263,9 +273,10 @@
         "ic": 0,
         "custoIc": null,
         "venda": 0,
-        "faturamento": 0.0,
+        "faturamento": 0,
         "cpa": null,
-        "roas": 0.0
+        "roas": 0.0,
+        "vendaSource": "redtrack"
       },
       "2026-08-23": {
         "click": 4375,
@@ -287,9 +298,10 @@
         "ic": 2,
         "custoIc": 103.52,
         "venda": 0,
-        "faturamento": 0.0,
+        "faturamento": 0,
         "cpa": null,
-        "roas": 0.0
+        "roas": 0.0,
+        "vendaSource": "redtrack"
       },
       "2026-09-13": {
         "date": "2026-09-13",
@@ -299,9 +311,10 @@
         "ic": 15,
         "custoIc": 19.79,
         "venda": 0,
-        "faturamento": 0.0,
+        "faturamento": 0,
         "cpa": null,
-        "roas": 0.0
+        "roas": 0.0,
+        "vendaSource": "redtrack"
       },
       "2026-09-14": {
         "date": "2026-09-14",
@@ -311,9 +324,10 @@
         "ic": 14,
         "custoIc": 21.86,
         "venda": 1,
-        "faturamento": 265.0,
+        "faturamento": 265,
         "cpa": 306.08,
-        "roas": 0.8658
+        "roas": 0.8658,
+        "vendaSource": "redtrack"
       },
       "2026-09-15": {
         "date": "2026-09-15",
@@ -323,9 +337,10 @@
         "ic": 11,
         "custoIc": 31.84,
         "venda": 1,
-        "faturamento": 265.0,
+        "faturamento": 265,
         "cpa": 350.26,
-        "roas": 0.7566
+        "roas": 0.7566,
+        "vendaSource": "redtrack"
       },
       "2026-09-16": {
         "date": "2026-09-16",
@@ -335,10 +350,11 @@
         "ic": 1,
         "custoIc": 0.35,
         "venda": 0,
-        "faturamento": 0.0,
+        "faturamento": 0,
         "cpa": null,
         "roas": 0.0,
-        "partial": true
+        "partial": true,
+        "vendaSource": "redtrack"
       }
     },
     "pretorian": {
@@ -350,9 +366,10 @@
         "ic": 0,
         "custoIc": null,
         "venda": 0,
-        "faturamento": 0.0,
+        "faturamento": 0,
         "cpa": null,
-        "roas": 0.0
+        "roas": 0.0,
+        "vendaSource": "redtrack"
       },
       "2026-09-07": {
         "date": "2026-09-07",
@@ -362,9 +379,10 @@
         "ic": 9,
         "custoIc": 21.41,
         "venda": 3,
-        "faturamento": 795.0,
+        "faturamento": 795,
         "cpa": 64.24,
-        "roas": 4.1252
+        "roas": 4.1252,
+        "vendaSource": "redtrack"
       },
       "2026-09-11": {
         "date": "2026-09-11",
@@ -374,9 +392,10 @@
         "ic": 24,
         "custoIc": 27.84,
         "venda": 3,
-        "faturamento": 795.0,
+        "faturamento": 795,
         "cpa": 222.72,
-        "roas": 1.1898
+        "roas": 1.1898,
+        "vendaSource": "redtrack"
       },
       "2026-08-30": {
         "click": 4996,
@@ -422,9 +441,10 @@
         "ic": 30,
         "custoIc": 25.51,
         "venda": 3,
-        "faturamento": 795.0,
+        "faturamento": 795,
         "cpa": 255.13,
-        "roas": 1.0387
+        "roas": 1.0387,
+        "vendaSource": "redtrack"
       },
       "2026-09-06": {
         "date": "2026-09-06",
@@ -434,9 +454,10 @@
         "ic": 13,
         "custoIc": 20.75,
         "venda": 2,
-        "faturamento": 530.0,
+        "faturamento": 530,
         "cpa": 134.88,
-        "roas": 1.9647
+        "roas": 1.9647,
+        "vendaSource": "redtrack"
       },
       "2026-08-28": {
         "click": 1200,
@@ -458,9 +479,10 @@
         "ic": 73,
         "custoIc": 20.89,
         "venda": 14,
-        "faturamento": 3710.0,
+        "faturamento": 3710,
         "cpa": 108.9,
-        "roas": 2.4334
+        "roas": 2.4334,
+        "vendaSource": "redtrack"
       },
       "2026-09-09": {
         "date": "2026-09-09",
@@ -470,9 +492,10 @@
         "ic": 0,
         "custoIc": null,
         "venda": 0,
-        "faturamento": 0.0,
+        "faturamento": 0,
         "cpa": null,
-        "roas": 0.0
+        "roas": 0.0,
+        "vendaSource": "redtrack"
       },
       "2026-09-08": {
         "date": "2026-09-08",
@@ -482,9 +505,10 @@
         "ic": 0,
         "custoIc": null,
         "venda": 0,
-        "faturamento": 0.0,
+        "faturamento": 0,
         "cpa": null,
-        "roas": 0.0
+        "roas": 0.0,
+        "vendaSource": "redtrack"
       },
       "2026-09-04": {
         "date": "2026-09-04",
@@ -494,9 +518,10 @@
         "ic": 14,
         "custoIc": 36.13,
         "venda": 2,
-        "faturamento": 530.0,
+        "faturamento": 530,
         "cpa": 252.9,
-        "roas": 1.0479
+        "roas": 1.0478,
+        "vendaSource": "redtrack"
       },
       "2026-08-29": {
         "click": 5662,
@@ -518,9 +543,10 @@
         "ic": 0,
         "custoIc": null,
         "venda": 0,
-        "faturamento": 0.0,
+        "faturamento": 0,
         "cpa": null,
-        "roas": 0.0
+        "roas": 0.0,
+        "vendaSource": "redtrack"
       },
       "2026-09-12": {
         "date": "2026-09-12",
@@ -530,9 +556,10 @@
         "ic": 27,
         "custoIc": 26.31,
         "venda": 2,
-        "faturamento": 530.0,
+        "faturamento": 530,
         "cpa": 355.21,
-        "roas": 0.746
+        "roas": 0.746,
+        "vendaSource": "redtrack"
       },
       "2026-09-13": {
         "date": "2026-09-13",
@@ -542,9 +569,10 @@
         "ic": 39,
         "custoIc": 21.71,
         "venda": 9,
-        "faturamento": 2385.0,
+        "faturamento": 2385,
         "cpa": 94.08,
-        "roas": 2.8168
+        "roas": 2.8168,
+        "vendaSource": "redtrack"
       },
       "2026-09-14": {
         "date": "2026-09-14",
@@ -554,9 +582,10 @@
         "ic": 9,
         "custoIc": 34.26,
         "venda": 1,
-        "faturamento": 265.0,
+        "faturamento": 265,
         "cpa": 308.31,
-        "roas": 0.8595
+        "roas": 0.8595,
+        "vendaSource": "redtrack"
       },
       "2026-09-15": {
         "date": "2026-09-15",
@@ -566,9 +595,10 @@
         "ic": 6,
         "custoIc": 47.13,
         "venda": 0,
-        "faturamento": 0.0,
+        "faturamento": 0,
         "cpa": null,
-        "roas": 0.0
+        "roas": 0.0,
+        "vendaSource": "redtrack"
       },
       "2026-09-16": {
         "date": "2026-09-16",
@@ -577,11 +607,12 @@
         "cpc": 0.1082,
         "ic": 12,
         "custoIc": 36.18,
-        "venda": 2,
-        "faturamento": 530.0,
-        "cpa": 217.06,
-        "roas": 1.2209,
-        "partial": true
+        "venda": 4,
+        "faturamento": 1060,
+        "cpa": 108.53,
+        "roas": 2.4418,
+        "partial": true,
+        "vendaSource": "redtrack"
       }
     },
     "neia": {
@@ -593,9 +624,10 @@
         "ic": 8,
         "custoIc": 33.3,
         "venda": 0,
-        "faturamento": 0.0,
+        "faturamento": 0,
         "cpa": null,
-        "roas": 0.0
+        "roas": 0.0,
+        "vendaSource": "redtrack"
       },
       "2026-09-11": {
         "date": "2026-09-11",
@@ -605,9 +637,10 @@
         "ic": 14,
         "custoIc": 56.52,
         "venda": 4,
-        "faturamento": 1060.0,
+        "faturamento": 1060,
         "cpa": 197.84,
-        "roas": 1.3395
+        "roas": 1.3395,
+        "vendaSource": "redtrack"
       },
       "2026-09-10": {
         "date": "2026-09-10",
@@ -617,9 +650,10 @@
         "ic": 12,
         "custoIc": 43.42,
         "venda": 4,
-        "faturamento": 1060.0,
+        "faturamento": 1060,
         "cpa": 130.26,
-        "roas": 2.0344
+        "roas": 2.0344,
+        "vendaSource": "redtrack"
       },
       "2026-09-06": {
         "date": "2026-09-06",
@@ -629,9 +663,10 @@
         "ic": 30,
         "custoIc": 21.39,
         "venda": 5,
-        "faturamento": 1325.0,
+        "faturamento": 1325,
         "cpa": 128.34,
-        "roas": 2.0648
+        "roas": 2.0648,
+        "vendaSource": "redtrack"
       },
       "2026-09-05": {
         "date": "2026-09-05",
@@ -641,9 +676,10 @@
         "ic": 17,
         "custoIc": 28.42,
         "venda": 2,
-        "faturamento": 530.0,
+        "faturamento": 530,
         "cpa": 241.57,
-        "roas": 1.097
+        "roas": 1.097,
+        "vendaSource": "redtrack"
       },
       "2026-09-09": {
         "date": "2026-09-09",
@@ -653,9 +689,10 @@
         "ic": 16,
         "custoIc": 28.34,
         "venda": 1,
-        "faturamento": 265.0,
+        "faturamento": 265,
         "cpa": 453.44,
-        "roas": 0.5844
+        "roas": 0.5844,
+        "vendaSource": "redtrack"
       },
       "2026-09-08": {
         "date": "2026-09-08",
@@ -665,9 +702,10 @@
         "ic": 5,
         "custoIc": 84.9,
         "venda": 1,
-        "faturamento": 265.0,
+        "faturamento": 265,
         "cpa": 424.5,
-        "roas": 0.6243
+        "roas": 0.6243,
+        "vendaSource": "redtrack"
       },
       "2026-09-12": {
         "date": "2026-09-12",
@@ -677,9 +715,10 @@
         "ic": 5,
         "custoIc": 82.9,
         "venda": 2,
-        "faturamento": 530.0,
+        "faturamento": 530,
         "cpa": 207.25,
-        "roas": 1.2786
+        "roas": 1.2786,
+        "vendaSource": "redtrack"
       },
       "2026-09-13": {
         "date": "2026-09-13",
@@ -689,9 +728,10 @@
         "ic": 0,
         "custoIc": null,
         "venda": 0,
-        "faturamento": 0.0,
+        "faturamento": 0,
         "cpa": null,
-        "roas": 0.0
+        "roas": 0.0,
+        "vendaSource": "redtrack"
       },
       "2026-09-14": {
         "date": "2026-09-14",
@@ -701,9 +741,10 @@
         "ic": 29,
         "custoIc": 28.93,
         "venda": 5,
-        "faturamento": 1325.0,
+        "faturamento": 1325,
         "cpa": 167.78,
-        "roas": 1.5794
+        "roas": 1.5794,
+        "vendaSource": "redtrack"
       },
       "2026-09-15": {
         "date": "2026-09-15",
@@ -713,9 +754,10 @@
         "ic": 9,
         "custoIc": 53.54,
         "venda": 2,
-        "faturamento": 530.0,
+        "faturamento": 530,
         "cpa": 240.93,
-        "roas": 1.0999
+        "roas": 1.0999,
+        "vendaSource": "redtrack"
       },
       "2026-09-16": {
         "date": "2026-09-16",
@@ -725,10 +767,11 @@
         "ic": 0,
         "custoIc": null,
         "venda": 0,
-        "faturamento": 0.0,
+        "faturamento": 0,
         "cpa": null,
         "roas": 0.0,
-        "partial": true
+        "partial": true,
+        "vendaSource": "redtrack"
       }
     }
   },
