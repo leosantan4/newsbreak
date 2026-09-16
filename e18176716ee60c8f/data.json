@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-16T19:00:56.335116+00:00",
+  "generatedAt": "2026-09-16T20:02:20.993878+00:00",
   "accounts": {
     "vini": {
       "2026-08-20": {
@@ -330,8 +330,8 @@
       "2026-09-16": {
         "date": "2026-09-16",
         "cost": 0.35,
-        "click": 2,
-        "cpc": 0.1739,
+        "click": 3,
+        "cpc": 0.1159,
         "ic": 1,
         "custoIc": 0.35,
         "venda": 0,
@@ -572,11 +572,11 @@
       },
       "2026-09-16": {
         "date": "2026-09-16",
-        "cost": 333.07,
-        "click": 3248,
-        "cpc": 0.1025,
-        "ic": 9,
-        "custoIc": 37.01,
+        "cost": 381.43,
+        "click": 3585,
+        "cpc": 0.1064,
+        "ic": 10,
+        "custoIc": 38.14,
         "venda": 0,
         "faturamento": 0.0,
         "cpa": null,
@@ -720,8 +720,8 @@
       "2026-09-16": {
         "date": "2026-09-16",
         "cost": 1.61,
-        "click": 7,
-        "cpc": 0.2303,
+        "click": 8,
+        "cpc": 0.2015,
         "ic": 0,
         "custoIc": null,
         "venda": 0,
@@ -3045,23 +3045,23 @@
       "adAccountId": "2092650872932954114",
       "adAccountName": "NB_RN_GL_CQZ-104328",
       "objective": "WEB_CONVERSION",
-      "activeBudget": null,
+      "activeBudget": 200.0,
       "status": "OFF",
       "onlineStatus": "INACTIVE",
-      "adSetsOn": 0,
+      "adSetsOn": 1,
       "adSetsTotal": 1,
       "reallyActive": false,
       "adSets": [
         {
           "id": "2100116876517359617",
           "name": "C6-328 - 16/09",
-          "status": "OFF",
-          "onlineStatus": "INACTIVE",
+          "status": "ON",
+          "onlineStatus": "ACTIVE",
           "budget": 200.0,
           "budgetType": "DAILY",
-          "adsOn": 0,
+          "adsOn": 1,
           "adsTotal": 1,
-          "reallyActive": false
+          "reallyActive": true
         }
       ]
     },
@@ -3342,23 +3342,23 @@
       "adAccountId": "2092651615328956418",
       "adAccountName": "NB_RN_GL_CQZ-251353",
       "objective": "WEB_CONVERSION",
-      "activeBudget": null,
-      "status": "OFF",
-      "onlineStatus": "INACTIVE",
-      "adSetsOn": 0,
+      "activeBudget": 1000.0,
+      "status": "ON",
+      "onlineStatus": "ACTIVE",
+      "adSetsOn": 1,
       "adSetsTotal": 1,
-      "reallyActive": false,
+      "reallyActive": true,
       "adSets": [
         {
           "id": "2093915734792404993",
           "name": "C11-353 Pretorian - 16/09",
-          "status": "OFF",
-          "onlineStatus": "INACTIVE",
-          "budget": 200.0,
+          "status": "ON",
+          "onlineStatus": "ACTIVE",
+          "budget": 1000.0,
           "budgetType": "DAILY",
-          "adsOn": 0,
+          "adsOn": 1,
           "adsTotal": 2,
-          "reallyActive": false
+          "reallyActive": true
         }
       ]
     },
@@ -4474,7 +4474,7 @@
         "2026-09-13": 73.13,
         "2026-09-14": 0.05,
         "2026-09-15": 56.61,
-        "2026-09-16": 70.16
+        "2026-09-16": 81.1
       }
     },
     "2092651430510989314": {
@@ -4494,7 +4494,7 @@
         "2026-09-13": 72.85,
         "2026-09-14": 0.29,
         "2026-09-15": 56.51,
-        "2026-09-16": 62.42
+        "2026-09-16": 75.06
       }
     },
     "2092650872932954114": {
@@ -4516,7 +4516,7 @@
         "2026-09-13": 74.16,
         "2026-09-14": 0.11,
         "2026-09-15": 54.41,
-        "2026-09-16": 63.67
+        "2026-09-16": 66.94
       }
     },
     "2092650262376353794": {
@@ -4538,7 +4538,7 @@
         "2026-09-13": 519.5,
         "2026-09-14": 251.94,
         "2026-09-15": 62.07,
-        "2026-09-16": 68.0
+        "2026-09-16": 79.44
       }
     },
     "2092651194715607042": {
@@ -4558,7 +4558,7 @@
         "2026-09-13": 107.07,
         "2026-09-14": 55.92,
         "2026-09-15": 53.16,
-        "2026-09-16": 68.81
+        "2026-09-16": 78.89
       }
     },
     "2095652240399503361": {
