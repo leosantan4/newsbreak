@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-16T10:12:50.115678+00:00",
+  "generatedAt": "2026-09-16T15:07:34.369736+00:00",
   "accounts": {
     "vini": {
       "2026-08-20": {
@@ -329,9 +329,9 @@
       },
       "2026-09-16": {
         "date": "2026-09-16",
-        "cost": 0.06,
+        "cost": 0.1,
         "click": 2,
-        "cpc": 0.0316,
+        "cpc": 0.0486,
         "ic": 0,
         "custoIc": null,
         "venda": 0,
@@ -572,11 +572,11 @@
       },
       "2026-09-16": {
         "date": "2026-09-16",
-        "cost": 0.03,
-        "click": 0,
-        "cpc": 0,
-        "ic": 1,
-        "custoIc": 0.03,
+        "cost": 95.87,
+        "click": 1173,
+        "cpc": 0.0817,
+        "ic": 3,
+        "custoIc": 31.96,
         "venda": 0,
         "faturamento": 0.0,
         "cpa": null,
@@ -719,9 +719,9 @@
       },
       "2026-09-16": {
         "date": "2026-09-16",
-        "cost": 1.06,
-        "click": 3,
-        "cpc": 0.3529,
+        "cost": 1.11,
+        "click": 4,
+        "cpc": 0.2769,
         "ic": 0,
         "custoIc": null,
         "venda": 0,
@@ -2574,15 +2574,15 @@
       "activeBudget": null,
       "status": "OFF",
       "onlineStatus": "INACTIVE",
-      "adSetsOn": 1,
+      "adSetsOn": 0,
       "adSetsTotal": 1,
       "reallyActive": false,
       "adSets": [
         {
           "id": "2099717506731540482",
           "name": "C11-602 Pretorian - 15/09",
-          "status": "ON",
-          "onlineStatus": "ACTIVE",
+          "status": "OFF",
+          "onlineStatus": "INACTIVE",
           "budget": 200.0,
           "budgetType": "DAILY",
           "adsOn": 0,
@@ -2601,15 +2601,15 @@
       "activeBudget": null,
       "status": "OFF",
       "onlineStatus": "INACTIVE",
-      "adSetsOn": 1,
+      "adSetsOn": 0,
       "adSetsTotal": 1,
       "reallyActive": false,
       "adSets": [
         {
           "id": "2099019509700489218",
           "name": "C10-602 Pretorian - 13/09",
-          "status": "ON",
-          "onlineStatus": "ACTIVE",
+          "status": "OFF",
+          "onlineStatus": "INACTIVE",
           "budget": 200.0,
           "budgetType": "DAILY",
           "adsOn": 0,
@@ -2856,7 +2856,7 @@
       "adAccountId": "2092651194715607042",
       "adAccountName": "NB_RN_GL_CQZ-408433",
       "objective": "WEB_CONVERSION",
-      "activeBudget": 200.0,
+      "activeBudget": null,
       "status": "OFF",
       "onlineStatus": "INACTIVE",
       "adSetsOn": 1,
@@ -2870,9 +2870,9 @@
           "onlineStatus": "ACTIVE",
           "budget": 200.0,
           "budgetType": "DAILY",
-          "adsOn": 1,
+          "adsOn": 0,
           "adsTotal": 1,
-          "reallyActive": true
+          "reallyActive": false
         }
       ]
     },
@@ -3075,15 +3075,15 @@
       "activeBudget": null,
       "status": "OFF",
       "onlineStatus": "INACTIVE",
-      "adSetsOn": 1,
+      "adSetsOn": 0,
       "adSetsTotal": 1,
       "reallyActive": false,
       "adSets": [
         {
           "id": "2099725762547875841",
           "name": "C5-328 - 15/09",
-          "status": "ON",
-          "onlineStatus": "ACTIVE",
+          "status": "OFF",
+          "onlineStatus": "INACTIVE",
           "budget": 200.0,
           "budgetType": "DAILY",
           "adsOn": 0,
@@ -3207,23 +3207,23 @@
       "adAccountId": "2092651615328956418",
       "adAccountName": "NB_RN_GL_CQZ-251353",
       "objective": "WEB_CONVERSION",
-      "activeBudget": 200.0,
+      "activeBudget": null,
       "status": "OFF",
       "onlineStatus": "INACTIVE",
-      "adSetsOn": 1,
+      "adSetsOn": 0,
       "adSetsTotal": 1,
       "reallyActive": false,
       "adSets": [
         {
           "id": "2099715734884052993",
           "name": "C10-353 Pretorian - 15/09",
-          "status": "ON",
-          "onlineStatus": "ACTIVE",
+          "status": "OFF",
+          "onlineStatus": "INACTIVE",
           "budget": 200.0,
           "budgetType": "DAILY",
-          "adsOn": 1,
+          "adsOn": 0,
           "adsTotal": 1,
-          "reallyActive": true
+          "reallyActive": false
         }
       ]
     },
@@ -4452,7 +4452,7 @@
         "2026-09-13": 52.29,
         "2026-09-14": 67.07,
         "2026-09-15": 185.11,
-        "2026-09-16": 0.01
+        "2026-09-16": 0.04
       }
     },
     "2092651615328956418": {
@@ -4473,7 +4473,8 @@
         "2026-09-12": 157.99,
         "2026-09-13": 73.13,
         "2026-09-14": 0.05,
-        "2026-09-15": 56.61
+        "2026-09-15": 56.61,
+        "2026-09-16": 21.74
       }
     },
     "2092651430510989314": {
@@ -4493,7 +4494,7 @@
         "2026-09-13": 72.85,
         "2026-09-14": 0.29,
         "2026-09-15": 56.51,
-        "2026-09-16": 0.0
+        "2026-09-16": 15.48
       }
     },
     "2092650872932954114": {
@@ -4515,7 +4516,7 @@
         "2026-09-13": 74.16,
         "2026-09-14": 0.11,
         "2026-09-15": 54.41,
-        "2026-09-16": 0.03
+        "2026-09-16": 18.39
       }
     },
     "2092650262376353794": {
@@ -4537,7 +4538,7 @@
         "2026-09-13": 519.5,
         "2026-09-14": 251.94,
         "2026-09-15": 62.07,
-        "2026-09-16": 0.0
+        "2026-09-16": 19.81
       }
     },
     "2092651194715607042": {
@@ -4556,7 +4557,8 @@
         "2026-09-12": 145.8,
         "2026-09-13": 107.07,
         "2026-09-14": 55.92,
-        "2026-09-15": 53.16
+        "2026-09-15": 53.16,
+        "2026-09-16": 20.44
       }
     },
     "2095652240399503361": {
@@ -4572,7 +4574,8 @@
         "2026-09-12": 100.4,
         "2026-09-13": 0.21,
         "2026-09-14": 95.86,
-        "2026-09-15": 59.15
+        "2026-09-15": 59.15,
+        "2026-09-16": 0.0
       }
     },
     "2095651834350579713": {
@@ -4589,7 +4592,7 @@
         "2026-09-13": 0.13,
         "2026-09-14": 81.97,
         "2026-09-15": 56.64,
-        "2026-09-16": 0.62
+        "2026-09-16": 0.63
       }
     },
     "2095653440758976514": {
@@ -4623,7 +4626,7 @@
         "2026-09-13": 0.17,
         "2026-09-14": 41.61,
         "2026-09-15": 103.46,
-        "2026-09-16": 0.0
+        "2026-09-16": 0.01
       }
     },
     "2095653063225479170": {
@@ -4640,7 +4643,7 @@
         "2026-09-13": 0.02,
         "2026-09-14": 396.24,
         "2026-09-15": 204.89,
-        "2026-09-16": 0.07
+        "2026-09-16": 0.1
       }
     }
   }
