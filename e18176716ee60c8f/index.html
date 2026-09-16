@@ -358,6 +358,15 @@
   const data = {vini:{}, pretorian:{}, neia:{}};
   const ACCOUNT_LABEL = {vini:'Vini', pretorian:'Pretorian', neia:'Neia'};
 
+  function subDisplayName(accId){
+    const acc = subAccounts[accId];
+    if (!acc) return accId;
+    if (acc.displayName) return acc.displayName;
+    const label = ACCOUNT_LABEL[acc.accountKey] || acc.accountKey || '';
+    const suffix = (acc.name || '').split('-').pop();
+    return label ? (label + '-' + suffix) : (acc.name || accId);
+  }
+
   function todayKey(){
     return new Intl.DateTimeFormat('en-CA', {timeZone:'America/Sao_Paulo', year:'numeric', month:'2-digit', day:'2-digit'}).format(new Date());
   }
@@ -701,7 +710,7 @@
       const st = campStatus(c);
       return '<tr>' +
         '<td>' + (ACCOUNT_LABEL[c.accountKey] || c.accountKey) + '</td>' +
-        '<td>' + c.name + '<div class="cell-muted" style="font-size:11px;">' + c.adAccountName + '</div></td>' +
+        '<td>' + c.name + '<div class="cell-muted" style="font-size:11px;">' + (subAccounts[c.adAccountId] ? subDisplayName(c.adAccountId) : c.adAccountName) + '</div></td>' +
         '<td class="num roas-pill ' + st.cls + '">' + st.label + '</td>' +
         '<td class="num">' + c.adSetsOn + ' / ' + c.adSetsTotal + '</td>' +
         '<td class="num">' + fmtUSD(c.activeBudget) + (c.activeBudget!=null ? '/dia' : '') + '</td>' +
@@ -716,10 +725,11 @@
   function computeBalance(accId){
     const acc = subAccounts[accId];
     if (!acc) return null;
+    const name = subDisplayName(accId);
     const allDates = Object.keys(acc.costByDate);
     const totalSpendAllTime = allDates.reduce((a,d) => a + (acc.costByDate[d]||0), 0);
     const accTopups = topups.filter(t => t.accountId === accId);
-    if (!accTopups.length) return {hasTopup:false, name:acc.name, totalSpendAllTime};
+    if (!accTopups.length) return {hasTopup:false, name, totalSpendAllTime};
     const totalTopup = accTopups.reduce((a,t) => a + t.amount, 0);
     const earliest = accTopups.map(t => t.date).sort()[0];
     const dates = allDates.filter(d => d >= earliest).sort();
@@ -728,14 +738,14 @@
     const avgDaily = last7.length ? last7.reduce((a,d) => a + (acc.costByDate[d]||0), 0) / last7.length : 0;
     const balance = totalTopup - totalSpend;
     const daysLeft = avgDaily > 0 ? balance / avgDaily : null;
-    return {hasTopup:true, name:acc.name, totalTopup, totalSpend, totalSpendAllTime, balance, avgDaily, daysLeft};
+    return {hasTopup:true, name, totalTopup, totalSpend, totalSpendAllTime, balance, avgDaily, daysLeft};
   }
 
   function renderTopupAccountSelect(){
     const sel = document.getElementById('topupAccount');
     if (sel.dataset.filled) return;
-    const ids = Object.keys(subAccounts).sort((a,b) => subAccounts[a].name.localeCompare(subAccounts[b].name));
-    sel.innerHTML = ids.map(id => '<option value="' + id + '">' + subAccounts[id].name + '</option>').join('');
+    const ids = Object.keys(subAccounts).sort((a,b) => subDisplayName(a).localeCompare(subDisplayName(b)));
+    sel.innerHTML = ids.map(id => '<option value="' + id + '">' + subDisplayName(id) + '</option>').join('');
     if (ids.length) sel.dataset.filled = '1';
   }
 
@@ -772,7 +782,7 @@
 
     const sortedTopups = topups.slice().sort((a,b) => b.date.localeCompare(a.date));
     const topupRows = sortedTopups.map(t =>
-      '<tr><td class="num">' + fmtDateShort(t.date) + '</td><td>' + t.accountName + '</td><td class="num">' + fmtUSD(t.amount) + '</td>' +
+      '<tr><td class="num">' + fmtDateShort(t.date) + '</td><td>' + (subAccounts[t.accountId] ? subDisplayName(t.accountId) : t.accountName) + '</td><td class="num">' + fmtUSD(t.amount) + '</td>' +
       '<td class="num"><button class="remove-btn" data-topup-id="' + t.id + '">remover</button></td></tr>'
     ).join('');
     document.getElementById('topupsTableWrap').innerHTML =

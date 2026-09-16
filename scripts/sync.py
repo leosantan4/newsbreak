@@ -25,6 +25,15 @@ ACCOUNTS = {
     "neia": "NEWSBREAK_TOKEN_NEIA",
 }
 
+ACCOUNT_LABEL = {"vini": "Vini", "pretorian": "Pretorian", "neia": "Neia"}
+
+
+def display_name(account_key, raw_name):
+    """Friendly name for a sub-account, e.g. 'Pretorian-408433' instead of
+    the raw 'NB_RN_GL_CQZ-408433' — too many sub-accounts to tell apart by id."""
+    suffix = raw_name.rsplit("-", 1)[-1] if raw_name else ""
+    return f"{ACCOUNT_LABEL.get(account_key, account_key)}-{suffix}"
+
 PRESERVE_BEFORE = "2026-09-01"
 BASE = "https://business.newsbreak.com/business-api/v1"
 
@@ -110,7 +119,7 @@ def get_list(path, token, ad_account_id):
     return rows
 
 
-def build_subaccount_costs(token, existing_sub_accounts):
+def build_subaccount_costs(token, account_key, existing_sub_accounts):
     """Per-sub-account daily cost, so account balances (topup - spend) can be
     computed. Merges into existing_sub_accounts, keyed by ad account id."""
     history = fetch_report(token, "LAST_30_DAYS", dimensions=["DATE", "AD_ACCOUNT"])
@@ -121,6 +130,8 @@ def build_subaccount_costs(token, existing_sub_accounts):
         acc_id = r["adAccountId"]
         acc = existing_sub_accounts.setdefault(acc_id, {"name": r.get("adAccount", acc_id), "costByDate": {}})
         acc["name"] = r.get("adAccount", acc["name"])
+        acc["accountKey"] = account_key
+        acc["displayName"] = display_name(account_key, acc["name"])
         acc["costByDate"][r["date"]] = round((r["costDecimal"] / 100) * FEE_FACTOR, 2)
     return existing_sub_accounts
 
@@ -209,7 +220,7 @@ def main():
             existing[r["date"]] = doc
 
         all_campaigns.extend(build_campaigns(token, key))
-        build_subaccount_costs(token, sub_accounts)
+        build_subaccount_costs(token, key, sub_accounts)
 
     current["campaigns"] = all_campaigns
     current["generatedAt"] = datetime.now(timezone.utc).isoformat()
