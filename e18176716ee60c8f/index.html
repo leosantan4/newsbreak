@@ -354,7 +354,7 @@
       <p class="dre-intro">Localização por estado (Texas, Florida...) não é exposta pela API pública do VTurb, só por país — o mapa detalhado é exclusivo do painel deles.</p>
     </div>
 
-    <footer id="footerNote">Link privado — não compartilhe. Dados sincronizados a cada 30 min. Venda e faturamento vêm do RedTrack (postback real do checkout, mais confiável que o pixel da NewsBreak); gasto vem direto da NewsBreak.</footer>
+    <footer id="footerNote">Link privado — não compartilhe. Painel, Campanhas e VSL atualizam em tempo real (a cada ~20s, direto da NewsBreak/RedTrack/VTurb). Histórico e Saldo sincronizam a cada poucos minutos. Venda e faturamento vêm do RedTrack (postback real do checkout, mais confiável que o pixel da NewsBreak); gasto vem direto da NewsBreak.</footer>
   </main>
 </div>
 
@@ -379,6 +379,8 @@
   const TOPUPS_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/topups';
   const SYNC_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/sync-now';
   const VTURB_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/vturb/stats';
+  const LIVE_PAINEL_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/live/painel';
+  const LIVE_CAMPANHAS_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/live/campanhas';
   const DATA_API = './data.json';
   const COSTS_API_KEY = 'HrcFGQUO4Wq_smjouctnZuDZxIatbjPT';
 
@@ -1031,11 +1033,35 @@
     loadCosts();
     loadTopups();
   }
+  function loadLivePainel(){
+    fetch(LIVE_PAINEL_API, {cache:'no-store'}).then(r => r.json()).then(json => {
+      if (!json || json.error) return;
+      ACCOUNTS.forEach(a => {
+        const doc = json.accounts && json.accounts[a.key];
+        if (doc) data[a.key][json.date] = doc;
+      });
+      generatedAt = json.generatedAt;
+      renderAll();
+    }).catch(() => {});
+  }
+
+  function loadLiveCampanhas(){
+    fetch(LIVE_CAMPANHAS_API, {cache:'no-store'}).then(r => r.json()).then(json => {
+      if (!json || json.error || !json.campaigns) return;
+      campaigns = json.campaigns;
+      renderCampanhas();
+    }).catch(() => {});
+  }
+
   loadData();
   loadVturb();
+  loadLivePainel();
+  loadLiveCampanhas();
   setInterval(loadData, 2 * 60 * 1000);
   setInterval(loadCosts, 30000);
   setInterval(loadVturb, 15000);
+  setInterval(loadLivePainel, 20000);
+  setInterval(loadLiveCampanhas, 20000);
 })();
 </script>
 </body>
