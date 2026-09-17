@@ -1040,6 +1040,11 @@
         const doc = json.accounts && json.accounts[a.key];
         if (doc) data[a.key][json.date] = doc;
       });
+      if (json.subAccountCosts) {
+        Object.entries(json.subAccountCosts).forEach(([id, sc]) => {
+          if (subAccounts[id]) subAccounts[id].costByDate[json.date] = sc.cost;
+        });
+      }
       generatedAt = json.generatedAt;
       renderAll();
     }).catch(() => {});
