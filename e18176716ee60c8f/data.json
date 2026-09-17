@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-17T16:38:11.267798+00:00",
+  "generatedAt": "2026-09-17T19:35:47.122454+00:00",
   "accounts": {
     "vini": {
       "2026-08-20": {
@@ -628,15 +628,15 @@
       },
       "2026-09-17": {
         "date": "2026-09-17",
-        "cost": 130.89,
-        "click": 761,
-        "cpc": 0.172,
-        "ic": 8,
-        "custoIc": 16.36,
-        "venda": 0,
-        "faturamento": 0,
-        "cpa": null,
-        "roas": 0.0,
+        "cost": 208.9,
+        "click": 1078,
+        "cpc": 0.1938,
+        "ic": 11,
+        "custoIc": 18.99,
+        "venda": 1,
+        "faturamento": 265,
+        "cpa": 208.9,
+        "roas": 1.2685,
         "partial": true,
         "vendaSource": "redtrack"
       }
@@ -800,15 +800,15 @@
       },
       "2026-09-17": {
         "date": "2026-09-17",
-        "cost": 197.52,
-        "click": 1358,
-        "cpc": 0.1454,
-        "ic": 4,
-        "custoIc": 49.38,
-        "venda": 3,
-        "faturamento": 795,
-        "cpa": 65.84,
-        "roas": 4.0249,
+        "cost": 591.0,
+        "click": 3219,
+        "cpc": 0.1836,
+        "ic": 9,
+        "custoIc": 65.67,
+        "venda": 4,
+        "faturamento": 1060,
+        "cpa": 147.75,
+        "roas": 1.7936,
         "partial": true,
         "vendaSource": "redtrack"
       }
@@ -3424,12 +3424,12 @@
       "adAccountId": "2092651615328956418",
       "adAccountName": "NB_RN_GL_CQZ-251353",
       "objective": "WEB_CONVERSION",
-      "activeBudget": 400.0,
-      "status": "ON",
-      "onlineStatus": "ACTIVE",
+      "activeBudget": 1200.0,
+      "status": "OFF",
+      "onlineStatus": "INACTIVE",
       "adSetsOn": 2,
       "adSetsTotal": 2,
-      "reallyActive": true,
+      "reallyActive": false,
       "adSets": [
         {
           "id": "2100414339547443201",
@@ -3447,7 +3447,7 @@
           "name": "C11-353 Pretorian - 16/09",
           "status": "ON",
           "onlineStatus": "ACTIVE",
-          "budget": 200.0,
+          "budget": 1000.0,
           "budgetType": "DAILY",
           "adsOn": 1,
           "adsTotal": 2,
@@ -4137,45 +4137,45 @@
       "adAccountId": "2095653440758976514",
       "adAccountName": "NB_RN_GL_CQZ-138207",
       "objective": "WEB_CONVERSION",
-      "activeBudget": 2200.0,
+      "activeBudget": null,
       "status": "ON",
-      "onlineStatus": "ACTIVE",
-      "adSetsOn": 3,
+      "onlineStatus": "WARNING",
+      "adSetsOn": 0,
       "adSetsTotal": 3,
-      "reallyActive": true,
+      "reallyActive": false,
       "adSets": [
         {
           "id": "2100412582716534785",
           "name": "C7-207 Neia - 17/09 - 12",
-          "status": "ON",
-          "onlineStatus": "ACTIVE",
+          "status": "OFF",
+          "onlineStatus": "INACTIVE",
           "budget": 200.0,
           "budgetType": "DAILY",
           "adsOn": 1,
           "adsTotal": 1,
-          "reallyActive": true
+          "reallyActive": false
         },
         {
           "id": "2100412576177614850",
           "name": "C7-207 Neia - 17/09 - 67",
-          "status": "ON",
-          "onlineStatus": "ACTIVE",
-          "budget": 1000.0,
+          "status": "OFF",
+          "onlineStatus": "INACTIVE",
+          "budget": 3000.0,
           "budgetType": "DAILY",
           "adsOn": 1,
           "adsTotal": 1,
-          "reallyActive": true
+          "reallyActive": false
         },
         {
           "id": "2100411058637025282",
           "name": "C7-207 Neia - 17/09 - 64",
-          "status": "ON",
-          "onlineStatus": "ACTIVE",
-          "budget": 1000.0,
+          "status": "OFF",
+          "onlineStatus": "INACTIVE",
+          "budget": 500.0,
           "budgetType": "DAILY",
           "adsOn": 1,
           "adsTotal": 1,
-          "reallyActive": true
+          "reallyActive": false
         }
       ]
     },
@@ -4627,7 +4627,7 @@
         "2026-09-14": 0.05,
         "2026-09-15": 56.61,
         "2026-09-16": 496.23,
-        "2026-09-17": 130.66
+        "2026-09-17": 208.64
       },
       "accountKey": "pretorian",
       "displayName": "Pretorian-251353"
@@ -4650,7 +4650,7 @@
         "2026-09-14": 0.29,
         "2026-09-15": 56.51,
         "2026-09-16": 82.57,
-        "2026-09-17": 0.02
+        "2026-09-17": 0.03
       },
       "accountKey": "pretorian",
       "displayName": "Pretorian-690602"
@@ -4723,7 +4723,7 @@
         "2026-09-14": 55.92,
         "2026-09-15": 53.16,
         "2026-09-16": 86.13,
-        "2026-09-17": 0.07
+        "2026-09-17": 0.08
       },
       "accountKey": "pretorian",
       "displayName": "Pretorian-408433"
@@ -4782,7 +4782,7 @@
         "2026-09-14": 223.24,
         "2026-09-15": 57.72,
         "2026-09-16": 0.48,
-        "2026-09-17": 197.45
+        "2026-09-17": 590.93
       },
       "accountKey": "neia",
       "displayName": "Neia-138207"
