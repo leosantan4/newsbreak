@@ -124,6 +124,16 @@
   .alert-banner .ic{font-size:18px; flex:none;}
   .alert-banner b{font-weight:700;}
 
+  .vturb-live{display:flex; align-items:center; gap:12px; padding:24px 18px;}
+  .vturb-live .live-dot{width:12px; height:12px;}
+  .vturb-live-count{font-size:36px; font-weight:700; letter-spacing:-.01em;}
+  .stat-bars{padding:6px 18px 18px;}
+  .stat-bar-row{display:flex; align-items:center; gap:12px; padding:7px 0; font-size:13px;}
+  .stat-bar-label{min-width:100px; text-transform:capitalize;}
+  .stat-bar-track{flex:1; height:8px; background:var(--neutral-bg); border-radius:4px; overflow:hidden;}
+  .stat-bar-fill{height:100%; background:var(--accent); border-radius:4px;}
+  .stat-bar-value{min-width:80px; text-align:right; color:var(--muted);}
+
   @media (max-width: 720px){
     .shell{flex-direction:column;}
     .sidenav{
@@ -166,6 +176,7 @@
     <button class="nav-item" data-view="dre"><span class="ic">▤</span>DRE Mensal</button>
     <button class="nav-item" data-view="custos"><span class="ic">$</span>Custos Fixos</button>
     <button class="nav-item" data-view="saldo"><span class="ic">◒</span>Saldo</button>
+    <button class="nav-item" data-view="vturb"><span class="ic">◉</span>VSL</button>
   </nav>
 
   <main class="content">
@@ -311,6 +322,38 @@
       </section>
     </div>
 
+    <div id="vturbView" hidden>
+      <section class="panel">
+        <div class="panel-head">
+          <h2 id="vturbPlayerName">VSL</h2>
+          <span id="vturbUpdated"></span>
+        </div>
+        <div class="vturb-live">
+          <span class="live-dot live"></span>
+          <span class="vturb-live-count num" id="vturbLiveCount">–</span>
+          <span class="cell-muted">assistindo agora (últimos 5 min)</span>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Dispositivo</h2>
+          <span>últimas 24h</span>
+        </div>
+        <div class="stat-bars" id="vturbDevices"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>País</h2>
+          <span>últimas 24h</span>
+        </div>
+        <div class="stat-bars" id="vturbCountries"></div>
+      </section>
+
+      <p class="dre-intro">Localização por estado (Texas, Florida...) não é exposta pela API pública do VTurb, só por país — o mapa detalhado é exclusivo do painel deles.</p>
+    </div>
+
     <footer id="footerNote">Link privado — não compartilhe. Dados sincronizados a cada 30 min. Venda e faturamento vêm do RedTrack (postback real do checkout, mais confiável que o pixel da NewsBreak); gasto vem direto da NewsBreak.</footer>
   </main>
 </div>
@@ -335,6 +378,7 @@
   const COSTS_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/costs';
   const TOPUPS_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/topups';
   const SYNC_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/sync-now';
+  const VTURB_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/vturb/stats';
   const DATA_API = './data.json';
   const COSTS_API_KEY = 'HrcFGQUO4Wq_smjouctnZuDZxIatbjPT';
 
@@ -483,6 +527,41 @@
     document.getElementById('dreView').hidden = view !== 'dre';
     document.getElementById('custosView').hidden = view !== 'custos';
     document.getElementById('saldoView').hidden = view !== 'saldo';
+    document.getElementById('vturbView').hidden = view !== 'vturb';
+  }
+
+  function vturbBreakdown(list){
+    const key = x => x.total_viewed_device_uniq ?? x.total_viewed ?? 0;
+    const total = (list || []).reduce((a,x) => a + key(x), 0);
+    return (list || [])
+      .map(x => ({label: x.grouped_field, value: key(x), pct: total ? key(x) / total * 100 : 0}))
+      .sort((a,b) => b.value - a.value);
+  }
+
+  function vturbBarsHtml(rows){
+    if (!rows.length) return '<div class="empty-state">Sem dados ainda.</div>';
+    return rows.map(r =>
+      '<div class="stat-bar-row">' +
+        '<span class="stat-bar-label">' + r.label + '</span>' +
+        '<div class="stat-bar-track"><div class="stat-bar-fill" style="width:' + r.pct.toFixed(0) + '%;"></div></div>' +
+        '<span class="stat-bar-value num">' + r.value + ' · ' + r.pct.toFixed(0) + '%</span>' +
+      '</div>'
+    ).join('');
+  }
+
+  function renderVturb(data){
+    document.getElementById('vturbPlayerName').textContent = 'HONEY - RITUAL GATES- DICAPRIO';
+    document.getElementById('vturbLiveCount').textContent = data.liveNow != null ? data.liveNow : '–';
+    document.getElementById('vturbDevices').innerHTML = vturbBarsHtml(vturbBreakdown(data.devices));
+    document.getElementById('vturbCountries').innerHTML = vturbBarsHtml(vturbBreakdown(data.countries));
+    const secs = data.updatedAt ? Math.round((Date.now() - new Date(data.updatedAt).getTime()) / 1000) : null;
+    document.getElementById('vturbUpdated').textContent = secs != null ? ('atualizado há ' + secs + 's') : '';
+  }
+
+  function loadVturb(){
+    fetch(VTURB_API, {cache:'no-store'}).then(r => r.json()).then(data => {
+      if (data && !data.error) renderVturb(data);
+    }).catch(() => {});
   }
 
   function renderPeriodTabs(){
@@ -953,8 +1032,10 @@
     loadTopups();
   }
   loadData();
+  loadVturb();
   setInterval(loadData, 2 * 60 * 1000);
   setInterval(loadCosts, 30000);
+  setInterval(loadVturb, 15000);
 })();
 </script>
 </body>
