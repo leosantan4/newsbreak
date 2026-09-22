@@ -29,9 +29,10 @@ ACCOUNTS = {
     "vini": "NEWSBREAK_TOKEN_VINI",
     "pretorian": "NEWSBREAK_TOKEN_PRETORIAN",
     "neia": "NEWSBREAK_TOKEN_NEIA",
+    "alan": "NEWSBREAK_TOKEN_ALAN",
 }
 
-ACCOUNT_LABEL = {"vini": "Vini", "pretorian": "Pretorian", "neia": "Neia"}
+ACCOUNT_LABEL = {"vini": "Vini", "pretorian": "Pretorian", "neia": "Neia", "alan": "Alan"}
 
 
 def display_name(account_key, raw_name):
@@ -43,7 +44,7 @@ def display_name(account_key, raw_name):
 PRESERVE_BEFORE = "2026-09-01"
 BASE = "https://business.newsbreak.com/business-api/v1"
 REDTRACK_BASE = "https://api.redtrack.io"
-REDTRACK_SOURCE_MAP = {"VINI": "vini", "PRETORIAN": "pretorian", "NEIA": "neia"}
+REDTRACK_SOURCE_MAP = {"VINI": "vini", "PRETORIAN": "pretorian", "NEIA": "neia", "ALAN": "alan"}
 
 # NewsBreak's reported "cost" is only 97% of what's actually charged — the
 # platform keeps a 3% fee on top. Real cost = reported cost / 0.97.
@@ -272,34 +273,59 @@ def main():
     with open(DATA_PATH) as f:
         current = json.load(f)
 
-    redtrack_by_account, redtrack_earliest = build_redtrack_overrides()
+    try:
+        redtrack_by_account, redtrack_earliest = build_redtrack_overrides()
+    except Exception as exc:
+        print(f"[warn] RedTrack fetch failed, keeping existing venda/faturamento: {exc}")
+        redtrack_by_account, redtrack_earliest = {}, {}
+
+    previous_campaigns_by_key = {}
+    for c in current.get("campaigns", []):
+        previous_campaigns_by_key.setdefault(c.get("accountKey"), []).append(c)
 
     all_campaigns = []
     sub_accounts = current.setdefault("subAccounts", {})
+    failed_accounts = []
     for key, env_var in ACCOUNTS.items():
-        token = os.environ[env_var]
-        existing = current["accounts"].setdefault(key, {})
-        history = fetch_report(token, "LAST_30_DAYS")
-        today = fetch_report(token, "TODAY")
-        for r in history:
-            if r["date"] < PRESERVE_BEFORE:
-                continue
-            existing[r["date"]] = row_to_doc(r)
-        for r in today:
-            doc = row_to_doc(r)
-            doc["partial"] = True
-            existing[r["date"]] = doc
+        token = os.environ.get(env_var)
+        if not token:
+            print(f"[warn] {key}: no token set for {env_var}, skipping")
+            all_campaigns.extend(previous_campaigns_by_key.get(key, []))
+            continue
+        try:
+            existing = current["accounts"].setdefault(key, {})
+            history = fetch_report(token, "LAST_30_DAYS")
+            today = fetch_report(token, "TODAY")
+            for r in history:
+                if r["date"] < PRESERVE_BEFORE:
+                    continue
+                existing[r["date"]] = row_to_doc(r)
+            for r in today:
+                doc = row_to_doc(r)
+                doc["partial"] = True
+                existing[r["date"]] = doc
 
-        apply_redtrack_overrides(existing, key, redtrack_by_account, redtrack_earliest)
+            apply_redtrack_overrides(existing, key, redtrack_by_account, redtrack_earliest)
 
-        all_campaigns.extend(build_campaigns(token, key))
-        build_subaccount_costs(token, key, sub_accounts)
+            all_campaigns.extend(build_campaigns(token, key))
+            build_subaccount_costs(token, key, sub_accounts)
+        except Exception as exc:
+            print(f"[warn] {key}: sync failed, keeping previous data: {exc}")
+            failed_accounts.append(key)
+            all_campaigns.extend(previous_campaigns_by_key.get(key, []))
 
     current["campaigns"] = all_campaigns
     current["generatedAt"] = datetime.now(timezone.utc).isoformat()
+    current["failedAccounts"] = failed_accounts
 
     with open(DATA_PATH, "w", encoding="utf-8") as f:
         json.dump(current, f, ensure_ascii=False, indent=2)
+
+    if failed_accounts:
+        # Don't fail the whole workflow run over accounts that were already
+        # broken before this sync — healthy accounts still got fresh data,
+        # and it's flagged in data.json (failedAccounts) for the dashboard.
+        print(f"[warn] completed with failures: {failed_accounts}")
 
 
 if __name__ == "__main__":

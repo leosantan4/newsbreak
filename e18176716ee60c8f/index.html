@@ -184,7 +184,7 @@
     <header>
       <div>
         <h1>Native Ads — Painel Diário</h1>
-        <p>Gasto e conversão das contas NewsBreak · Vini, Pretorian, Neia</p>
+        <p>Gasto e conversão das contas NewsBreak · Vini, Pretorian, Neia, Alan</p>
       </div>
       <div class="panel-head-right">
         <button class="icon-btn" id="syncNowBtn">↻ Atualizar agora</button>
@@ -369,6 +369,7 @@
     {key:'vini', label:'Vini'},
     {key:'pretorian', label:'Pretorian'},
     {key:'neia', label:'Neia'},
+    {key:'alan', label:'Alan'},
   ];
   const WEEKDAYS = ['Dom','Seg','Ter','Qua','Qui','Sex','Sab'];
   const MONTHS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
@@ -406,8 +407,8 @@
   let campaigns = [];
   let subAccounts = {};
   let topups = [];
-  const data = {vini:{}, pretorian:{}, neia:{}};
-  const ACCOUNT_LABEL = {vini:'Vini', pretorian:'Pretorian', neia:'Neia'};
+  const data = {vini:{}, pretorian:{}, neia:{}, alan:{}};
+  const ACCOUNT_LABEL = {vini:'Vini', pretorian:'Pretorian', neia:'Neia', alan:'Alan'};
 
   function subDisplayName(accId){
     const acc = subAccounts[accId];
@@ -1042,7 +1043,9 @@
   function loadLivePainel(){
     fetch(LIVE_PAINEL_API, {cache:'no-store'}).then(r => r.json()).then(json => {
       if (!json || json.error) return;
+      const failedNB = new Set(json.failedAccounts || []);
       ACCOUNTS.forEach(a => {
+        if (failedNB.has(a.key)) return;
         const doc = json.accounts && json.accounts[a.key];
         if (doc) data[a.key][json.date] = doc;
       });
@@ -1058,8 +1061,15 @@
 
   function loadLiveCampanhas(){
     fetch(LIVE_CAMPANHAS_API, {cache:'no-store'}).then(r => r.json()).then(json => {
-      if (!json || json.error || !json.campaigns) return;
-      campaigns = json.campaigns;
+      if (!json || json.error) return;
+      const failedNB = new Set(json.failedAccounts || []);
+      if (failedNB.size) {
+        const keepExisting = campaigns.filter(c => failedNB.has(c.accountKey));
+        const fresh = (json.campaigns || []).filter(c => !failedNB.has(c.accountKey));
+        campaigns = keepExisting.concat(fresh);
+      } else if (json.campaigns) {
+        campaigns = json.campaigns;
+      }
       renderCampanhas();
     }).catch(() => {});
   }

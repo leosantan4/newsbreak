@@ -23,6 +23,7 @@ jobs:
           NEWSBREAK_TOKEN_VINI: ${{ secrets.NEWSBREAK_TOKEN_VINI }}
           NEWSBREAK_TOKEN_PRETORIAN: ${{ secrets.NEWSBREAK_TOKEN_PRETORIAN }}
           NEWSBREAK_TOKEN_NEIA: ${{ secrets.NEWSBREAK_TOKEN_NEIA }}
+          NEWSBREAK_TOKEN_ALAN: ${{ secrets.NEWSBREAK_TOKEN_ALAN }}
           REDTRACK_API_KEY: ${{ secrets.REDTRACK_API_KEY }}
         run: python3 scripts/sync.py
 
