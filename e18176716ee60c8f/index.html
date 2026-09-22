@@ -582,7 +582,7 @@
     const grid = document.getElementById('summaryGrid');
     const dates = periodDates(period);
     const periodLabel = PERIODS.find(p => p.key === period).label;
-    const cards = [{key:'geral', label:'Total (3 contas)', total:true}, ...ACCOUNTS];
+    const cards = [{key:'geral', label:'Total (' + ACCOUNTS.length + ' contas)', total:true}, ...ACCOUNTS];
     grid.innerHTML = cards.map(c => {
       const docs = c.total ? geralDocs() : data[c.key];
       const agg = aggregate(docs, dates);
