@@ -110,6 +110,7 @@
   .cost-form-grid{display:grid; grid-template-columns:140px 1fr 140px auto; gap:10px; align-items:end; padding:16px 18px; border-bottom:1px solid var(--line);}
   @media (min-width: 721px){
     #topupForm{grid-template-columns:1fr 150px 150px auto;}
+    #costForm{grid-template-columns:120px 1fr 130px 120px auto;}
   }
   .cost-form-grid label{display:block; font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); margin-bottom:5px;}
   .cost-form-grid input, .cost-form-grid select{width:100%; border:1px solid var(--line); border-radius:8px; padding:9px 10px; font:inherit; font-size:13px; background:var(--bg); color:var(--ink); min-width:0;}
@@ -262,6 +263,10 @@
           <div>
             <label for="costName">Descrição</label>
             <input type="text" id="costName" placeholder="Ex: Vturb">
+          </div>
+          <div>
+            <label for="costPaidBy">Pago por</label>
+            <input type="text" id="costPaidBy" placeholder="Ex: Leonardo">
           </div>
           <div>
             <label for="costValue">Valor (USD)</label>
@@ -716,12 +721,12 @@
 
     const sorted = costs.slice().sort((a,b) => b.date.localeCompare(a.date));
     const rows = sorted.map(c =>
-      '<tr><td class="num">' + fmtDateShort(c.date) + '</td><td>' + c.name + '</td><td class="num">' + fmtUSD(c.value) + '</td>' +
+      '<tr><td class="num">' + fmtDateShort(c.date) + '</td><td>' + c.name + '</td><td>' + (c.paidBy || '–') + '</td><td class="num">' + fmtUSD(c.value) + '</td>' +
       '<td class="num"><button class="remove-btn" data-id="' + c.id + '">remover</button></td></tr>'
     ).join('');
     document.getElementById('costsTableWrap').innerHTML =
-      '<table><thead><tr><th style="text-align:left;">Data</th><th style="text-align:left;">Descrição</th><th>Valor</th><th></th></tr></thead><tbody>' +
-      (rows || '<tr><td colspan="4" class="empty-state">Nenhum custo lançado ainda.</td></tr>') + '</tbody></table>';
+      '<table><thead><tr><th style="text-align:left;">Data</th><th style="text-align:left;">Descrição</th><th style="text-align:left;">Pago por</th><th>Valor</th><th></th></tr></thead><tbody>' +
+      (rows || '<tr><td colspan="5" class="empty-state">Nenhum custo lançado ainda.</td></tr>') + '</tbody></table>';
     document.querySelectorAll('.remove-btn').forEach(btn => btn.addEventListener('click', () => deleteCost(btn.dataset.id)));
   }
 
@@ -925,6 +930,7 @@
     e.preventDefault();
     const dateVal = document.getElementById('costDate').value;
     const name = document.getElementById('costName').value.trim();
+    const paidBy = document.getElementById('costPaidBy').value.trim();
     const value = parseFloat(document.getElementById('costValue').value);
     const note = document.getElementById('costsNote');
     if (!dateVal || !name || !isFinite(value)) return;
@@ -932,7 +938,7 @@
     fetch(COSTS_API, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY },
-      body: JSON.stringify({ date: dateVal, name, value }),
+      body: JSON.stringify({ date: dateVal, name, value, paidBy }),
     }).then(r => { if (!r.ok) throw new Error(); return r.json(); })
       .then(json => {
         costs = json.costs || [];
