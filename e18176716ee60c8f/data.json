@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-25T19:53:17.605585+00:00",
+  "generatedAt": "2026-09-25T22:34:26.647122+00:00",
   "accounts": {
     "vini": {
       "2026-08-20": {
@@ -816,15 +816,15 @@
     "alan": {
       "2026-09-25": {
         "date": "2026-09-25",
-        "cost": 336.79,
-        "click": 4518,
-        "cpc": 0.0745,
+        "cost": 823.08,
+        "click": 9272,
+        "cpc": 0.0888,
         "ic": 0,
         "custoIc": null,
-        "venda": 3,
-        "faturamento": 530,
-        "cpa": 112.26,
-        "roas": 1.5737,
+        "venda": 6,
+        "faturamento": 1325,
+        "cpa": 137.18,
+        "roas": 1.6098,
         "partial": true,
         "vendaSource": "redtrack"
       }
@@ -4846,7 +4846,7 @@
     "2102513991702962177": {
       "name": "[Agency Aurora] Alan 1",
       "costByDate": {
-        "2026-09-25": 152.71
+        "2026-09-25": 392.72
       },
       "accountKey": "alan",
       "displayName": "Alan-[Agency Aurora] Alan 1"
@@ -4854,7 +4854,7 @@
     "2102514348373991426": {
       "name": "[Agency Aurora] Alan 2",
       "costByDate": {
-        "2026-09-25": 184.09
+        "2026-09-25": 430.36
       },
       "accountKey": "alan",
       "displayName": "Alan-[Agency Aurora] Alan 2"
