@@ -30,9 +30,10 @@ ACCOUNTS = {
     "pretorian": "NEWSBREAK_TOKEN_PRETORIAN",
     "neia": "NEWSBREAK_TOKEN_NEIA",
     "alan": "NEWSBREAK_TOKEN_ALAN",
+    "troya": "NEWSBREAK_TOKEN_TROYA",
 }
 
-ACCOUNT_LABEL = {"vini": "Vini", "pretorian": "Pretorian", "neia": "Neia", "alan": "Alan"}
+ACCOUNT_LABEL = {"vini": "Vini", "pretorian": "Pretorian", "neia": "Neia", "alan": "Alan", "troya": "Troya"}
 
 
 def display_name(account_key, raw_name):
@@ -44,7 +45,7 @@ def display_name(account_key, raw_name):
 PRESERVE_BEFORE = "2026-09-01"
 BASE = "https://business.newsbreak.com/business-api/v1"
 REDTRACK_BASE = "https://api.redtrack.io"
-REDTRACK_SOURCE_MAP = {"VINI": "vini", "PRETORIAN": "pretorian", "NEIA": "neia", "ALAN": "alan"}
+REDTRACK_SOURCE_MAP = {"VINI": "vini", "PRETORIAN": "pretorian", "NEIA": "neia", "ALAN": "alan", "TROYA": "troya"}
 
 # NewsBreak's reported "cost" is only 97% of what's actually charged — the
 # platform keeps a 3% fee on top. Real cost = reported cost / 0.97.

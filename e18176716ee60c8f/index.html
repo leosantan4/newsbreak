@@ -184,7 +184,7 @@
     <header>
       <div>
         <h1>Native Ads — Painel Diário</h1>
-        <p>Gasto e conversão das contas NewsBreak · Vini, Pretorian, Neia, Alan</p>
+        <p>Gasto e conversão das contas NewsBreak · Vini, Pretorian, Neia, Alan, Troya</p>
       </div>
       <div class="panel-head-right">
         <button class="icon-btn" id="syncNowBtn">↻ Atualizar agora</button>
@@ -370,6 +370,7 @@
     {key:'pretorian', label:'Pretorian'},
     {key:'neia', label:'Neia'},
     {key:'alan', label:'Alan'},
+    {key:'troya', label:'Troya'},
   ];
   const WEEKDAYS = ['Dom','Seg','Ter','Qua','Qui','Sex','Sab'];
   const MONTHS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
@@ -407,8 +408,8 @@
   let campaigns = [];
   let subAccounts = {};
   let topups = [];
-  const data = {vini:{}, pretorian:{}, neia:{}, alan:{}};
-  const ACCOUNT_LABEL = {vini:'Vini', pretorian:'Pretorian', neia:'Neia', alan:'Alan'};
+  const data = {vini:{}, pretorian:{}, neia:{}, alan:{}, troya:{}};
+  const ACCOUNT_LABEL = {vini:'Vini', pretorian:'Pretorian', neia:'Neia', alan:'Alan', troya:'Troya'};
 
   function subDisplayName(accId){
     const acc = subAccounts[accId];
