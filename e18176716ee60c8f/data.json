@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-26T12:38:24.052542+00:00",
+  "generatedAt": "2026-09-26T16:35:57.800685+00:00",
   "accounts": {
     "vini": {
       "2026-08-20": {
@@ -829,20 +829,34 @@
       },
       "2026-09-26": {
         "date": "2026-09-26",
-        "cost": 134.18,
-        "click": 1129,
-        "cpc": 0.1189,
-        "ic": 10,
-        "custoIc": 13.42,
+        "cost": 141.61,
+        "click": 1340,
+        "cpc": 0.1057,
+        "ic": 13,
+        "custoIc": 10.89,
         "venda": 1,
         "faturamento": 265,
-        "cpa": 134.18,
-        "roas": 1.975,
+        "cpa": 141.61,
+        "roas": 1.8713,
         "partial": true,
         "vendaSource": "redtrack"
       }
     },
-    "troya": {}
+    "troya": {
+      "2026-09-26": {
+        "date": "2026-09-26",
+        "cost": 0.02,
+        "click": 0,
+        "cpc": 0,
+        "ic": 0,
+        "custoIc": null,
+        "venda": 0,
+        "faturamento": 0.0,
+        "cpa": null,
+        "roas": 0.0,
+        "partial": true
+      }
+    }
   },
   "campaigns": [
     {
@@ -4524,7 +4538,7 @@
           "id": "2103822150330744833",
           "name": "C2-177 - 26/09 - 1-3-1 - 64",
           "status": "ON",
-          "onlineStatus": "WARNING",
+          "onlineStatus": "ACTIVE",
           "budget": 200.0,
           "budgetType": "DAILY",
           "adsOn": 1,
@@ -4535,7 +4549,7 @@
           "id": "2103822131619545089",
           "name": "C2-177 - 26/09 - 1-3-1 - 63",
           "status": "ON",
-          "onlineStatus": "WARNING",
+          "onlineStatus": "ACTIVE",
           "budget": 200.0,
           "budgetType": "DAILY",
           "adsOn": 1,
@@ -4698,7 +4712,7 @@
           "id": "2103823394118041602",
           "name": "C2-426 - 26/09 - 1-3-1 - 22",
           "status": "ON",
-          "onlineStatus": "WARNING",
+          "onlineStatus": "ACTIVE",
           "budget": 200.0,
           "budgetType": "DAILY",
           "adsOn": 1,
@@ -4709,7 +4723,7 @@
           "id": "2103823360131596290",
           "name": "C2-426 - 26/09 - 1-3-1 - 13",
           "status": "ON",
-          "onlineStatus": "WARNING",
+          "onlineStatus": "ACTIVE",
           "budget": 200.0,
           "budgetType": "DAILY",
           "adsOn": 1,
@@ -5181,7 +5195,7 @@
       "name": "[Agency Aurora] Alan 1",
       "costByDate": {
         "2026-09-25": 760.32,
-        "2026-09-26": 70.78
+        "2026-09-26": 73.69
       },
       "accountKey": "alan",
       "displayName": "Alan-[Agency Aurora] Alan 1"
@@ -5190,10 +5204,18 @@
       "name": "[Agency Aurora] Alan 2",
       "costByDate": {
         "2026-09-25": 776.04,
-        "2026-09-26": 63.4
+        "2026-09-26": 67.92
       },
       "accountKey": "alan",
       "displayName": "Alan-[Agency Aurora] Alan 2"
+    },
+    "2103532431571156993": {
+      "name": "[Agency Aurora] Troya",
+      "costByDate": {
+        "2026-09-26": 0.02
+      },
+      "accountKey": "troya",
+      "displayName": "Troya-[Agency Aurora] Troya"
     }
   },
   "failedAccounts": [
