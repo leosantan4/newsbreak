@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-26T12:20:49.019516+00:00",
+  "generatedAt": "2026-09-26T12:38:24.052542+00:00",
   "accounts": {
     "vini": {
       "2026-08-20": {
@@ -4513,18 +4513,40 @@
       "adAccountId": "2102513991702962177",
       "adAccountName": "[Agency Aurora] Alan 1",
       "objective": "WEB_CONVERSION",
-      "activeBudget": 200.0,
+      "activeBudget": 600.0,
       "status": "ON",
       "onlineStatus": "ACTIVE",
-      "adSetsOn": 1,
-      "adSetsTotal": 1,
+      "adSetsOn": 3,
+      "adSetsTotal": 3,
       "reallyActive": true,
       "adSets": [
         {
-          "id": "2103821285880496129",
-          "name": "C2-177 - 26/09 - 1-3-1 - ",
+          "id": "2103822150330744833",
+          "name": "C2-177 - 26/09 - 1-3-1 - 64",
           "status": "ON",
-          "onlineStatus": "READY",
+          "onlineStatus": "WARNING",
+          "budget": 200.0,
+          "budgetType": "DAILY",
+          "adsOn": 1,
+          "adsTotal": 1,
+          "reallyActive": true
+        },
+        {
+          "id": "2103822131619545089",
+          "name": "C2-177 - 26/09 - 1-3-1 - 63",
+          "status": "ON",
+          "onlineStatus": "WARNING",
+          "budget": 200.0,
+          "budgetType": "DAILY",
+          "adsOn": 1,
+          "adsTotal": 1,
+          "reallyActive": true
+        },
+        {
+          "id": "2103821285880496129",
+          "name": "C2-177 - 26/09 - 1-3-1 - 68",
+          "status": "ON",
+          "onlineStatus": "ACTIVE",
           "budget": 200.0,
           "budgetType": "DAILY",
           "adsOn": 1,
@@ -4659,6 +4681,55 @@
       ]
     },
     {
+      "id": "2103822803911950338",
+      "name": "C2-426 - 26/09 - 1-3-1",
+      "accountKey": "alan",
+      "adAccountId": "2102514348373991426",
+      "adAccountName": "[Agency Aurora] Alan 2",
+      "objective": "WEB_CONVERSION",
+      "activeBudget": 600.0,
+      "status": "ON",
+      "onlineStatus": "ACTIVE",
+      "adSetsOn": 3,
+      "adSetsTotal": 3,
+      "reallyActive": true,
+      "adSets": [
+        {
+          "id": "2103823394118041602",
+          "name": "C2-426 - 26/09 - 1-3-1 - 22",
+          "status": "ON",
+          "onlineStatus": "WARNING",
+          "budget": 200.0,
+          "budgetType": "DAILY",
+          "adsOn": 1,
+          "adsTotal": 1,
+          "reallyActive": true
+        },
+        {
+          "id": "2103823360131596290",
+          "name": "C2-426 - 26/09 - 1-3-1 - 13",
+          "status": "ON",
+          "onlineStatus": "WARNING",
+          "budget": 200.0,
+          "budgetType": "DAILY",
+          "adsOn": 1,
+          "adsTotal": 1,
+          "reallyActive": true
+        },
+        {
+          "id": "2103822932438007810",
+          "name": "C2-426 - 26/09 - 1-3-1 - 12",
+          "status": "ON",
+          "onlineStatus": "ACTIVE",
+          "budget": 200.0,
+          "budgetType": "DAILY",
+          "adsOn": 1,
+          "adsTotal": 1,
+          "reallyActive": true
+        }
+      ]
+    },
+    {
       "id": "2103455306050289666",
       "name": "C1-426 - 25/09 - 1-3-1",
       "accountKey": "alan",
@@ -4679,7 +4750,7 @@
           "onlineStatus": "INACTIVE",
           "budget": 200.0,
           "budgetType": "DAILY",
-          "adsOn": 1,
+          "adsOn": 0,
           "adsTotal": 1,
           "reallyActive": false
         },
