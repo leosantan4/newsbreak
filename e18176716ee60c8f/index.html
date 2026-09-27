@@ -135,6 +135,28 @@
   .stat-bar-fill{height:100%; background:var(--accent); border-radius:4px;}
   .stat-bar-value{min-width:80px; text-align:right; color:var(--muted);}
 
+  .media-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:10px; padding:16px 18px;}
+  .media-item{position:relative; border:2px solid var(--line); border-radius:10px; overflow:hidden; background:var(--bg); aspect-ratio:1; display:flex; align-items:center; justify-content:center; cursor:pointer;}
+  .media-item img, .media-item video{width:100%; height:100%; object-fit:cover; display:block;}
+  .media-item.selected{border-color:var(--accent);}
+  .media-item .media-name{position:absolute; bottom:0; left:0; right:0; background:rgba(0,0,0,.62); color:#fff; font-size:10px; padding:3px 5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .media-item .media-remove{position:absolute; top:3px; right:3px; background:rgba(0,0,0,.62); color:#fff; border:none; border-radius:4px; width:18px; height:18px; font-size:12px; cursor:pointer; line-height:1;}
+
+  .form-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px; padding:16px 18px;}
+  .form-field{display:flex; flex-direction:column; gap:5px;}
+  .form-field label{font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted);}
+  .form-field input, .form-field select{border:1px solid var(--line); border-radius:8px; padding:9px 10px; font:inherit; font-size:13px; background:var(--bg); color:var(--ink); width:100%;}
+  .form-field.span2{grid-column:span 2;}
+  .checkbox-row{display:flex; flex-wrap:wrap; gap:10px 16px;}
+  .checkbox-row label{display:flex; align-items:center; gap:5px; font-size:12.5px; font-weight:400; text-transform:none; letter-spacing:0; color:var(--ink);}
+  .create-log{padding:14px 18px; font-size:12.5px; font-family:"IBM Plex Mono",monospace; white-space:pre-wrap; max-height:280px; overflow-y:auto; background:var(--bg); border-top:1px solid var(--line);}
+  .create-log .ok{color:var(--good);}
+  .create-log .err{color:var(--bad); font-weight:600;}
+  @media (max-width:720px){
+    .form-grid{grid-template-columns:1fr; padding:14px 16px;}
+    .form-field.span2{grid-column:span 1;}
+  }
+
   @media (max-width: 720px){
     .shell{flex-direction:column;}
     .sidenav{
@@ -178,6 +200,7 @@
     <button class="nav-item" data-view="custos"><span class="ic">$</span>Custos Fixos</button>
     <button class="nav-item" data-view="saldo"><span class="ic">◒</span>Saldo</button>
     <button class="nav-item" data-view="vturb"><span class="ic">◉</span>VSL</button>
+    <button class="nav-item" data-view="criar"><span class="ic">✚</span>Criar Campanha</button>
   </nav>
 
   <main class="content">
@@ -359,6 +382,183 @@
       <p class="dre-intro">Localização por estado (Texas, Florida...) não é exposta pela API pública do VTurb, só por país — o mapa detalhado é exclusivo do painel deles.</p>
     </div>
 
+    <div id="criarView" hidden>
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Biblioteca de criativos</h2>
+          <span></span>
+        </div>
+        <div style="padding:14px 18px 0; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+          <input type="file" id="mediaFileInput" accept="image/*,video/*">
+          <button type="button" id="mediaUploadBtn" class="cost-form-grid button" style="border:none; background:var(--accent); color:var(--accent-ink); font:inherit; font-weight:600; font-size:13px; padding:9px 16px; border-radius:8px; cursor:pointer;">Adicionar</button>
+          <span class="cell-muted" id="mediaUploadNote"></span>
+        </div>
+        <div class="media-grid" id="mediaGrid"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Nova campanha</h2>
+          <span></span>
+        </div>
+        <div class="form-grid">
+          <div class="form-field">
+            <label for="ccAccount">Conta</label>
+            <select id="ccAccount"></select>
+          </div>
+          <div class="form-field">
+            <label for="ccAdAccount">Sub-conta</label>
+            <select id="ccAdAccount"></select>
+          </div>
+          <div class="form-field">
+            <label for="ccName">Nome da campanha</label>
+            <input type="text" id="ccName" placeholder="Ex: C1-138 - 27/09">
+          </div>
+          <div class="form-field">
+            <label for="ccObjective">Objetivo</label>
+            <select id="ccObjective">
+              <option value="WEB_CONVERSION" selected>WEB_CONVERSION</option>
+              <option value="APP_CONVERSION">APP_CONVERSION</option>
+              <option value="REACH">REACH</option>
+              <option value="WEB_TRAFFIC">WEB_TRAFFIC</option>
+              <option value="APP_TRAFFIC">APP_TRAFFIC</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Conjunto de anúncios</h2>
+          <span></span>
+        </div>
+        <div class="form-grid">
+          <div class="form-field">
+            <label for="ccBudgetType">Tipo de orçamento</label>
+            <select id="ccBudgetType"><option value="DAILY" selected>Diário</option><option value="TOTAL">Total (vitalício)</option></select>
+          </div>
+          <div class="form-field">
+            <label for="ccBudget">Orçamento (USD)</label>
+            <input type="number" id="ccBudget" step="0.01" min="0" placeholder="200.00">
+          </div>
+          <div class="form-field">
+            <label for="ccStart">Início</label>
+            <input type="datetime-local" id="ccStart">
+          </div>
+          <div class="form-field">
+            <label for="ccEnd">Fim</label>
+            <input type="datetime-local" id="ccEnd">
+          </div>
+          <div class="form-field">
+            <label for="ccBidType">Tipo de lance</label>
+            <select id="ccBidType">
+              <option value="MAX_CONVERSION" selected>MAX_CONVERSION</option>
+              <option value="MAX_CONVERSION_VALUE">MAX_CONVERSION_VALUE</option>
+              <option value="DAY_ONE_MAX_CONVERSION_VALUE">DAY_ONE_MAX_CONVERSION_VALUE</option>
+              <option value="TARGET_CPA">TARGET_CPA</option>
+              <option value="TARGET_ROAS">TARGET_ROAS</option>
+              <option value="DAY_ONE_TARGET_ROAS">DAY_ONE_TARGET_ROAS</option>
+              <option value="CPC">CPC</option>
+              <option value="CPM">CPM</option>
+            </select>
+          </div>
+          <div class="form-field" id="ccBidRateWrap">
+            <label for="ccBidRate">Lance (USD) — CPM / CPC / Target CPA</label>
+            <input type="number" id="ccBidRate" step="0.01" min="0">
+          </div>
+          <div class="form-field" id="ccRoasWrap" hidden>
+            <label for="ccRoas">ROAS alvo</label>
+            <input type="number" id="ccRoas" step="0.01" min="0">
+          </div>
+          <div class="form-field">
+            <label for="ccTrackingId">Tracking ID</label>
+            <input type="text" id="ccTrackingId" placeholder="copie de um conjunto existente na NewsBreak">
+          </div>
+          <div class="form-field">
+            <label for="ccDeliveryRate">Ritmo de entrega</label>
+            <select id="ccDeliveryRate"><option value="ASAP" selected>ASAP</option><option value="EVENLY">EVENLY</option></select>
+          </div>
+          <div class="form-field span2">
+            <label>Plataformas</label>
+            <div class="checkbox-row" id="ccPlatforms">
+              <label><input type="checkbox" value="APP_AND_WEB_UNLIMITED" checked>APP_AND_WEB_UNLIMITED (padrão)</label>
+              <label><input type="checkbox" value="NEWSBREAK">NEWSBREAK</label>
+              <label><input type="checkbox" value="SCOOPZ">SCOOPZ</label>
+              <label><input type="checkbox" value="PREMIUM_PARTNERS_GAMING">PREMIUM_PARTNERS_GAMING</label>
+              <label><input type="checkbox" value="PREMIUM_PARTNERS_NON_GAMING">PREMIUM_PARTNERS_NON_GAMING</label>
+              <label><input type="checkbox" value="PREMIUM_PARTNERS_ALL">PREMIUM_PARTNERS_ALL</label>
+            </div>
+          </div>
+        </div>
+        <p class="costs-note">Marque só uma plataforma "PREMIUM_PARTNERS_*". Se marcar APP_AND_WEB_UNLIMITED, desmarque as outras (ela tem que vir sozinha).</p>
+        <div class="form-grid">
+          <div class="form-field">
+            <label for="tGender">Gênero</label>
+            <select id="tGender"><option value="all" selected>Todos</option><option value="male">Masculino</option><option value="female">Feminino</option><option value="notdisclosed">Não informado</option></select>
+          </div>
+          <div class="form-field">
+            <label for="tAge">Idade (Ctrl/Cmd+clique pra múltiplas)</label>
+            <select id="tAge" multiple size="4">
+              <option value="all" selected>Todas</option>
+              <option value="18-30">18-30</option>
+              <option value="31-44">31-44</option>
+              <option value="45-64">45-64</option>
+              <option value="65+">65+</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label for="tLanguage">Idioma</label>
+            <select id="tLanguage"><option value="all">Todos</option><option value="en_us" selected>Inglês (EUA)</option><option value="es_us">Espanhol (EUA)</option></select>
+          </div>
+          <div class="form-field">
+            <label for="tNetwork">Rede</label>
+            <select id="tNetwork"><option value="all" selected>Todas</option><option value="wifi">WiFi</option><option value="cellular">Dados móveis</option></select>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Anúncio</h2>
+          <span></span>
+        </div>
+        <div class="form-grid">
+          <div class="form-field span2">
+            <label>Criativo (clique num item da biblioteca acima pra selecionar)</label>
+            <div id="ccSelectedCreative" class="cell-muted">Nenhum selecionado</div>
+          </div>
+          <div class="form-field">
+            <label for="ccHeadline">Título</label>
+            <input type="text" id="ccHeadline">
+          </div>
+          <div class="form-field">
+            <label for="ccBrand">Marca</label>
+            <input type="text" id="ccBrand">
+          </div>
+          <div class="form-field span2">
+            <label for="ccDescription">Descrição</label>
+            <input type="text" id="ccDescription">
+          </div>
+          <div class="form-field">
+            <label for="ccCta">Botão (call to action)</label>
+            <input type="text" id="ccCta" placeholder="Learn More">
+          </div>
+          <div class="form-field">
+            <label for="ccDestUrl">URL de destino (link de tracking)</label>
+            <input type="text" id="ccDestUrl" placeholder="https://...">
+          </div>
+          <div class="form-field">
+            <label for="ccStatus">Status inicial</label>
+            <select id="ccStatus"><option value="ON" selected>ON (roda dentro do agendamento)</option><option value="OFF">OFF (pausada)</option></select>
+          </div>
+        </div>
+        <div style="padding:0 18px 16px;">
+          <button type="button" id="ccSubmitBtn" style="border:none; background:var(--accent); color:var(--accent-ink); font:inherit; font-weight:700; font-size:14px; padding:12px 22px; border-radius:8px; cursor:pointer;">Criar campanha</button>
+        </div>
+        <div class="create-log" id="ccLog" hidden></div>
+      </section>
+    </div>
+
     <footer id="footerNote">Link privado — não compartilhe. Painel, Campanhas e VSL atualizam em tempo real (a cada ~20s, direto da NewsBreak/RedTrack/VTurb). Histórico e Saldo sincronizam a cada poucos minutos. Venda e faturamento vêm do RedTrack (postback real do checkout, mais confiável que o pixel da NewsBreak); gasto vem direto da NewsBreak — mas o gasto de HOJE pode estar defasado algumas horas, pois a própria API de relatórios da NewsBreak não fecha o dia em tempo real (confirmado contra o Ad Management deles). Dias anteriores já fecham certo.</footer>
   </main>
 </div>
@@ -388,6 +588,12 @@
   const VTURB_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/vturb/stats';
   const LIVE_PAINEL_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/live/painel';
   const LIVE_CAMPANHAS_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/live/campanhas';
+  const LIBRARY_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/library';
+  const NB_ADACCOUNTS_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/nb/ad-accounts';
+  const NB_UPLOAD_ASSET_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/nb/upload-asset';
+  const NB_CAMPAIGN_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/nb/campaign';
+  const NB_ADSET_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/nb/adset';
+  const NB_AD_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/nb/ad';
   const DATA_API = './data.json';
   const COSTS_API_KEY = 'HrcFGQUO4Wq_smjouctnZuDZxIatbjPT';
 
@@ -537,6 +743,7 @@
     document.getElementById('custosView').hidden = view !== 'custos';
     document.getElementById('saldoView').hidden = view !== 'saldo';
     document.getElementById('vturbView').hidden = view !== 'vturb';
+    document.getElementById('criarView').hidden = view !== 'criar';
   }
 
   function vturbBreakdown(list){
@@ -1075,10 +1282,244 @@
     }).catch(() => {});
   }
 
+  // ---- Criar Campanha ----
+  let libraryItems = [];
+  let selectedLibraryId = null;
+
+  function loadLibraryItems(){
+    fetch(LIBRARY_API, {cache:'no-store'}).then(r => r.json()).then(json => {
+      libraryItems = json.items || [];
+      renderMediaGrid();
+    }).catch(() => {});
+  }
+
+  function updateSelectedCreativeLabel(){
+    const el = document.getElementById('ccSelectedCreative');
+    const item = libraryItems.find(i => i.id === selectedLibraryId);
+    el.textContent = item ? item.name : 'Nenhum selecionado';
+  }
+
+  function renderMediaGrid(){
+    const grid = document.getElementById('mediaGrid');
+    if (!libraryItems.length){ grid.innerHTML = '<div class="empty-state">Nenhum criativo ainda. Envie um acima.</div>'; return; }
+    grid.innerHTML = libraryItems.map(it => {
+      const isVideo = (it.contentType || '').indexOf('video') === 0;
+      const fileUrl = LIBRARY_API + '/' + it.id + '/file';
+      const media = isVideo ? '<video src="' + fileUrl + '" muted></video>' : '<img src="' + fileUrl + '" loading="lazy">';
+      return '<div class="media-item' + (selectedLibraryId === it.id ? ' selected' : '') + '" data-id="' + it.id + '">' +
+        media +
+        '<button type="button" class="media-remove" data-remove-id="' + it.id + '">×</button>' +
+        '<div class="media-name">' + it.name + '</div>' +
+      '</div>';
+    }).join('');
+    grid.querySelectorAll('.media-item').forEach(el => el.addEventListener('click', (e) => {
+      if (e.target.closest('.media-remove')) return;
+      selectedLibraryId = el.dataset.id;
+      renderMediaGrid();
+      updateSelectedCreativeLabel();
+    }));
+    grid.querySelectorAll('.media-remove').forEach(btn => btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      deleteLibraryItem(btn.dataset.removeId);
+    }));
+  }
+
+  function deleteLibraryItem(id){
+    fetch(LIBRARY_API + '/' + id, { method: 'DELETE', headers: { 'X-Access-Key': COSTS_API_KEY } })
+      .then(r => r.json())
+      .then(json => {
+        libraryItems = json.items || [];
+        if (selectedLibraryId === id) selectedLibraryId = null;
+        renderMediaGrid();
+        updateSelectedCreativeLabel();
+      }).catch(() => {});
+  }
+
+  document.getElementById('mediaUploadBtn').addEventListener('click', () => {
+    const input = document.getElementById('mediaFileInput');
+    const note = document.getElementById('mediaUploadNote');
+    const file = input.files[0];
+    if (!file) return;
+    const form = new FormData();
+    form.append('file', file);
+    form.append('name', file.name);
+    note.textContent = 'Enviando…';
+    fetch(LIBRARY_API, { method: 'POST', headers: { 'X-Access-Key': COSTS_API_KEY }, body: form })
+      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+      .then(json => { libraryItems = json.items || []; renderMediaGrid(); input.value = ''; note.textContent = ''; })
+      .catch(() => { note.textContent = 'Falhou — tenta de novo.'; });
+  });
+
+  function loadCcAdAccounts(){
+    const accountKey = document.getElementById('ccAccount').value;
+    const sel = document.getElementById('ccAdAccount');
+    sel.innerHTML = '<option>Carregando…</option>';
+    fetch(NB_ADACCOUNTS_API + '?accountKey=' + accountKey, { headers: { 'X-Access-Key': COSTS_API_KEY } })
+      .then(r => r.json())
+      .then(json => {
+        const accounts = json.accounts || [];
+        sel.innerHTML = accounts.length
+          ? accounts.map(a => '<option value="' + a.id + '">' + a.name + '</option>').join('')
+          : '<option value="">Nenhuma sub-conta encontrada</option>';
+      })
+      .catch(() => { sel.innerHTML = '<option value="">Erro ao carregar</option>'; });
+  }
+
+  function initCriarView(){
+    const accSel = document.getElementById('ccAccount');
+    accSel.innerHTML = ACCOUNTS.map(a => '<option value="' + a.key + '">' + a.label + '</option>').join('');
+    accSel.addEventListener('change', loadCcAdAccounts);
+    loadCcAdAccounts();
+
+    const now = new Date();
+    const in30d = new Date(now.getTime() + 30 * 24 * 3600 * 1000);
+    const toLocalInput = d => {
+      const pad = n => String(n).padStart(2, '0');
+      return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+    };
+    document.getElementById('ccStart').value = toLocalInput(now);
+    document.getElementById('ccEnd').value = toLocalInput(in30d);
+
+    document.getElementById('ccBidType').addEventListener('change', updateBidFieldsVisibility);
+    updateBidFieldsVisibility();
+
+    loadLibraryItems();
+  }
+
+  function updateBidFieldsVisibility(){
+    const bidType = document.getElementById('ccBidType').value;
+    const needsRate = ['CPM', 'CPC', 'TARGET_CPA'].indexOf(bidType) !== -1;
+    const needsRoas = ['TARGET_ROAS', 'DAY_ONE_TARGET_ROAS'].indexOf(bidType) !== -1;
+    document.getElementById('ccBidRateWrap').hidden = !needsRate;
+    document.getElementById('ccRoasWrap').hidden = !needsRoas;
+  }
+
+  function ccLog(msg, cls){
+    const el = document.getElementById('ccLog');
+    el.hidden = false;
+    const line = document.createElement('div');
+    if (cls) line.className = cls;
+    line.textContent = msg;
+    el.appendChild(line);
+    el.scrollTop = el.scrollHeight;
+  }
+
+  document.getElementById('ccSubmitBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('ccSubmitBtn');
+    const log = document.getElementById('ccLog');
+    log.hidden = false;
+    log.innerHTML = '';
+    btn.disabled = true;
+
+    const accountKey = document.getElementById('ccAccount').value;
+    const adAccountId = document.getElementById('ccAdAccount').value;
+    const name = document.getElementById('ccName').value.trim();
+    const objective = document.getElementById('ccObjective').value;
+
+    if (!adAccountId) { ccLog('Escolha uma sub-conta.', 'err'); btn.disabled = false; return; }
+    if (!name) { ccLog('Dá um nome pra campanha.', 'err'); btn.disabled = false; return; }
+    if (!selectedLibraryId) { ccLog('Escolha um criativo na biblioteca.', 'err'); btn.disabled = false; return; }
+
+    try {
+      ccLog('Enviando criativo pra NewsBreak…');
+      const uploadResp = await fetch(NB_UPLOAD_ASSET_API, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY },
+        body: JSON.stringify({ accountKey, adAccountId, libraryId: selectedLibraryId, mediaName: name }),
+      }).then(r => r.json());
+      if (uploadResp.error) throw new Error(uploadResp.detail || uploadResp.error);
+      const assetUrl = uploadResp.asset.assetUrl;
+      ccLog('Criativo enviado.', 'ok');
+
+      ccLog('Criando campanha…');
+      const campResp = await fetch(NB_CAMPAIGN_API, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY },
+        body: JSON.stringify({ accountKey, adAccountId, name, objective, status: 'ON' }),
+      }).then(r => r.json());
+      if (campResp.error) throw new Error(campResp.detail || campResp.error);
+      const campaignId = campResp.campaign.id;
+      ccLog('Campanha criada (id ' + campaignId + ').', 'ok');
+
+      const budgetType = document.getElementById('ccBudgetType').value;
+      const budget = Math.round(parseFloat(document.getElementById('ccBudget').value || '0') * 100);
+      const startTime = Math.floor(new Date(document.getElementById('ccStart').value).getTime() / 1000);
+      const endTime = Math.floor(new Date(document.getElementById('ccEnd').value).getTime() / 1000);
+      const bidType = document.getElementById('ccBidType').value;
+      const bidRateVal = document.getElementById('ccBidRate').value;
+      const roasVal = document.getElementById('ccRoas').value;
+      const trackingId = document.getElementById('ccTrackingId').value.trim();
+      const deliveryRate = document.getElementById('ccDeliveryRate').value;
+      const platforms = Array.from(document.querySelectorAll('#ccPlatforms input:checked')).map(i => i.value);
+
+      const targeting = {
+        gender: { positive: [document.getElementById('tGender').value] },
+        ageGroup: { positive: Array.from(document.getElementById('tAge').selectedOptions).map(o => o.value) },
+        interest: { positive: ['all'] },
+        location: { positive: ['all'] },
+        deviceLocation: { positive: ['all'] },
+        language: { positive: [document.getElementById('tLanguage').value] },
+        os: { positive: ['all'] },
+        manufacturer: { positive: ['all'] },
+        carrier: { positive: ['all'] },
+        network: { positive: [document.getElementById('tNetwork').value] },
+      };
+
+      const adSetBody = {
+        accountKey, campaignId, name: name + ' - AdSet',
+        budgetType, budget, startTime, endTime, bidType,
+        deliveryRate, targeting, status: 'ON',
+      };
+      if (platforms.length) adSetBody.platforms = platforms;
+      if (['CPM', 'CPC', 'TARGET_CPA'].indexOf(bidType) !== -1 && bidRateVal) adSetBody.bidRate = Math.round(parseFloat(bidRateVal) * 100);
+      if (['TARGET_ROAS', 'DAY_ONE_TARGET_ROAS'].indexOf(bidType) !== -1 && roasVal) adSetBody.roas = parseFloat(roasVal);
+      if (trackingId) adSetBody.trackingId = trackingId;
+
+      ccLog('Criando conjunto de anúncios…');
+      const adSetResp = await fetch(NB_ADSET_API, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY },
+        body: JSON.stringify(adSetBody),
+      }).then(r => r.json());
+      if (adSetResp.error) throw new Error(adSetResp.detail || adSetResp.error);
+      const adSetId = adSetResp.adSet.id;
+      ccLog('Conjunto criado (id ' + adSetId + ').', 'ok');
+
+      const selectedItem = libraryItems.find(i => i.id === selectedLibraryId);
+      const isVideo = (selectedItem.contentType || '').indexOf('video') === 0;
+      const isGif = selectedItem.contentType === 'image/gif';
+      const creativeType = isVideo ? 'VIDEO' : (isGif ? 'GIF' : 'IMAGE');
+
+      const adBody = {
+        accountKey, adSetId, name: name + ' - Ad',
+        status: document.getElementById('ccStatus').value,
+        creative: {
+          type: creativeType,
+          headline: document.getElementById('ccHeadline').value.trim(),
+          assetUrl,
+          description: document.getElementById('ccDescription').value.trim(),
+          callToAction: document.getElementById('ccCta').value.trim() || 'Learn More',
+          brandName: document.getElementById('ccBrand').value.trim(),
+          clickThroughUrl: document.getElementById('ccDestUrl').value.trim(),
+        },
+      };
+
+      ccLog('Criando anúncio…');
+      const adResp = await fetch(NB_AD_API, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY },
+        body: JSON.stringify(adBody),
+      }).then(r => r.json());
+      if (adResp.error) throw new Error(adResp.detail || adResp.error);
+      ccLog('Anúncio criado (id ' + adResp.ad.id + '). Pronto — confere na NewsBreak.', 'ok');
+    } catch (err) {
+      ccLog('Erro: ' + err.message, 'err');
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
   loadData();
   loadVturb();
   loadLivePainel();
   loadLiveCampanhas();
+  initCriarView();
   setInterval(loadData, 2 * 60 * 1000);
   setInterval(loadCosts, 30000);
   setInterval(loadVturb, 15000);
