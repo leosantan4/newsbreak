@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-27T06:21:43.520252+00:00",
+  "generatedAt": "2026-09-27T12:19:42.575889+00:00",
   "accounts": {
     "vini": {
       "2026-08-20": {
@@ -842,15 +842,15 @@
       },
       "2026-09-27": {
         "date": "2026-09-27",
-        "cost": 44.03,
-        "click": 394,
-        "cpc": 0.1117,
-        "ic": 3,
-        "custoIc": 14.68,
-        "venda": 0,
-        "faturamento": 0,
-        "cpa": null,
-        "roas": 0.0,
+        "cost": 127.67,
+        "click": 1229,
+        "cpc": 0.1039,
+        "ic": 10,
+        "custoIc": 12.77,
+        "venda": 1,
+        "faturamento": 265,
+        "cpa": 127.67,
+        "roas": 2.0757,
         "partial": true,
         "vendaSource": "redtrack"
       }
@@ -870,9 +870,9 @@
       },
       "2026-09-27": {
         "date": "2026-09-27",
-        "cost": 0.03,
-        "click": 1,
-        "cpc": 0.0284,
+        "cost": 0.06,
+        "click": 4,
+        "cpc": 0.014,
         "ic": 0,
         "custoIc": null,
         "venda": 0,
@@ -4553,12 +4553,12 @@
       "adAccountId": "2102513991702962177",
       "adAccountName": "[Agency Aurora] Alan 1",
       "objective": "WEB_CONVERSION",
-      "activeBudget": 1000.0,
-      "status": "ON",
-      "onlineStatus": "ACTIVE",
-      "adSetsOn": 1,
+      "activeBudget": null,
+      "status": "OFF",
+      "onlineStatus": "INACTIVE",
+      "adSetsOn": 0,
       "adSetsTotal": 3,
-      "reallyActive": true,
+      "reallyActive": false,
       "adSets": [
         {
           "id": "2103822150330744833",
@@ -4574,13 +4574,13 @@
         {
           "id": "2103822131619545089",
           "name": "C2-177 - 26/09 - 1-3-1 - 63",
-          "status": "ON",
-          "onlineStatus": "ACTIVE",
+          "status": "OFF",
+          "onlineStatus": "INACTIVE",
           "budget": 1000.0,
           "budgetType": "DAILY",
-          "adsOn": 1,
+          "adsOn": 0,
           "adsTotal": 1,
-          "reallyActive": true
+          "reallyActive": false
         },
         {
           "id": "2103821285880496129",
@@ -4864,6 +4864,55 @@
           "adsOn": 0,
           "adsTotal": 1,
           "reallyActive": false
+        }
+      ]
+    },
+    {
+      "id": "2104180597257256961",
+      "name": "C2-993 - 27/09 - 1-3-1",
+      "accountKey": "troya",
+      "adAccountId": "2103532431571156993",
+      "adAccountName": "[Agency Aurora] Troya",
+      "objective": "WEB_CONVERSION",
+      "activeBudget": 600.0,
+      "status": "ON",
+      "onlineStatus": "ACTIVE",
+      "adSetsOn": 3,
+      "adSetsTotal": 3,
+      "reallyActive": true,
+      "adSets": [
+        {
+          "id": "2104181326827077634",
+          "name": "C2-993 - 27/09 - 1-3-1 - 13",
+          "status": "ON",
+          "onlineStatus": "ACTIVE",
+          "budget": 200.0,
+          "budgetType": "DAILY",
+          "adsOn": 1,
+          "adsTotal": 1,
+          "reallyActive": true
+        },
+        {
+          "id": "2104181319898497026",
+          "name": "C2-993 - 27/09 - 1-3-1 - 64",
+          "status": "ON",
+          "onlineStatus": "ACTIVE",
+          "budget": 200.0,
+          "budgetType": "DAILY",
+          "adsOn": 1,
+          "adsTotal": 1,
+          "reallyActive": true
+        },
+        {
+          "id": "2104180755466813442",
+          "name": "C2-993 - 27/09 - 1-3-1 - 63",
+          "status": "ON",
+          "onlineStatus": "ACTIVE",
+          "budget": 200.0,
+          "budgetType": "DAILY",
+          "adsOn": 1,
+          "adsTotal": 1,
+          "reallyActive": true
         }
       ]
     },
@@ -5271,7 +5320,7 @@
       "costByDate": {
         "2026-09-25": 760.32,
         "2026-09-26": 644.41,
-        "2026-09-27": 36.89
+        "2026-09-27": 118.59
       },
       "accountKey": "alan",
       "displayName": "Alan-[Agency Aurora] Alan 1"
@@ -5281,7 +5330,7 @@
       "costByDate": {
         "2026-09-25": 776.04,
         "2026-09-26": 819.19,
-        "2026-09-27": 7.14
+        "2026-09-27": 9.07
       },
       "accountKey": "alan",
       "displayName": "Alan-[Agency Aurora] Alan 2"
@@ -5290,7 +5339,7 @@
       "name": "[Agency Aurora] Troya",
       "costByDate": {
         "2026-09-26": 248.13,
-        "2026-09-27": 0.03
+        "2026-09-27": 0.06
       },
       "accountKey": "troya",
       "displayName": "Troya-[Agency Aurora] Troya"
