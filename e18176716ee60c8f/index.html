@@ -2356,11 +2356,18 @@
           subsHtml = '<div class="acc-sub-list"><span class="cell-muted">carregando subcontas…</span></div>';
         } else if (isCustom) {
           subsHtml = '<div class="acc-sub-list">' +
-            '<span class="cell-muted">Nenhuma subconta encontrada — se o token não tem cargo de admin na NewsBreak, informe o Org ID da conta pra localizar:</span>' +
-            '<div class="creative-search" style="padding:8px 0 0;">' +
-              '<input type="text" data-org-id-input="' + a.key + '" placeholder="Org ID (ex: 2018483047221407745)">' +
-              '<button type="button" data-org-id-save="' + a.key + '" style="border:none; background:var(--accent); color:var(--accent-ink); font:inherit; font-weight:600; font-size:12.5px; padding:9px 14px; border-radius:var(--radius-sm); cursor:pointer;">Salvar</button>' +
+            '<span class="cell-muted">Nenhuma subconta encontrada. Cole abaixo o Account ID de cada sub-conta (acha em Ad Account Management, na NewsBreak) — um por linha, formato "ID - Nome":</span>' +
+            '<textarea data-manual-accounts-input="' + a.key + '" rows="3" placeholder="2104680678696153090 - Juci&#10;2104680950134730754 - Juci 2" style="margin-top:6px; border:1px solid var(--line); border-radius:var(--radius-sm); padding:9px 10px; font:inherit; font-size:12.5px; background:var(--bg); color:var(--ink); width:100%; resize:vertical;"></textarea>' +
+            '<div style="display:flex; align-items:center; gap:10px; margin-top:6px;">' +
+              '<button type="button" data-manual-accounts-save="' + a.key + '" style="border:none; background:var(--accent); color:var(--accent-ink); font:inherit; font-weight:600; font-size:12.5px; padding:9px 14px; border-radius:var(--radius-sm); cursor:pointer;">Salvar</button>' +
+              '<span class="cell-muted" data-manual-accounts-note="' + a.key + '"></span>' +
             '</div>' +
+            '<details style="margin-top:8px;"><summary class="cell-muted" style="cursor:pointer; font-size:11.5px;">alternativa: Org ID (se o token tiver cargo de admin)</summary>' +
+              '<div class="creative-search" style="padding:8px 0 0;">' +
+                '<input type="text" data-org-id-input="' + a.key + '" placeholder="Org ID (ex: 2018483047221407745)">' +
+                '<button type="button" data-org-id-save="' + a.key + '" style="border:none; background:var(--surface-raised); color:var(--ink); border:1px solid var(--line); font:inherit; font-weight:600; font-size:12.5px; padding:9px 14px; border-radius:var(--radius-sm); cursor:pointer;">Salvar</button>' +
+              '</div>' +
+            '</details>' +
           '</div>';
         } else {
           subsHtml = '<div class="acc-sub-list"><span class="cell-muted">Nenhuma subconta encontrada.</span></div>';
@@ -2422,6 +2429,26 @@
       }).then(r => r.json()).then(() => {
         loadAllSubAccounts();
       }).catch(() => { btn.disabled = false; });
+    }));
+    el.querySelectorAll('[data-manual-accounts-save]').forEach(btn => btn.addEventListener('click', () => {
+      const key = btn.dataset.manualAccountsSave;
+      const textarea = el.querySelector('[data-manual-accounts-input="' + key + '"]');
+      const note = el.querySelector('[data-manual-accounts-note="' + key + '"]');
+      const lines = textarea.value.split('\n').map(l => l.trim()).filter(Boolean);
+      const accounts = lines.map(line => {
+        const m = line.match(/^([0-9]+)\s*[-,:]\s*(.+)$/) || line.match(/^([0-9]+)$/);
+        return m ? { id: m[1], name: m[2] || '' } : null;
+      }).filter(Boolean);
+      if (!accounts.length) { note.textContent = 'Nenhum ID válido encontrado.'; return; }
+      btn.disabled = true;
+      note.textContent = 'Salvando…';
+      fetch(ACCOUNTS_API + '/' + encodeURIComponent(key) + '/manual-accounts', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY },
+        body: JSON.stringify({ accounts }),
+      }).then(r => r.json()).then(json => {
+        if (json.error) { note.textContent = 'Falhou — confere os IDs.'; btn.disabled = false; return; }
+        loadAllSubAccounts();
+      }).catch(() => { note.textContent = 'Falhou — tenta de novo.'; btn.disabled = false; });
     }));
   }
 
