@@ -150,7 +150,7 @@
   .form-field.span2{grid-column:span 2;}
   .checkbox-row{display:flex; flex-wrap:wrap; gap:10px 16px;}
   .checkbox-row label{display:flex; align-items:center; gap:5px; font-size:12.5px; font-weight:400; text-transform:none; letter-spacing:0; color:var(--ink);}
-  .create-log{padding:14px 18px; font-size:12.5px; font-family:"IBM Plex Mono",monospace; white-space:pre-wrap; max-height:280px; overflow-y:auto; background:var(--bg); border-top:1px solid var(--line);}
+  .create-log{padding:14px 18px; font-size:12.5px; font-family:"IBM Plex Mono",monospace; white-space:pre-wrap; max-height:280px; overflow-y:auto; background:var(--bg); border-top:1px solid var(--line); margin:14px -20px -20px; border-radius:0 0 14px 14px;}
   .create-log .ok{color:var(--good);}
   .create-log .err{color:var(--bad); font-weight:600;}
 
@@ -206,6 +206,14 @@
   .cc-summary-accounts{margin-top:2px; margin-bottom:10px; font-size:12px; color:var(--ink); line-height:1.5;}
   .cc-summary-missing{margin-top:6px; padding:10px 12px; background:var(--bad-bg); color:var(--bad); border-radius:8px; font-size:11.5px; font-weight:600;}
   .cc-summary-ready{margin-top:6px; padding:10px 12px; background:var(--good-bg); color:var(--good); border-radius:8px; font-size:11.5px; font-weight:600;}
+  .cc-chip-list{display:flex; flex-wrap:wrap; gap:8px;}
+  .cc-chip{display:inline-flex; align-items:center; gap:6px; background:var(--surface-raised); border:1px solid var(--line); border-radius:999px; padding:5px 8px 5px 12px; font-size:12.5px; font-weight:600;}
+  .cc-chip button{border:none; background:none; cursor:pointer; color:var(--muted); font-size:15px; line-height:1; padding:2px;}
+  .cc-chip button:hover{color:var(--bad);}
+  .cc-progress-wrap{margin-top:12px;}
+  .cc-progress-track{height:8px; border-radius:4px; background:var(--line); overflow:hidden;}
+  .cc-progress-fill{height:100%; width:0%; background:var(--accent); transition:width .25s ease;}
+  .cc-progress-label{margin-top:6px; font-size:11.5px; color:var(--muted); text-align:center;}
   .cc-submit-btn{width:100%; border:none; background:var(--accent); color:var(--accent-ink); font:inherit; font-weight:700; font-size:14px; padding:13px 22px; border-radius:10px; cursor:pointer; margin-top:14px;}
   .cc-submit-btn:disabled{opacity:.5; cursor:not-allowed;}
   @media (max-width:980px){
@@ -540,12 +548,12 @@
           <section class="panel">
             <div class="step-head">
               <div class="step-head-left"><span class="step-num">5</span><span class="step-title">Anúncio</span></div>
-              <span class="step-desc">botão sempre "Learn More" · URL vem do link da conta · nome do conjunto = campanha + nome do criativo · nome do anúncio = nome do criativo · a imagem fica no final desta seção</span>
+              <span class="step-desc">botão sempre "Learn More" · URL vem do link da conta · cada criativo escolhido vira um conjunto de anúncios diferente, todos na mesma campanha · nome do conjunto = campanha + nome do criativo · nome do anúncio = nome do criativo · a imagem fica no final desta seção</span>
             </div>
             <div class="form-grid">
               <div class="form-field span2">
-                <label>Criativo selecionado</label>
-                <div id="ccSelectedCreative" class="cell-muted">Nenhum selecionado</div>
+                <label>Criativos selecionados — um vira um conjunto de anúncios cada (ex: 3 criativos = estrutura 1 campanha / 3 conjuntos / 1 anúncio cada)</label>
+                <div id="ccSelectedCreatives" class="cc-chip-list"><span class="cell-muted">Nenhum selecionado ainda</span></div>
               </div>
               <div class="form-field span2">
                 <label>Presets salvos (clique pra preencher título/descrição)</label>
@@ -576,7 +584,6 @@
             </div>
             <div class="media-grid-note" id="mediaGridNote"></div>
             <div class="media-grid" id="mediaGrid"></div>
-            <div class="create-log" id="ccLog" hidden></div>
           </section>
         </div>
 
@@ -588,9 +595,14 @@
             <div class="cc-summary-row"><span class="cc-label">Orçamento/dia</span><span class="cc-value" id="ccSumBudget">$200</span></div>
             <div class="cc-summary-row"><span class="cc-label">Início</span><span class="cc-value" id="ccSumStart">—</span></div>
             <div class="cc-summary-row"><span class="cc-label">Segmentação</span><span class="cc-value" id="ccSumTargeting">—</span></div>
-            <div class="cc-summary-row"><span class="cc-label">Criativo</span><span class="cc-value" id="ccSumCreative">nenhum</span></div>
+            <div class="cc-summary-row"><span class="cc-label">Criativos</span><span class="cc-value" id="ccSumCreative">nenhum</span></div>
             <div id="ccSumStatus"></div>
             <button type="button" id="ccSubmitBtn" class="cc-submit-btn">Criar campanha</button>
+            <div class="cc-progress-wrap" id="ccProgressWrap" hidden>
+              <div class="cc-progress-track"><div class="cc-progress-fill" id="ccProgressFill"></div></div>
+              <div class="cc-progress-label" id="ccProgressLabel"></div>
+            </div>
+            <div class="create-log" id="ccLog" hidden></div>
           </div>
         </aside>
       </div>
@@ -1362,7 +1374,7 @@
 
   // ---- Criar Campanha ----
   let libraryItems = [];
-  let selectedLibraryId = null;
+  let selectedCreativeIds = [];
   let selectedLogoLibraryId = null;
   let copyPresets = [];
   let ccLinks = {};
@@ -1429,10 +1441,22 @@
     renderMediaDatalist();
   }
 
-  function updateSelectedCreativeLabel(){
-    const el = document.getElementById('ccSelectedCreative');
-    const item = libraryItems.find(i => i.id === selectedLibraryId);
-    el.textContent = item ? item.name : 'Nenhum selecionado';
+  function renderSelectedCreativesList(){
+    const el = document.getElementById('ccSelectedCreatives');
+    if (!selectedCreativeIds.length){ el.innerHTML = '<span class="cell-muted">Nenhum selecionado ainda</span>'; return; }
+    el.innerHTML = selectedCreativeIds.map(id => {
+      const item = libraryItems.find(i => i.id === id);
+      const label = (item ? item.name : id).replace(/"/g, '&quot;');
+      return '<span class="cc-chip">' + label + '<button type="button" data-remove-creative="' + id + '">×</button></span>';
+    }).join('');
+    el.querySelectorAll('[data-remove-creative]').forEach(btn => btn.addEventListener('click', () => {
+      const id = btn.dataset.removeCreative;
+      const idx = selectedCreativeIds.indexOf(id);
+      if (idx !== -1) selectedCreativeIds.splice(idx, 1);
+      renderSelectedCreativesList();
+      renderMediaGrid();
+      renderCcSummary();
+    }));
   }
 
   function updateSelectedLogoLabel(){
@@ -1445,7 +1469,7 @@
     const isVideo = (it.contentType || '').indexOf('video') === 0;
     const fileUrl = LIBRARY_API + '/' + it.id + '/file';
     const media = isVideo ? '<video src="' + fileUrl + '" muted></video>' : '<img src="' + fileUrl + '" loading="lazy">';
-    const isSel = selectedId === it.id;
+    const isSel = Array.isArray(selectedId) ? selectedId.indexOf(it.id) !== -1 : selectedId === it.id;
     const uploadedDate = it.uploadedAt ? new Date(it.uploadedAt).toLocaleDateString('pt-BR') : '';
     return '<div class="media-item' + (isSel ? ' selected' : '') + '" data-id="' + it.id + '">' +
       media +
@@ -1466,11 +1490,13 @@
     const shown = libraryItems.filter(it => itemCategory(it) === 'creative' && it.name.toLowerCase().indexOf(q) !== -1).slice().reverse();
     note.textContent = shown.length + ' resultado(s) nos Criativos pra "' + mediaSearchQuery.trim() + '"';
     if (!shown.length){ grid.innerHTML = '<div class="empty-state">Nenhum anúncio encontrado nos Criativos pra "' + mediaSearchQuery.trim() + '". Confira o nome na Galeria.</div>'; return; }
-    grid.innerHTML = shown.map(it => mediaItemHtml(it, selectedLibraryId)).join('');
+    grid.innerHTML = shown.map(it => mediaItemHtml(it, selectedCreativeIds)).join('');
     grid.querySelectorAll('.media-item').forEach(el => el.addEventListener('click', (e) => {
       if (e.target.closest('.media-remove')) return;
-      selectedLibraryId = el.dataset.id;
-      updateSelectedCreativeLabel();
+      const id = el.dataset.id;
+      const idx = selectedCreativeIds.indexOf(id);
+      if (idx !== -1) selectedCreativeIds.splice(idx, 1); else selectedCreativeIds.push(id);
+      renderSelectedCreativesList();
       renderMediaGrid();
       renderCcSummary();
     }));
@@ -1527,10 +1553,11 @@
       .then(r => r.json())
       .then(json => {
         libraryItems = json.items || [];
-        if (selectedLibraryId === id) selectedLibraryId = null;
+        const idx = selectedCreativeIds.indexOf(id);
+        if (idx !== -1) selectedCreativeIds.splice(idx, 1);
         if (selectedLogoLibraryId === id) selectedLogoLibraryId = null;
         refreshLibraryViews();
-        updateSelectedCreativeLabel();
+        renderSelectedCreativesList();
         updateSelectedLogoLabel();
       }).catch(() => {});
   }
@@ -1633,13 +1660,12 @@
     const matches = pool.filter(it => it.name.toLowerCase().indexOf(typed) !== -1);
     const match = matches.length === 1 ? matches[0] : pool.find(it => it.name.toLowerCase() === typed);
     if (match) {
-      selectedLibraryId = match.id;
-      updateSelectedCreativeLabel();
+      if (selectedCreativeIds.indexOf(match.id) === -1) selectedCreativeIds.push(match.id);
+      renderSelectedCreativesList();
       mediaSearchQuery = '';
       e.target.value = '';
       renderMediaGrid();
       renderCcSummary();
-      e.target.blur();
     }
   });
 
@@ -1947,15 +1973,18 @@
     const ageLabel = ageSel.indexOf('all') !== -1 ? 'todas idades' : ageSel.join('/');
     document.getElementById('ccSumTargeting').textContent = genderLabel + ' · ' + ageLabel;
 
-    const item = libraryItems.find(i => i.id === selectedLibraryId);
+    const creativeNames = selectedCreativeIds.map(id => {
+      const it = libraryItems.find(i => i.id === id);
+      return it ? it.name : id;
+    });
     const sumCreative = document.getElementById('ccSumCreative');
-    sumCreative.textContent = item ? item.name : 'nenhum';
-    sumCreative.title = item ? item.name : '';
+    sumCreative.textContent = creativeNames.length ? creativeNames.length + ' (' + creativeNames.join(', ') + ')' : 'nenhum';
+    sumCreative.title = creativeNames.join(', ');
 
     const missing = [];
     if (!accounts.length) missing.push('marque uma conta');
     if (!name) missing.push('nome da campanha');
-    if (!selectedLibraryId) missing.push('criativo');
+    if (!selectedCreativeIds.length) missing.push('pelo menos 1 criativo');
     if (!document.getElementById('ccHeadline').value.trim()) missing.push('título');
     if (!document.getElementById('ccBrandDefault').value.trim()) missing.push('marca padrão');
     if (!document.getElementById('ccDescription').value.trim()) missing.push('descrição');
@@ -2014,21 +2043,38 @@
     renderCcSummary();
   }
 
+  let ccProgressTotal = 0;
+  let ccProgressDone = 0;
+
+  function ccProgressStart(total){
+    ccProgressTotal = total;
+    ccProgressDone = 0;
+    document.getElementById('ccProgressWrap').hidden = false;
+    updateCcProgressBar();
+  }
+
+  function ccProgressStep(){
+    ccProgressDone = Math.min(ccProgressTotal, ccProgressDone + 1);
+    updateCcProgressBar();
+  }
+
+  function ccProgressFinish(){
+    ccProgressDone = ccProgressTotal;
+    updateCcProgressBar();
+  }
+
+  function updateCcProgressBar(){
+    const pct = ccProgressTotal ? Math.round(ccProgressDone / ccProgressTotal * 100) : 0;
+    document.getElementById('ccProgressFill').style.width = pct + '%';
+    document.getElementById('ccProgressLabel').textContent = ccProgressDone + '/' + ccProgressTotal + ' passos';
+  }
+
   async function createCampaignForAccount(acc, shared){
     const prefix = '[' + acc.accountLabel + ' ···' + acc.id.slice(-3) + '] ';
     const link = ccLinks[acc.id];
-    if (!link || !link.url) { ccLog(prefix + 'sem link cadastrado — pulando. Cadastra o link na tabela acima primeiro.', 'err'); return; }
+    if (!link || !link.url) { ccLog(prefix + 'sem link cadastrado — pulando. Cadastra o link na tabela acima primeiro.', 'err'); ccProgressFinish(); return; }
 
     try {
-      ccLog(prefix + 'Enviando criativo…');
-      const uploadResp = await fetch(NB_UPLOAD_ASSET_API, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY },
-        body: JSON.stringify({ accountKey: acc.accountKey, adAccountId: acc.id, libraryId: shared.libraryId, mediaName: shared.name }),
-      }).then(r => r.json());
-      if (uploadResp.error) throw new Error(uploadResp.detail || uploadResp.error);
-      const assetUrl = uploadResp.asset.assetUrl;
-      ccLog(prefix + 'Criativo enviado.', 'ok');
-
       let logoUrl = null;
       if (shared.logoLibraryId) {
         ccLog(prefix + 'Enviando logo…');
@@ -2037,6 +2083,7 @@
           body: JSON.stringify({ accountKey: acc.accountKey, adAccountId: acc.id, libraryId: shared.logoLibraryId, mediaName: shared.name + ' - logo' }),
         }).then(r => r.json());
         if (!logoResp.error) logoUrl = logoResp.asset.assetUrl;
+        ccProgressStep();
       }
 
       ccLog(prefix + 'Buscando tracking id…');
@@ -2045,6 +2092,7 @@
       }).then(r => r.json());
       if (trackResp.error || !trackResp.trackingId) throw new Error('não achei tracking id — essa sub-conta precisa ter pelo menos um conjunto de anúncios já criado antes (mesmo manualmente na NewsBreak).');
       const trackingId = trackResp.trackingId;
+      ccProgressStep();
 
       ccLog(prefix + 'Criando campanha…');
       const campResp = await fetch(NB_CAMPAIGN_API, {
@@ -2054,52 +2102,77 @@
       if (campResp.error) throw new Error(campResp.detail || campResp.error);
       const campaignId = campResp.campaign.id;
       ccLog(prefix + 'Campanha criada (id ' + campaignId + ').', 'ok');
+      ccProgressStep();
 
-      const adSetBody = {
-        accountKey: acc.accountKey, campaignId, name: shared.name + ' - ' + shared.creativeName,
-        budgetType: 'DAILY', budget: shared.budgetCents,
-        startTime: shared.startTime, endTime: 2146878847,
-        bidType: 'MAX_CONVERSION', trackingId, status: 'ON',
-        targeting: {
-          gender: { positive: genderSel },
-          ageGroup: { positive: ageSel },
-          interest: { positive: ['all'] },
-          location: { positive: ['all'] },
-          deviceLocation: { positive: ['all'] },
-          language: { positive: languageSel },
-          os: { positive: ['all'] },
-          manufacturer: { positive: ['all'] },
-          carrier: { positive: ['all'] },
-          network: { positive: networkSel },
-        },
-      };
-      ccLog(prefix + 'Criando conjunto de anúncios…');
-      const adSetResp = await fetch(NB_ADSET_API, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY },
-        body: JSON.stringify(adSetBody),
-      }).then(r => r.json());
-      if (adSetResp.error) throw new Error(adSetResp.detail || adSetResp.error);
-      const adSetId = adSetResp.adSet.id;
-      ccLog(prefix + 'Conjunto criado (id ' + adSetId + ').', 'ok');
+      for (const creative of shared.creatives) {
+        const cPrefix = prefix + '[' + creative.name + '] ';
+        let ticks = 0;
+        const tick = () => { ticks++; ccProgressStep(); };
+        try {
+          ccLog(cPrefix + 'Enviando criativo…');
+          const uploadResp = await fetch(NB_UPLOAD_ASSET_API, {
+            method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY },
+            body: JSON.stringify({ accountKey: acc.accountKey, adAccountId: acc.id, libraryId: creative.libraryId, mediaName: creative.name }),
+          }).then(r => r.json());
+          if (uploadResp.error) throw new Error(uploadResp.detail || uploadResp.error);
+          const assetUrl = uploadResp.asset.assetUrl;
+          ccLog(cPrefix + 'Criativo enviado.', 'ok');
+          tick();
 
-      const adBody = {
-        accountKey: acc.accountKey, adSetId, name: shared.creativeName, status: 'ON',
-        creative: {
-          type: shared.creativeType, headline: shared.headline, assetUrl,
-          description: shared.description, callToAction: 'Learn More',
-          brandName: shared.brandName, clickThroughUrl: link.url,
-          ...(logoUrl ? { logoUrl } : {}),
-        },
-      };
-      ccLog(prefix + 'Criando anúncio…');
-      const adResp = await fetch(NB_AD_API, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY },
-        body: JSON.stringify(adBody),
-      }).then(r => r.json());
-      if (adResp.error) throw new Error(adResp.detail || adResp.error);
-      ccLog(prefix + 'Anúncio criado (id ' + adResp.ad.id + '). Pronto.', 'ok');
+          const adSetBody = {
+            accountKey: acc.accountKey, campaignId, name: shared.name + ' - ' + creative.name,
+            budgetType: 'DAILY', budget: shared.budgetCents,
+            startTime: shared.startTime, endTime: 2146878847,
+            bidType: 'MAX_CONVERSION', trackingId, status: 'ON',
+            targeting: {
+              gender: { positive: genderSel },
+              ageGroup: { positive: ageSel },
+              interest: { positive: ['all'] },
+              location: { positive: ['all'] },
+              deviceLocation: { positive: ['all'] },
+              language: { positive: languageSel },
+              os: { positive: ['all'] },
+              manufacturer: { positive: ['all'] },
+              carrier: { positive: ['all'] },
+              network: { positive: networkSel },
+            },
+          };
+          ccLog(cPrefix + 'Criando conjunto de anúncios…');
+          const adSetResp = await fetch(NB_ADSET_API, {
+            method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY },
+            body: JSON.stringify(adSetBody),
+          }).then(r => r.json());
+          if (adSetResp.error) throw new Error(adSetResp.detail || adSetResp.error);
+          const adSetId = adSetResp.adSet.id;
+          ccLog(cPrefix + 'Conjunto criado (id ' + adSetId + ').', 'ok');
+          tick();
+
+          const adBody = {
+            accountKey: acc.accountKey, adSetId, name: creative.name, status: 'ON',
+            creative: {
+              type: creative.creativeType, headline: shared.headline, assetUrl,
+              description: shared.description, callToAction: 'Learn More',
+              brandName: shared.brandName, clickThroughUrl: link.url,
+              ...(logoUrl ? { logoUrl } : {}),
+            },
+          };
+          ccLog(cPrefix + 'Criando anúncio…');
+          const adResp = await fetch(NB_AD_API, {
+            method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY },
+            body: JSON.stringify(adBody),
+          }).then(r => r.json());
+          if (adResp.error) throw new Error(adResp.detail || adResp.error);
+          ccLog(cPrefix + 'Anúncio criado (id ' + adResp.ad.id + '). Pronto.', 'ok');
+          tick();
+        } catch (err) {
+          ccLog(cPrefix + 'Erro: ' + err.message, 'err');
+        } finally {
+          while (ticks < 3) tick();
+        }
+      }
     } catch (err) {
       ccLog(prefix + 'Erro: ' + err.message, 'err');
+      ccProgressFinish();
     }
   }
 
@@ -2121,20 +2194,26 @@
 
     if (!name) { ccLog('Dá um nome pra campanha.', 'err'); btn.disabled = false; return; }
     if (!selectedSubAccountIds.length) { ccLog('Marca pelo menos uma sub-conta.', 'err'); btn.disabled = false; return; }
-    if (!selectedLibraryId) { ccLog('Escolha um criativo na biblioteca.', 'err'); btn.disabled = false; return; }
+    if (!selectedCreativeIds.length) { ccLog('Escolha pelo menos um criativo.', 'err'); btn.disabled = false; return; }
     if (!headline || !brandName || !description) { ccLog('Preenche título, marca padrão e descrição.', 'err'); btn.disabled = false; return; }
 
-    const selectedItem = libraryItems.find(i => i.id === selectedLibraryId);
-    const isVideo = (selectedItem.contentType || '').indexOf('video') === 0;
-    const isGif = selectedItem.contentType === 'image/gif';
-    const creativeType = isVideo ? 'VIDEO' : (isGif ? 'GIF' : 'IMAGE');
+    const creatives = selectedCreativeIds.map(id => libraryItems.find(i => i.id === id)).filter(Boolean).map(item => {
+      const isVideo = (item.contentType || '').indexOf('video') === 0;
+      const isGif = item.contentType === 'image/gif';
+      return { libraryId: item.id, name: item.name, creativeType: isVideo ? 'VIDEO' : (isGif ? 'GIF' : 'IMAGE') };
+    });
+    if (!creatives.length) { ccLog('Os criativos selecionados não existem mais — escolha de novo.', 'err'); btn.disabled = false; return; }
 
-    const shared = { libraryId: selectedLibraryId, logoLibraryId: selectedLogoLibraryId, name, creativeName: selectedItem.name, budgetCents, startTime, headline, brandName, description, creativeType };
+    const shared = { logoLibraryId: selectedLogoLibraryId, name, creatives, budgetCents, startTime, headline, brandName, description };
     const accountsToRun = allSubAccounts.filter(a => selectedSubAccountIds.indexOf(a.id) !== -1);
+
+    const total = (shared.logoLibraryId ? 1 : 0) + 1 + 1 + creatives.length * 3;
+    ccProgressStart(total * accountsToRun.length);
 
     for (const acc of accountsToRun) {
       await createCampaignForAccount(acc, shared);
     }
+    ccProgressFinish();
     ccLog('Concluído.');
     btn.disabled = false;
   });
