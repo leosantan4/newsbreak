@@ -162,7 +162,6 @@
   .account-card.selected .acc-check{border-color:var(--accent); background:var(--accent); color:var(--accent-ink);}
   .account-card .acc-id{flex:0 0 200px; min-width:0;}
   .account-card .acc-name{font-weight:500; font-size:14.5px;}
-  .account-card .acc-sub{font-size:11.5px; color:var(--muted); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .account-card .acc-link-row{flex:1; min-width:0; font-size:12.5px;}
   .account-card .acc-link-status{display:flex; align-items:center; justify-content:space-between; gap:10px;}
   .account-card .acc-link-url{color:var(--good); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
@@ -1597,12 +1596,10 @@
           '<button type="button" class="acc-link-edit" data-edit-link="' + a.id + '">' + (link ? 'editar' : '+ adicionar') + '</button>' +
         '</div>';
       }
-      const cleanName = a.name.replace(/^\[.*?\]\s*/, '');
       return '<div class="account-card' + (isSelected ? ' selected' : '') + '" data-account-card="' + a.id + '">' +
         '<span class="acc-check">✓</span>' +
         '<div class="acc-id">' +
           '<div class="acc-name">' + a.accountLabel + ' ···' + a.id.slice(-3) + '</div>' +
-          '<div class="acc-sub" title="' + cleanName.replace(/"/g, '&quot;') + '">' + cleanName + '</div>' +
         '</div>' +
         '<div class="acc-link-row">' + linkRow + '</div>' +
       '</div>';
