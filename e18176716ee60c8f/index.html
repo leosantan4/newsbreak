@@ -190,6 +190,11 @@
   .pill:hover{border-color:color-mix(in srgb, var(--accent) 55%, var(--line));}
   .pill.active{background:var(--accent); border-color:var(--accent); color:var(--accent-ink);}
 
+  .criar-subnav{display:flex; gap:22px; margin-bottom:18px; border-bottom:1px solid var(--line);}
+  .criar-subtab{border:none; background:none; font:inherit; font-weight:600; font-size:13.5px; color:var(--muted); padding:10px 2px; cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px;}
+  .criar-subtab.active{color:var(--ink); border-bottom-color:var(--accent);}
+  .criar-subtab:hover{color:var(--ink);}
+  .account-card.links-row{cursor:default;}
   .criar-layout{display:grid; grid-template-columns:minmax(0,1fr) 320px; gap:20px; align-items:start;}
   .criar-main{min-width:0;}
   .cc-summary{position:sticky; top:20px; background:var(--surface-raised); border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow); padding:20px; margin-bottom:16px;}
@@ -438,7 +443,13 @@
     </div>
 
     <div id="criarView" hidden>
-      <div class="criar-layout">
+      <div class="criar-subnav">
+        <button type="button" class="criar-subtab active" data-criarsub="nova">Nova campanha</button>
+        <button type="button" class="criar-subtab" data-criarsub="links">Links das contas</button>
+        <button type="button" class="criar-subtab" data-criarsub="galeria">Galeria de anúncios</button>
+      </div>
+
+      <div id="criarSubNova" class="criar-layout">
         <div class="criar-main">
           <section class="panel">
             <div class="step-head">
@@ -551,21 +562,15 @@
             <div class="table-scroll" id="presetsTableWrap"></div>
 
             <div class="step-head" style="margin-top:8px;">
-              <div class="step-head-left"><span class="step-title" style="font-size:13px;">Biblioteca de imagens/GIFs</span></div>
-              <span class="step-desc">banco próprio da ferramenta (não é Google Drive) — envie vários arquivos de uma vez; metadados são limpos automaticamente no envio; nomes repetidos ganham (2), (3)... pra nunca confundir</span>
-            </div>
-            <div style="padding:14px 18px 0; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-              <input type="file" id="mediaFileInput" accept="image/*,video/*" multiple>
-              <input type="text" id="mediaNameInput" placeholder="Nome (só se enviar 1 arquivo)" style="flex:1; min-width:180px; border:1px solid var(--line); border-radius:8px; padding:9px 10px; font:inherit; font-size:13px; background:var(--bg); color:var(--ink);">
-              <button type="button" id="mediaUploadBtn" style="border:none; background:var(--accent); color:var(--accent-ink); font:inherit; font-weight:600; font-size:13px; padding:9px 16px; border-radius:8px; cursor:pointer;">Adicionar</button>
-              <span class="cell-muted" id="mediaUploadNote"></span>
+              <div class="step-head-left"><span class="step-title" style="font-size:13px;">Imagem do anúncio</span></div>
+              <span class="step-desc">digite o nome do anúncio pra achar na galeria — nada é exibido até você digitar. Suba criativos novos na aba "Galeria de anúncios"</span>
             </div>
             <div class="creative-search">
               <span class="cell-muted" style="font-size:11.5px; text-transform:uppercase; letter-spacing:.05em;">Selecionar como:</span>
               <div class="pill-row" id="mediaTargetToggle"></div>
             </div>
             <div class="creative-search">
-              <input type="text" id="mediaSearchInput" list="mediaNamesList" placeholder="Buscar por nome — filtra a lista abaixo em tempo real…">
+              <input type="text" id="mediaSearchInput" list="mediaNamesList" placeholder="Digite o nome/número do anúncio…">
               <datalist id="mediaNamesList"></datalist>
             </div>
             <div class="media-grid-note" id="mediaGridNote"></div>
@@ -587,6 +592,33 @@
             <button type="button" id="ccSubmitBtn" class="cc-submit-btn">Criar campanha</button>
           </div>
         </aside>
+      </div>
+
+      <div id="criarSubLinks" hidden>
+        <section class="panel">
+          <div class="step-head">
+            <div class="step-head-left"><span class="step-title">Links das contas</span></div>
+            <span class="step-desc">cadastre o link de cada sub-conta aqui — na criação de campanha só aparece o nome, o link já vem junto sozinho</span>
+          </div>
+          <div class="account-picker" id="linksManagerList"></div>
+        </section>
+      </div>
+
+      <div id="criarSubGaleria" hidden>
+        <section class="panel">
+          <div class="step-head">
+            <div class="step-head-left"><span class="step-title">Galeria de anúncios</span></div>
+            <span class="step-desc">banco próprio da ferramenta (não é Google Drive) — envie vários arquivos de uma vez; metadados são limpos automaticamente; não deixa subir dois anúncios com o mesmo nome</span>
+          </div>
+          <div style="padding:14px 18px 0; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <input type="file" id="galleryFileInput" accept="image/*,video/*" multiple>
+            <input type="text" id="galleryNameInput" placeholder="Nome (só se enviar 1 arquivo)" style="flex:1; min-width:180px; border:1px solid var(--line); border-radius:8px; padding:9px 10px; font:inherit; font-size:13px; background:var(--bg); color:var(--ink);">
+            <button type="button" id="galleryUploadBtn" style="border:none; background:var(--accent); color:var(--accent-ink); font:inherit; font-weight:600; font-size:13px; padding:9px 16px; border-radius:8px; cursor:pointer;">Adicionar</button>
+          </div>
+          <div class="cell-muted" id="galleryUploadNote" style="padding:8px 18px 0;"></div>
+          <div class="media-grid-note" id="galleryGridNote"></div>
+          <div class="media-grid" id="galleryGrid"></div>
+        </section>
       </div>
     </div>
 
@@ -1335,7 +1367,6 @@
 
   let mediaSelectTarget = 'creative';
   let mediaSearchQuery = '';
-  const MEDIA_RECENT_LIMIT = 12;
 
   function renderMediaTargetToggle(){
     const el = document.getElementById('mediaTargetToggle');
@@ -1350,10 +1381,15 @@
   function loadLibraryItems(){
     fetch(LIBRARY_API, {cache:'no-store'}).then(r => r.json()).then(json => {
       libraryItems = json.items || [];
-      renderMediaGrid();
-      renderMediaDatalist();
+      refreshLibraryViews();
       updateSelectedLogoLabel();
     }).catch(() => {});
+  }
+
+  function refreshLibraryViews(){
+    renderMediaGrid();
+    renderGalleryGrid();
+    renderMediaDatalist();
   }
 
   function updateSelectedCreativeLabel(){
@@ -1368,32 +1404,32 @@
     el.textContent = item ? item.name : 'Nenhum — selecione lá embaixo com "Logo padrão" marcado';
   }
 
+  function mediaItemHtml(it, selectable){
+    const isVideo = (it.contentType || '').indexOf('video') === 0;
+    const fileUrl = LIBRARY_API + '/' + it.id + '/file';
+    const media = isVideo ? '<video src="' + fileUrl + '" muted></video>' : '<img src="' + fileUrl + '" loading="lazy">';
+    const isSel = selectable && (selectedLibraryId === it.id || selectedLogoLibraryId === it.id);
+    const uploadedDate = it.uploadedAt ? new Date(it.uploadedAt).toLocaleDateString('pt-BR') : '';
+    return '<div class="media-item' + (isSel ? ' selected' : '') + '" data-id="' + it.id + '">' +
+      media +
+      '<button type="button" class="media-remove" data-remove-id="' + it.id + '">×</button>' +
+      '<div class="media-name" title="' + it.name.replace(/"/g, '&quot;') + ' · ' + uploadedDate + '">' + it.name + (uploadedDate ? ' · ' + uploadedDate : '') + '</div>' +
+    '</div>';
+  }
+
   function renderMediaGrid(){
     const grid = document.getElementById('mediaGrid');
     const note = document.getElementById('mediaGridNote');
-    if (!libraryItems.length){ note.textContent = ''; grid.innerHTML = '<div class="empty-state">Nenhum criativo ainda. Envie um acima.</div>'; return; }
     const q = mediaSearchQuery.trim().toLowerCase();
-    let shown;
-    if (q) {
-      shown = libraryItems.filter(it => it.name.toLowerCase().indexOf(q) !== -1).slice().reverse();
-      note.textContent = shown.length + ' resultado(s) pra "' + mediaSearchQuery.trim() + '"';
-    } else {
-      shown = libraryItems.slice(-MEDIA_RECENT_LIMIT).reverse();
-      note.textContent = 'mostrando os ' + shown.length + ' mais recentes de ' + libraryItems.length + ' — digite acima pra buscar os demais';
+    if (!q) {
+      note.textContent = 'digite o nome/número do anúncio pra encontrá-lo';
+      grid.innerHTML = '';
+      return;
     }
-    if (!shown.length){ grid.innerHTML = '<div class="empty-state">Nenhum criativo encontrado pra "' + mediaSearchQuery.trim() + '".</div>'; return; }
-    grid.innerHTML = shown.map(it => {
-      const isVideo = (it.contentType || '').indexOf('video') === 0;
-      const fileUrl = LIBRARY_API + '/' + it.id + '/file';
-      const media = isVideo ? '<video src="' + fileUrl + '" muted></video>' : '<img src="' + fileUrl + '" loading="lazy">';
-      const isSel = selectedLibraryId === it.id || selectedLogoLibraryId === it.id;
-      const uploadedDate = it.uploadedAt ? new Date(it.uploadedAt).toLocaleDateString('pt-BR') : '';
-      return '<div class="media-item' + (isSel ? ' selected' : '') + '" data-id="' + it.id + '">' +
-        media +
-        '<button type="button" class="media-remove" data-remove-id="' + it.id + '">×</button>' +
-        '<div class="media-name" title="' + it.name.replace(/"/g, '&quot;') + ' · ' + uploadedDate + '">' + it.name + (uploadedDate ? ' · ' + uploadedDate : '') + '</div>' +
-      '</div>';
-    }).join('');
+    const shown = libraryItems.filter(it => it.name.toLowerCase().indexOf(q) !== -1).slice().reverse();
+    note.textContent = shown.length + ' resultado(s) pra "' + mediaSearchQuery.trim() + '"';
+    if (!shown.length){ grid.innerHTML = '<div class="empty-state">Nenhum anúncio encontrado pra "' + mediaSearchQuery.trim() + '". Confira o nome na Galeria.</div>'; return; }
+    grid.innerHTML = shown.map(it => mediaItemHtml(it, true)).join('');
     grid.querySelectorAll('.media-item').forEach(el => el.addEventListener('click', (e) => {
       if (e.target.closest('.media-remove')) return;
       if (mediaSelectTarget === 'logo') { selectedLogoLibraryId = el.dataset.id; updateSelectedLogoLabel(); }
@@ -1407,6 +1443,20 @@
     }));
   }
 
+  function renderGalleryGrid(){
+    const grid = document.getElementById('galleryGrid');
+    const note = document.getElementById('galleryGridNote');
+    if (!grid) return;
+    if (!libraryItems.length){ note.textContent = ''; grid.innerHTML = '<div class="empty-state">Nenhum anúncio ainda. Envie acima.</div>'; return; }
+    note.textContent = libraryItems.length + ' anúncio(s) no banco';
+    const shown = libraryItems.slice().reverse();
+    grid.innerHTML = shown.map(it => mediaItemHtml(it, false)).join('');
+    grid.querySelectorAll('.media-remove').forEach(btn => btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      deleteLibraryItem(btn.dataset.removeId);
+    }));
+  }
+
   function deleteLibraryItem(id){
     fetch(LIBRARY_API + '/' + id, { method: 'DELETE', headers: { 'X-Access-Key': COSTS_API_KEY } })
       .then(r => r.json())
@@ -1414,8 +1464,7 @@
         libraryItems = json.items || [];
         if (selectedLibraryId === id) selectedLibraryId = null;
         if (selectedLogoLibraryId === id) selectedLogoLibraryId = null;
-        renderMediaGrid();
-        renderMediaDatalist();
+        refreshLibraryViews();
         updateSelectedCreativeLabel();
         updateSelectedLogoLabel();
       }).catch(() => {});
@@ -1442,14 +1491,6 @@
     });
   }
 
-  function uniqueLibraryName(base){
-    const existing = new Set(libraryItems.map(it => it.name));
-    if (!existing.has(base)) return base;
-    let i = 2;
-    while (existing.has(base + ' (' + i + ')')) i++;
-    return base + ' (' + i + ')';
-  }
-
   function uploadOneFile(file, name){
     const form = new FormData();
     form.append('file', file);
@@ -1464,31 +1505,38 @@
     return idx > 0 ? filename.slice(0, idx) : filename;
   }
 
-  document.getElementById('mediaUploadBtn').addEventListener('click', async () => {
-    const input = document.getElementById('mediaFileInput');
-    const nameInput = document.getElementById('mediaNameInput');
-    const note = document.getElementById('mediaUploadNote');
+  document.getElementById('galleryUploadBtn').addEventListener('click', async () => {
+    const input = document.getElementById('galleryFileInput');
+    const nameInput = document.getElementById('galleryNameInput');
+    const note = document.getElementById('galleryUploadNote');
     const files = Array.from(input.files || []);
     if (!files.length) return;
     const customName = nameInput.value.trim();
+    const existingNames = new Set(libraryItems.map(it => it.name));
+    const proposedNames = [];
+    const conflicts = [];
+    files.forEach((f) => {
+      const baseName = files.length === 1 && customName ? customName : stripExt(f.name);
+      if (existingNames.has(baseName) || proposedNames.indexOf(baseName) !== -1) conflicts.push(baseName);
+      proposedNames.push(baseName);
+    });
+    if (conflicts.length) {
+      note.textContent = 'Já existe anúncio com esse nome: ' + Array.from(new Set(conflicts)).join(', ') + ' — renomeie e tente de novo. Nada foi enviado.';
+      return;
+    }
     for (let i = 0; i < files.length; i++) {
       note.textContent = 'Limpando metadados ' + (i + 1) + '/' + files.length + '…';
-      const baseName = files.length === 1 && customName ? customName : stripExt(files[i].name);
-      const name = uniqueLibraryName(baseName);
       try {
         const clean = await stripImageMetadata(files[i]);
         note.textContent = 'Enviando ' + (i + 1) + '/' + files.length + '…';
-        await uploadOneFile(clean, name);
+        await uploadOneFile(clean, proposedNames[i]);
       } catch {
         note.textContent = 'Falhou em "' + files[i].name + '" — parei aqui.';
-        renderMediaGrid(); renderMediaDatalist();
+        refreshLibraryViews();
         return;
       }
     }
-    mediaSearchQuery = '';
-    document.getElementById('mediaSearchInput').value = '';
-    renderMediaGrid();
-    renderMediaDatalist();
+    refreshLibraryViews();
     input.value = '';
     nameInput.value = '';
     note.textContent = '';
@@ -1603,6 +1651,7 @@
     return fetch(LINKS_API, { cache: 'no-store' }).then(r => r.json()).then(json => {
       ccLinks = json.links || {};
       renderAccountCards();
+      renderLinksManager();
     }).catch(() => {});
   }
 
@@ -1610,7 +1659,7 @@
     return fetch(LINKS_API, {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY },
       body: JSON.stringify({ adAccountId: acc.id, accountKey: acc.accountKey, accountName: acc.name, url: urlVal }),
-    }).then(r => r.json()).then(json => { ccLinks = json.links || {}; renderAccountCards(); renderCcSummary(); });
+    }).then(r => r.json()).then(json => { ccLinks = json.links || {}; renderAccountCards(); renderLinksManager(); renderCcSummary(); });
   }
 
   // ---- Sub-contas (multi-seleção pra espelhar campanha), cada card já traz o link ----
@@ -1626,8 +1675,6 @@
     });
   }
 
-  let editingLinkForId = null;
-
   function shortLinkForDisplay(url){
     const noScheme = url.replace(/^https?:\/\//, '');
     const hpidMatch = noScheme.match(/^(.*?hpid=[^&]*)/);
@@ -1638,13 +1685,36 @@
     const el = document.getElementById('ccSubAccounts');
     if (!allSubAccounts.length){ el.innerHTML = '<span class="cell-muted">Nenhuma sub-conta disponível (contas com token quebrado não aparecem aqui).</span>'; return; }
     el.innerHTML = allSubAccounts.map(a => {
-      const link = ccLinks[a.id];
       const isSelected = selectedSubAccountIds.indexOf(a.id) !== -1;
-      const isEditing = editingLinkForId === a.id;
+      return '<div class="account-card' + (isSelected ? ' selected' : '') + '" data-account-card="' + a.id + '">' +
+        '<span class="acc-check">✓</span>' +
+        '<div class="acc-id">' +
+          '<div class="acc-name">' + a.accountLabel + ' ···' + a.id.slice(-3) + '</div>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+
+    el.querySelectorAll('[data-account-card]').forEach(card => card.addEventListener('click', () => {
+      const id = card.dataset.accountCard;
+      selectedSubAccountIds = selectedSubAccountIds.indexOf(id) !== -1 ? [] : [id];
+      renderAccountCards();
+      renderCcSummary();
+    }));
+  }
+
+  let linksEditingId = null;
+
+  function renderLinksManager(){
+    const el = document.getElementById('linksManagerList');
+    if (!el) return;
+    if (!allSubAccounts.length){ el.innerHTML = '<span class="cell-muted">Nenhuma sub-conta disponível (contas com token quebrado não aparecem aqui).</span>'; return; }
+    el.innerHTML = allSubAccounts.map(a => {
+      const link = ccLinks[a.id];
+      const isEditing = linksEditingId === a.id;
       let linkRow;
       if (isEditing) {
         linkRow = '<div class="acc-link-form">' +
-          '<input type="text" data-link-edit-input="' + a.id + '" value="' + (link ? link.url.replace(/"/g, '&quot;') : '') + '" placeholder="https://..." onclick="event.stopPropagation()">' +
+          '<input type="text" data-link-edit-input="' + a.id + '" value="' + (link ? link.url.replace(/"/g, '&quot;') : '') + '" placeholder="https://...">' +
           '<button type="button" data-save-link="' + a.id + '">salvar</button>' +
         '</div>';
       } else {
@@ -1653,8 +1723,7 @@
           '<button type="button" class="acc-link-edit" data-edit-link="' + a.id + '">' + (link ? 'editar' : '+ adicionar') + '</button>' +
         '</div>';
       }
-      return '<div class="account-card' + (isSelected ? ' selected' : '') + '" data-account-card="' + a.id + '">' +
-        '<span class="acc-check">✓</span>' +
+      return '<div class="account-card links-row" data-account-card="' + a.id + '">' +
         '<div class="acc-id">' +
           '<div class="acc-name">' + a.accountLabel + ' ···' + a.id.slice(-3) + '</div>' +
         '</div>' +
@@ -1662,28 +1731,19 @@
       '</div>';
     }).join('');
 
-    el.querySelectorAll('[data-account-card]').forEach(card => card.addEventListener('click', (e) => {
-      if (e.target.closest('.acc-link-row')) return;
-      const id = card.dataset.accountCard;
-      selectedSubAccountIds = selectedSubAccountIds.indexOf(id) !== -1 ? [] : [id];
-      renderAccountCards();
-      renderCcSummary();
-    }));
-    el.querySelectorAll('[data-edit-link]').forEach(btn => btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      editingLinkForId = btn.dataset.editLink;
-      renderAccountCards();
-      const input = el.querySelector('[data-link-edit-input="' + editingLinkForId + '"]');
+    el.querySelectorAll('[data-edit-link]').forEach(btn => btn.addEventListener('click', () => {
+      linksEditingId = btn.dataset.editLink;
+      renderLinksManager();
+      const input = el.querySelector('[data-link-edit-input="' + linksEditingId + '"]');
       if (input) input.focus();
     }));
-    el.querySelectorAll('[data-save-link]').forEach(btn => btn.addEventListener('click', (e) => {
-      e.stopPropagation();
+    el.querySelectorAll('[data-save-link]').forEach(btn => btn.addEventListener('click', () => {
       const id = btn.dataset.saveLink;
       const input = el.querySelector('[data-link-edit-input="' + id + '"]');
       const acc = allSubAccounts.find(a => a.id === id);
       const urlVal = input.value.trim();
       if (!urlVal) return;
-      editingLinkForId = null;
+      linksEditingId = null;
       saveAccountLink(acc, urlVal);
     }));
   }
@@ -1803,7 +1863,7 @@
     if (!document.getElementById('ccBrandDefault').value.trim()) missing.push('marca padrão');
     if (!document.getElementById('ccDescription').value.trim()) missing.push('descrição');
     const withoutLink = accounts.filter(a => !ccLinks[a.id]);
-    if (withoutLink.length) missing.push(withoutLink.length + ' conta(s) sem link');
+    if (withoutLink.length) missing.push('cadastre o link dessa conta na aba "Links das contas"');
 
     const statusEl = document.getElementById('ccSumStatus');
     const btn = document.getElementById('ccSubmitBtn');
@@ -1826,6 +1886,17 @@
     el.scrollTop = el.scrollHeight;
   }
 
+  let criarSubView = 'nova';
+
+  function renderCriarSubNav(){
+    document.querySelectorAll('.criar-subtab').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.criarsub === criarSubView);
+    });
+    document.getElementById('criarSubNova').hidden = criarSubView !== 'nova';
+    document.getElementById('criarSubLinks').hidden = criarSubView !== 'links';
+    document.getElementById('criarSubGaleria').hidden = criarSubView !== 'galeria';
+  }
+
   function initCriarView(){
     renderStartDayPills();
     initTargetingPills();
@@ -1837,6 +1908,11 @@
     ['ccName', 'ccBudget', 'ccStartTime', 'ccHeadline', 'ccBrandDefault', 'ccDescription'].forEach(id => {
       document.getElementById(id).addEventListener('input', renderCcSummary);
     });
+    document.querySelectorAll('.criar-subtab').forEach(btn => btn.addEventListener('click', () => {
+      criarSubView = btn.dataset.criarsub;
+      renderCriarSubNav();
+    }));
+    renderCriarSubNav();
     renderCcSummary();
   }
 
