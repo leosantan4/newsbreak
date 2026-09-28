@@ -514,7 +514,7 @@
           <section class="panel">
             <div class="step-head">
               <div class="step-head-left"><span class="step-num">4</span><span class="step-title">Marca &amp; logo padrão</span></div>
-              <span class="step-desc">fica salvo — não precisa repetir em toda campanha. O logo é escolhido na biblioteca, lá embaixo em "Anúncio"</span>
+              <span class="step-desc">fica salvo — não precisa repetir em toda campanha. O logo vem da pasta "Logos" da Galeria — escolha lá embaixo em "Anúncio", com "Logo padrão" marcado</span>
             </div>
             <div class="form-grid">
               <div class="form-field">
@@ -523,7 +523,7 @@
               </div>
               <div class="form-field">
                 <label>Logo padrão</label>
-                <div id="ccLogoSelected" class="cell-muted">Nenhum — selecione lá embaixo com "Logo padrão" marcado</div>
+                <div id="ccLogoSelected" class="cell-muted">Nenhum — vá em "Anúncio" > "Logo padrão" e escolha na pasta Logos</div>
               </div>
             </div>
             <div style="padding:0 18px 16px; display:flex; gap:10px; align-items:center;">
@@ -610,12 +610,20 @@
             <div class="step-head-left"><span class="step-title">Galeria de anúncios</span></div>
             <span class="step-desc">banco próprio da ferramenta (não é Google Drive) — envie vários arquivos de uma vez; metadados são limpos automaticamente; não deixa subir dois anúncios com o mesmo nome</span>
           </div>
-          <div style="padding:14px 18px 0; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+          <div class="creative-search">
+            <span class="cell-muted" style="font-size:11.5px; text-transform:uppercase; letter-spacing:.05em;">Enviar pra pasta:</span>
+            <div class="pill-row" id="galleryUploadFolderToggle"></div>
+          </div>
+          <div style="padding:0 18px 0; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
             <input type="file" id="galleryFileInput" accept="image/*,video/*" multiple>
             <input type="text" id="galleryNameInput" placeholder="Nome (só se enviar 1 arquivo)" style="flex:1; min-width:180px; border:1px solid var(--line); border-radius:8px; padding:9px 10px; font:inherit; font-size:13px; background:var(--bg); color:var(--ink);">
             <button type="button" id="galleryUploadBtn" style="border:none; background:var(--accent); color:var(--accent-ink); font:inherit; font-weight:600; font-size:13px; padding:9px 16px; border-radius:8px; cursor:pointer;">Adicionar</button>
           </div>
           <div class="cell-muted" id="galleryUploadNote" style="padding:8px 18px 0;"></div>
+          <div class="creative-search">
+            <span class="cell-muted" style="font-size:11.5px; text-transform:uppercase; letter-spacing:.05em;">Pasta:</span>
+            <div class="pill-row" id="galleryFolderFilter"></div>
+          </div>
           <div class="media-grid-note" id="galleryGridNote"></div>
           <div class="media-grid" id="galleryGrid"></div>
         </section>
@@ -1367,6 +1375,10 @@
 
   let mediaSelectTarget = 'creative';
   let mediaSearchQuery = '';
+  let galleryUploadFolder = 'creative';
+  let galleryFolderFilter = 'creative';
+
+  function itemCategory(it){ return it.category === 'logo' ? 'logo' : 'creative'; }
 
   function renderMediaTargetToggle(){
     const el = document.getElementById('mediaTargetToggle');
@@ -1375,6 +1387,28 @@
     el.querySelectorAll('button').forEach(btn => btn.addEventListener('click', () => {
       mediaSelectTarget = btn.dataset.target;
       renderMediaTargetToggle();
+      renderMediaGrid();
+    }));
+  }
+
+  function renderGalleryUploadFolderToggle(){
+    const el = document.getElementById('galleryUploadFolderToggle');
+    const opts = [{ value: 'creative', label: 'Criativos' }, { value: 'logo', label: 'Logos' }];
+    el.innerHTML = opts.map(o => '<button type="button" class="pill' + (galleryUploadFolder === o.value ? ' active' : '') + '" data-folder="' + o.value + '">' + o.label + '</button>').join('');
+    el.querySelectorAll('button').forEach(btn => btn.addEventListener('click', () => {
+      galleryUploadFolder = btn.dataset.folder;
+      renderGalleryUploadFolderToggle();
+    }));
+  }
+
+  function renderGalleryFolderFilter(){
+    const el = document.getElementById('galleryFolderFilter');
+    const opts = [{ value: 'creative', label: 'Criativos' }, { value: 'logo', label: 'Logos' }];
+    el.innerHTML = opts.map(o => '<button type="button" class="pill' + (galleryFolderFilter === o.value ? ' active' : '') + '" data-folder="' + o.value + '">' + o.label + '</button>').join('');
+    el.querySelectorAll('button').forEach(btn => btn.addEventListener('click', () => {
+      galleryFolderFilter = btn.dataset.folder;
+      renderGalleryFolderFilter();
+      renderGalleryGrid();
     }));
   }
 
@@ -1401,7 +1435,7 @@
   function updateSelectedLogoLabel(){
     const el = document.getElementById('ccLogoSelected');
     const item = libraryItems.find(i => i.id === selectedLogoLibraryId);
-    el.textContent = item ? item.name : 'Nenhum — selecione lá embaixo com "Logo padrão" marcado';
+    el.textContent = item ? item.name : 'Nenhum — vá em "Anúncio" > "Logo padrão" e escolha na pasta Logos';
   }
 
   function mediaItemHtml(it, selectable){
@@ -1426,9 +1460,10 @@
       grid.innerHTML = '';
       return;
     }
-    const shown = libraryItems.filter(it => it.name.toLowerCase().indexOf(q) !== -1).slice().reverse();
-    note.textContent = shown.length + ' resultado(s) pra "' + mediaSearchQuery.trim() + '"';
-    if (!shown.length){ grid.innerHTML = '<div class="empty-state">Nenhum anúncio encontrado pra "' + mediaSearchQuery.trim() + '". Confira o nome na Galeria.</div>'; return; }
+    const shown = libraryItems.filter(it => itemCategory(it) === mediaSelectTarget && it.name.toLowerCase().indexOf(q) !== -1).slice().reverse();
+    const folderLabel = mediaSelectTarget === 'logo' ? 'na pasta Logos' : 'nos Criativos';
+    note.textContent = shown.length + ' resultado(s) ' + folderLabel + ' pra "' + mediaSearchQuery.trim() + '"';
+    if (!shown.length){ grid.innerHTML = '<div class="empty-state">Nenhum anúncio encontrado ' + folderLabel + ' pra "' + mediaSearchQuery.trim() + '". Confira o nome ou a pasta na Galeria.</div>'; return; }
     grid.innerHTML = shown.map(it => mediaItemHtml(it, true)).join('');
     grid.querySelectorAll('.media-item').forEach(el => el.addEventListener('click', (e) => {
       if (e.target.closest('.media-remove')) return;
@@ -1447,9 +1482,10 @@
     const grid = document.getElementById('galleryGrid');
     const note = document.getElementById('galleryGridNote');
     if (!grid) return;
-    if (!libraryItems.length){ note.textContent = ''; grid.innerHTML = '<div class="empty-state">Nenhum anúncio ainda. Envie acima.</div>'; return; }
-    note.textContent = libraryItems.length + ' anúncio(s) no banco';
-    const shown = libraryItems.slice().reverse();
+    const inFolder = libraryItems.filter(it => itemCategory(it) === galleryFolderFilter);
+    if (!inFolder.length){ note.textContent = '0 anúncio(s) nessa pasta'; grid.innerHTML = '<div class="empty-state">Nenhum anúncio nessa pasta ainda. Envie acima.</div>'; return; }
+    note.textContent = inFolder.length + ' anúncio(s) nessa pasta';
+    const shown = inFolder.slice().reverse();
     grid.innerHTML = shown.map(it => mediaItemHtml(it, false)).join('');
     grid.querySelectorAll('.media-remove').forEach(btn => btn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -1491,10 +1527,11 @@
     });
   }
 
-  function uploadOneFile(file, name){
+  function uploadOneFile(file, name, category){
     const form = new FormData();
     form.append('file', file);
     form.append('name', name);
+    form.append('category', category || 'creative');
     return fetch(LIBRARY_API, { method: 'POST', headers: { 'X-Access-Key': COSTS_API_KEY }, body: form })
       .then(r => { if (!r.ok) throw new Error(); return r.json(); })
       .then(json => { libraryItems = json.items || []; });
@@ -1529,13 +1566,15 @@
       try {
         const clean = await stripImageMetadata(files[i]);
         note.textContent = 'Enviando ' + (i + 1) + '/' + files.length + '…';
-        await uploadOneFile(clean, proposedNames[i]);
+        await uploadOneFile(clean, proposedNames[i], galleryUploadFolder);
       } catch {
         note.textContent = 'Falhou em "' + files[i].name + '" — parei aqui.';
         refreshLibraryViews();
         return;
       }
     }
+    galleryFolderFilter = galleryUploadFolder;
+    renderGalleryFolderFilter();
     refreshLibraryViews();
     input.value = '';
     nameInput.value = '';
@@ -1901,6 +1940,8 @@
     renderStartDayPills();
     initTargetingPills();
     renderMediaTargetToggle();
+    renderGalleryUploadFolderToggle();
+    renderGalleryFolderFilter();
     loadLibraryItems();
     loadCopyPresets();
     loadCcSettings().then(renderCcSummary);
