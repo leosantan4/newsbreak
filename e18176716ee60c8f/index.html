@@ -514,7 +514,7 @@
           <section class="panel">
             <div class="step-head">
               <div class="step-head-left"><span class="step-num">4</span><span class="step-title">Marca &amp; logo padrão</span></div>
-              <span class="step-desc">fica salvo — não precisa repetir em toda campanha. O logo vem da pasta "Logos" da Galeria — escolha lá embaixo em "Anúncio", com "Logo padrão" marcado</span>
+              <span class="step-desc">fica salvo — não precisa repetir em toda campanha. O logo vem da pasta "Logos" da Galeria</span>
             </div>
             <div class="form-grid">
               <div class="form-field">
@@ -522,10 +522,15 @@
                 <input type="text" id="ccBrandDefault" placeholder="Nome da marca">
               </div>
               <div class="form-field">
-                <label>Logo padrão</label>
-                <div id="ccLogoSelected" class="cell-muted">Nenhum — vá em "Anúncio" > "Logo padrão" e escolha na pasta Logos</div>
+                <label>Logo selecionado</label>
+                <div id="ccLogoSelected" class="cell-muted">Nenhum selecionado</div>
               </div>
             </div>
+            <div class="creative-search">
+              <input type="text" id="logoSearchInput" placeholder="Digite o nome/número do logo…">
+            </div>
+            <div class="media-grid-note" id="logoGridNote"></div>
+            <div class="media-grid" id="logoGrid"></div>
             <div style="padding:0 18px 16px; display:flex; gap:10px; align-items:center;">
               <button type="button" id="ccBrandSaveBtn" style="border:none; background:var(--accent); color:var(--accent-ink); font:inherit; font-weight:600; font-size:13px; padding:9px 16px; border-radius:8px; cursor:pointer;">Salvar</button>
               <span class="cell-muted" id="ccBrandSaveNote"></span>
@@ -564,10 +569,6 @@
             <div class="step-head" style="margin-top:8px;">
               <div class="step-head-left"><span class="step-title" style="font-size:13px;">Imagem do anúncio</span></div>
               <span class="step-desc">digite o nome do anúncio pra achar na galeria — nada é exibido até você digitar. Suba criativos novos na aba "Galeria de anúncios"</span>
-            </div>
-            <div class="creative-search">
-              <span class="cell-muted" style="font-size:11.5px; text-transform:uppercase; letter-spacing:.05em;">Selecionar como:</span>
-              <div class="pill-row" id="mediaTargetToggle"></div>
             </div>
             <div class="creative-search">
               <input type="text" id="mediaSearchInput" list="mediaNamesList" placeholder="Digite o nome/número do anúncio…">
@@ -1373,23 +1374,12 @@
   let networkSel = ['all'];
   let startDaySel = 0;
 
-  let mediaSelectTarget = 'creative';
   let mediaSearchQuery = '';
+  let logoSearchQuery = '';
   let galleryUploadFolder = 'creative';
   let galleryFolderFilter = 'creative';
 
   function itemCategory(it){ return it.category === 'logo' ? 'logo' : 'creative'; }
-
-  function renderMediaTargetToggle(){
-    const el = document.getElementById('mediaTargetToggle');
-    const opts = [{ value: 'creative', label: 'Criativo do anúncio' }, { value: 'logo', label: 'Logo padrão' }];
-    el.innerHTML = opts.map(o => '<button type="button" class="pill' + (mediaSelectTarget === o.value ? ' active' : '') + '" data-target="' + o.value + '">' + o.label + '</button>').join('');
-    el.querySelectorAll('button').forEach(btn => btn.addEventListener('click', () => {
-      mediaSelectTarget = btn.dataset.target;
-      renderMediaTargetToggle();
-      renderMediaGrid();
-    }));
-  }
 
   function renderGalleryUploadFolderToggle(){
     const el = document.getElementById('galleryUploadFolderToggle');
@@ -1422,6 +1412,7 @@
 
   function refreshLibraryViews(){
     renderMediaGrid();
+    renderLogoGrid();
     renderGalleryGrid();
     renderMediaDatalist();
   }
@@ -1435,14 +1426,14 @@
   function updateSelectedLogoLabel(){
     const el = document.getElementById('ccLogoSelected');
     const item = libraryItems.find(i => i.id === selectedLogoLibraryId);
-    el.textContent = item ? item.name : 'Nenhum — vá em "Anúncio" > "Logo padrão" e escolha na pasta Logos';
+    el.textContent = item ? item.name : 'Nenhum selecionado';
   }
 
-  function mediaItemHtml(it, selectable){
+  function mediaItemHtml(it, selectedId){
     const isVideo = (it.contentType || '').indexOf('video') === 0;
     const fileUrl = LIBRARY_API + '/' + it.id + '/file';
     const media = isVideo ? '<video src="' + fileUrl + '" muted></video>' : '<img src="' + fileUrl + '" loading="lazy">';
-    const isSel = selectable && (selectedLibraryId === it.id || selectedLogoLibraryId === it.id);
+    const isSel = selectedId === it.id;
     const uploadedDate = it.uploadedAt ? new Date(it.uploadedAt).toLocaleDateString('pt-BR') : '';
     return '<div class="media-item' + (isSel ? ' selected' : '') + '" data-id="' + it.id + '">' +
       media +
@@ -1460,16 +1451,42 @@
       grid.innerHTML = '';
       return;
     }
-    const shown = libraryItems.filter(it => itemCategory(it) === mediaSelectTarget && it.name.toLowerCase().indexOf(q) !== -1).slice().reverse();
-    const folderLabel = mediaSelectTarget === 'logo' ? 'na pasta Logos' : 'nos Criativos';
-    note.textContent = shown.length + ' resultado(s) ' + folderLabel + ' pra "' + mediaSearchQuery.trim() + '"';
-    if (!shown.length){ grid.innerHTML = '<div class="empty-state">Nenhum anúncio encontrado ' + folderLabel + ' pra "' + mediaSearchQuery.trim() + '". Confira o nome ou a pasta na Galeria.</div>'; return; }
-    grid.innerHTML = shown.map(it => mediaItemHtml(it, true)).join('');
+    const shown = libraryItems.filter(it => itemCategory(it) === 'creative' && it.name.toLowerCase().indexOf(q) !== -1).slice().reverse();
+    note.textContent = shown.length + ' resultado(s) nos Criativos pra "' + mediaSearchQuery.trim() + '"';
+    if (!shown.length){ grid.innerHTML = '<div class="empty-state">Nenhum anúncio encontrado nos Criativos pra "' + mediaSearchQuery.trim() + '". Confira o nome na Galeria.</div>'; return; }
+    grid.innerHTML = shown.map(it => mediaItemHtml(it, selectedLibraryId)).join('');
     grid.querySelectorAll('.media-item').forEach(el => el.addEventListener('click', (e) => {
       if (e.target.closest('.media-remove')) return;
-      if (mediaSelectTarget === 'logo') { selectedLogoLibraryId = el.dataset.id; updateSelectedLogoLabel(); }
-      else { selectedLibraryId = el.dataset.id; updateSelectedCreativeLabel(); }
+      selectedLibraryId = el.dataset.id;
+      updateSelectedCreativeLabel();
       renderMediaGrid();
+      renderCcSummary();
+    }));
+    grid.querySelectorAll('.media-remove').forEach(btn => btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      deleteLibraryItem(btn.dataset.removeId);
+    }));
+  }
+
+  function renderLogoGrid(){
+    const grid = document.getElementById('logoGrid');
+    const note = document.getElementById('logoGridNote');
+    if (!grid) return;
+    const q = logoSearchQuery.trim().toLowerCase();
+    if (!q) {
+      note.textContent = 'digite o nome/número do logo pra encontrá-lo';
+      grid.innerHTML = '';
+      return;
+    }
+    const shown = libraryItems.filter(it => itemCategory(it) === 'logo' && it.name.toLowerCase().indexOf(q) !== -1).slice().reverse();
+    note.textContent = shown.length + ' resultado(s) na pasta Logos pra "' + logoSearchQuery.trim() + '"';
+    if (!shown.length){ grid.innerHTML = '<div class="empty-state">Nenhum logo encontrado pra "' + logoSearchQuery.trim() + '". Confira o nome ou a pasta na Galeria.</div>'; return; }
+    grid.innerHTML = shown.map(it => mediaItemHtml(it, selectedLogoLibraryId)).join('');
+    grid.querySelectorAll('.media-item').forEach(el => el.addEventListener('click', (e) => {
+      if (e.target.closest('.media-remove')) return;
+      selectedLogoLibraryId = el.dataset.id;
+      updateSelectedLogoLabel();
+      renderLogoGrid();
       renderCcSummary();
     }));
     grid.querySelectorAll('.media-remove').forEach(btn => btn.addEventListener('click', (e) => {
@@ -1486,7 +1503,7 @@
     if (!inFolder.length){ note.textContent = '0 anúncio(s) nessa pasta'; grid.innerHTML = '<div class="empty-state">Nenhum anúncio nessa pasta ainda. Envie acima.</div>'; return; }
     note.textContent = inFolder.length + ' anúncio(s) nessa pasta';
     const shown = inFolder.slice().reverse();
-    grid.innerHTML = shown.map(it => mediaItemHtml(it, false)).join('');
+    grid.innerHTML = shown.map(it => mediaItemHtml(it, null)).join('');
     grid.querySelectorAll('.media-remove').forEach(btn => btn.addEventListener('click', (e) => {
       e.stopPropagation();
       deleteLibraryItem(btn.dataset.removeId);
@@ -1595,14 +1612,38 @@
     if (e.key !== 'Enter') return;
     const typed = mediaSearchQuery.trim().toLowerCase();
     if (!typed) return;
-    const matches = libraryItems.filter(it => it.name.toLowerCase().indexOf(typed) !== -1);
-    const match = matches.length === 1 ? matches[0] : libraryItems.find(it => it.name.toLowerCase() === typed);
+    const pool = libraryItems.filter(it => itemCategory(it) === 'creative');
+    const matches = pool.filter(it => it.name.toLowerCase().indexOf(typed) !== -1);
+    const match = matches.length === 1 ? matches[0] : pool.find(it => it.name.toLowerCase() === typed);
     if (match) {
-      if (mediaSelectTarget === 'logo') { selectedLogoLibraryId = match.id; updateSelectedLogoLabel(); }
-      else { selectedLibraryId = match.id; updateSelectedCreativeLabel(); }
+      selectedLibraryId = match.id;
+      updateSelectedCreativeLabel();
       mediaSearchQuery = '';
       e.target.value = '';
       renderMediaGrid();
+      renderCcSummary();
+      e.target.blur();
+    }
+  });
+
+  document.getElementById('logoSearchInput').addEventListener('input', (e) => {
+    logoSearchQuery = e.target.value;
+    renderLogoGrid();
+  });
+
+  document.getElementById('logoSearchInput').addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    const typed = logoSearchQuery.trim().toLowerCase();
+    if (!typed) return;
+    const pool = libraryItems.filter(it => itemCategory(it) === 'logo');
+    const matches = pool.filter(it => it.name.toLowerCase().indexOf(typed) !== -1);
+    const match = matches.length === 1 ? matches[0] : pool.find(it => it.name.toLowerCase() === typed);
+    if (match) {
+      selectedLogoLibraryId = match.id;
+      updateSelectedLogoLabel();
+      logoSearchQuery = '';
+      e.target.value = '';
+      renderLogoGrid();
       renderCcSummary();
       e.target.blur();
     }
@@ -1939,7 +1980,6 @@
   function initCriarView(){
     renderStartDayPills();
     initTargetingPills();
-    renderMediaTargetToggle();
     renderGalleryUploadFolderToggle();
     renderGalleryFolderFilter();
     loadLibraryItems();
