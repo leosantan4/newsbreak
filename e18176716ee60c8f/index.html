@@ -779,6 +779,7 @@
   let subAccounts = {};
   let topups = [];
   const data = {vini:{}, pretorian:{}, neia:{}, alan:{}, troya:{}};
+  function ensureDataKeys(){ ACCOUNTS.forEach(a => { if (!data[a.key]) data[a.key] = {}; }); }
   const ACCOUNT_LABEL = {vini:'Vini', pretorian:'Pretorian', neia:'Neia', alan:'Alan', troya:'Troya'};
 
   function subDisplayName(accId){
@@ -2319,6 +2320,7 @@
     return fetch(ACCOUNTS_API, {cache:'no-store'}).then(r => r.json()).then(json => {
       customAccounts = json.accounts || [];
       ACCOUNTS = STATIC_ACCOUNTS.concat(customAccounts);
+      ensureDataKeys();
     }).catch(() => {});
   }
 
@@ -2364,6 +2366,7 @@
       }).then(r => r.json()).then(json => {
         customAccounts = json.accounts || [];
         ACCOUNTS = STATIC_ACCOUNTS.concat(customAccounts);
+        ensureDataKeys();
         renderAccountsList();
         renderAll();
         loadAllSubAccounts();
@@ -2394,6 +2397,7 @@
         if (json.error) { note.textContent = 'Falhou — tenta de novo.'; return; }
         customAccounts = json.accounts || [];
         ACCOUNTS = STATIC_ACCOUNTS.concat(customAccounts);
+        ensureDataKeys();
         document.getElementById('newAccountLabel').value = '';
         document.getElementById('newAccountToken').value = '';
         note.textContent = '';
