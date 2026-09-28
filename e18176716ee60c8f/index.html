@@ -176,6 +176,7 @@
     .account-card .acc-link-row{flex:1 1 100%;}
   }
   .creative-search{display:flex; gap:10px; align-items:center; padding:0 18px 14px; flex-wrap:wrap;}
+  .media-grid-note{padding:0 18px 10px; font-size:11.5px; color:var(--muted);}
   .creative-search input{flex:1; min-width:180px; border:1px solid var(--line); border-radius:8px; padding:9px 10px; font:inherit; font-size:13px; background:var(--bg); color:var(--ink);}
 
   .step-head{display:flex; align-items:flex-start; justify-content:space-between; gap:16px; padding:18px 20px 14px; flex-wrap:wrap; border-bottom:1px solid var(--line);}
@@ -564,9 +565,10 @@
               <div class="pill-row" id="mediaTargetToggle"></div>
             </div>
             <div class="creative-search">
-              <input type="text" id="mediaSearchInput" list="mediaNamesList" placeholder="Digite o nome do criativo pra achar e selecionar…">
+              <input type="text" id="mediaSearchInput" list="mediaNamesList" placeholder="Buscar por nome — filtra a lista abaixo em tempo real…">
               <datalist id="mediaNamesList"></datalist>
             </div>
+            <div class="media-grid-note" id="mediaGridNote"></div>
             <div class="media-grid" id="mediaGrid"></div>
             <div class="create-log" id="ccLog" hidden></div>
           </section>
@@ -1332,6 +1334,8 @@
   let startDaySel = 0;
 
   let mediaSelectTarget = 'creative';
+  let mediaSearchQuery = '';
+  const MEDIA_RECENT_LIMIT = 12;
 
   function renderMediaTargetToggle(){
     const el = document.getElementById('mediaTargetToggle');
@@ -1366,8 +1370,19 @@
 
   function renderMediaGrid(){
     const grid = document.getElementById('mediaGrid');
-    if (!libraryItems.length){ grid.innerHTML = '<div class="empty-state">Nenhum criativo ainda. Envie um acima.</div>'; return; }
-    grid.innerHTML = libraryItems.map(it => {
+    const note = document.getElementById('mediaGridNote');
+    if (!libraryItems.length){ note.textContent = ''; grid.innerHTML = '<div class="empty-state">Nenhum criativo ainda. Envie um acima.</div>'; return; }
+    const q = mediaSearchQuery.trim().toLowerCase();
+    let shown;
+    if (q) {
+      shown = libraryItems.filter(it => it.name.toLowerCase().indexOf(q) !== -1).slice().reverse();
+      note.textContent = shown.length + ' resultado(s) pra "' + mediaSearchQuery.trim() + '"';
+    } else {
+      shown = libraryItems.slice(-MEDIA_RECENT_LIMIT).reverse();
+      note.textContent = 'mostrando os ' + shown.length + ' mais recentes de ' + libraryItems.length + ' — digite acima pra buscar os demais';
+    }
+    if (!shown.length){ grid.innerHTML = '<div class="empty-state">Nenhum criativo encontrado pra "' + mediaSearchQuery.trim() + '".</div>'; return; }
+    grid.innerHTML = shown.map(it => {
       const isVideo = (it.contentType || '').indexOf('video') === 0;
       const fileUrl = LIBRARY_API + '/' + it.id + '/file';
       const media = isVideo ? '<video src="' + fileUrl + '" muted></video>' : '<img src="' + fileUrl + '" loading="lazy">';
@@ -1470,6 +1485,8 @@
         return;
       }
     }
+    mediaSearchQuery = '';
+    document.getElementById('mediaSearchInput').value = '';
     renderMediaGrid();
     renderMediaDatalist();
     input.value = '';
@@ -1482,17 +1499,24 @@
     dl.innerHTML = libraryItems.map(it => '<option value="' + it.name.replace(/"/g, '&quot;') + '">').join('');
   }
 
-  document.getElementById('mediaSearchInput').addEventListener('change', (e) => {
-    const typed = e.target.value.trim().toLowerCase();
+  document.getElementById('mediaSearchInput').addEventListener('input', (e) => {
+    mediaSearchQuery = e.target.value;
+    renderMediaGrid();
+  });
+
+  document.getElementById('mediaSearchInput').addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    const typed = mediaSearchQuery.trim().toLowerCase();
     if (!typed) return;
-    const match = libraryItems.find(it => it.name.toLowerCase() === typed) ||
-      libraryItems.find(it => it.name.toLowerCase().indexOf(typed) !== -1);
+    const matches = libraryItems.filter(it => it.name.toLowerCase().indexOf(typed) !== -1);
+    const match = matches.length === 1 ? matches[0] : libraryItems.find(it => it.name.toLowerCase() === typed);
     if (match) {
       if (mediaSelectTarget === 'logo') { selectedLogoLibraryId = match.id; updateSelectedLogoLabel(); }
       else { selectedLibraryId = match.id; updateSelectedCreativeLabel(); }
+      mediaSearchQuery = '';
+      e.target.value = '';
       renderMediaGrid();
       renderCcSummary();
-      e.target.value = '';
       e.target.blur();
     }
   });
