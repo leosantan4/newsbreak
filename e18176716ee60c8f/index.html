@@ -152,6 +152,25 @@
   .create-log{padding:14px 18px; font-size:12.5px; font-family:"IBM Plex Mono",monospace; white-space:pre-wrap; max-height:280px; overflow-y:auto; background:var(--bg); border-top:1px solid var(--line);}
   .create-log .ok{color:var(--good);}
   .create-log .err{color:var(--bad); font-weight:600;}
+
+  .account-picker{display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:12px; padding:16px 18px;}
+  .account-card{border:2px solid var(--line); border-radius:12px; padding:14px; cursor:pointer; background:var(--surface-raised); transition:border-color .12s, background .12s;}
+  .account-card:hover{border-color:color-mix(in srgb, var(--accent) 45%, var(--line));}
+  .account-card.selected{border-color:var(--accent); background:color-mix(in srgb, var(--accent) 10%, var(--surface-raised));}
+  .account-card .acc-name{font-weight:700; font-size:14.5px; display:flex; align-items:center; gap:6px;}
+  .account-card .acc-check{width:16px; height:16px; border-radius:5px; border:2px solid var(--line); flex:none; display:inline-flex; align-items:center; justify-content:center; font-size:11px; color:transparent; background:var(--bg);}
+  .account-card.selected .acc-check{border-color:var(--accent); background:var(--accent); color:var(--accent-ink);}
+  .account-card .acc-sub{font-size:11px; color:var(--muted); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .account-card .acc-link-row{margin-top:10px; padding-top:10px; border-top:1px solid var(--line); font-size:11.5px;}
+  .account-card .acc-link-status{display:flex; align-items:center; justify-content:space-between; gap:6px;}
+  .account-card .acc-link-url{color:var(--good); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:110px;}
+  .account-card .acc-link-missing{color:var(--bad);}
+  .account-card .acc-link-edit{background:none; border:none; color:var(--muted); text-decoration:underline; font-size:11px; cursor:pointer; padding:0;}
+  .account-card .acc-link-form{display:flex; gap:6px; margin-top:6px;}
+  .account-card .acc-link-form input{flex:1; min-width:0; border:1px solid var(--line); border-radius:6px; padding:6px 7px; font:inherit; font-size:11.5px; background:var(--bg); color:var(--ink);}
+  .account-card .acc-link-form button{border:none; background:var(--accent); color:var(--accent-ink); font:inherit; font-weight:600; font-size:11px; padding:6px 9px; border-radius:6px; cursor:pointer;}
+  .creative-search{display:flex; gap:10px; align-items:center; padding:0 18px 14px; flex-wrap:wrap;}
+  .creative-search input{flex:1; min-width:180px; border:1px solid var(--line); border-radius:8px; padding:9px 10px; font:inherit; font-size:13px; background:var(--bg); color:var(--ink);}
   @media (max-width:720px){
     .form-grid{grid-template-columns:1fr; padding:14px 16px;}
     .form-field.span2{grid-column:span 1;}
@@ -385,20 +404,39 @@
     <div id="criarView" hidden>
       <section class="panel">
         <div class="panel-head">
-          <h2>Biblioteca de criativos (imagens/GIFs)</h2>
+          <h2>1. Conta(s)</h2>
+          <span class="cell-muted">marca uma ou mais — cria a mesma campanha em cada uma, com o link de cada conta</span>
+        </div>
+        <div class="account-picker" id="ccSubAccounts"></div>
+        <div class="form-grid">
+          <div class="form-field span2">
+            <label for="ccName">Nome da campanha</label>
+            <input type="text" id="ccName" placeholder="Ex: C1-138 - 27/09">
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>2. Biblioteca de criativos (imagens/GIFs)</h2>
           <span></span>
         </div>
         <div style="padding:14px 18px 0; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
           <input type="file" id="mediaFileInput" accept="image/*,video/*">
+          <input type="text" id="mediaNameInput" placeholder="Nome pra achar depois (ex: Honey Ritual V3)" style="flex:1; min-width:180px; border:1px solid var(--line); border-radius:8px; padding:9px 10px; font:inherit; font-size:13px; background:var(--bg); color:var(--ink);">
           <button type="button" id="mediaUploadBtn" style="border:none; background:var(--accent); color:var(--accent-ink); font:inherit; font-weight:600; font-size:13px; padding:9px 16px; border-radius:8px; cursor:pointer;">Adicionar</button>
           <span class="cell-muted" id="mediaUploadNote"></span>
+        </div>
+        <div class="creative-search">
+          <input type="text" id="mediaSearchInput" list="mediaNamesList" placeholder="Digite o nome do criativo pra achar e selecionar…">
+          <datalist id="mediaNamesList"></datalist>
         </div>
         <div class="media-grid" id="mediaGrid"></div>
       </section>
 
       <section class="panel">
         <div class="panel-head">
-          <h2>Biblioteca de título / marca / descrição</h2>
+          <h2>3. Biblioteca de título / marca / descrição</h2>
           <span></span>
         </div>
         <div class="form-grid">
@@ -415,7 +453,7 @@
             <input type="text" id="presetDescription">
           </div>
           <div class="form-field span2">
-            <label>Logo padrão (opcional — clique num item da biblioteca de criativos acima)</label>
+            <label>Logo padrão (opcional — shift+clique num item da biblioteca de criativos acima)</label>
             <div id="presetLogoSelected" class="cell-muted">Nenhum</div>
           </div>
         </div>
@@ -428,33 +466,7 @@
 
       <section class="panel">
         <div class="panel-head">
-          <h2>Links por sub-conta</h2>
-          <span class="cell-muted">a URL de destino da campanha vem daqui automaticamente</span>
-        </div>
-        <div class="table-scroll" id="linksTableWrap"></div>
-      </section>
-
-      <section class="panel">
-        <div class="panel-head">
-          <h2>Nova campanha</h2>
-          <span></span>
-        </div>
-        <div class="form-grid">
-          <div class="form-field span2">
-            <label>Sub-contas (marca uma ou mais — cria a mesma campanha em cada uma, com o link de cada conta)</label>
-            <div class="checkbox-row" id="ccSubAccounts"></div>
-          </div>
-          <div class="form-field span2">
-            <label for="ccName">Nome da campanha</label>
-            <input type="text" id="ccName" placeholder="Ex: C1-138 - 27/09">
-          </div>
-        </div>
-        <p class="costs-note">Objetivo sempre WEB_CONVERSION, orçamento sempre diário, lance sempre MAX_CONVERSION, plataforma sempre Unlimited, status sempre ativo/agendado — não precisa escolher.</p>
-      </section>
-
-      <section class="panel">
-        <div class="panel-head">
-          <h2>Orçamento e agendamento</h2>
+          <h2>4. Orçamento e agendamento</h2>
           <span></span>
         </div>
         <div class="form-grid">
@@ -475,7 +487,7 @@
 
       <section class="panel">
         <div class="panel-head">
-          <h2>Segmentação</h2>
+          <h2>5. Segmentação</h2>
           <span></span>
         </div>
         <div class="form-grid">
@@ -500,7 +512,7 @@
 
       <section class="panel">
         <div class="panel-head">
-          <h2>Anúncio</h2>
+          <h2>6. Anúncio</h2>
           <span></span>
         </div>
         <div class="form-grid">
@@ -1278,6 +1290,7 @@
     fetch(LIBRARY_API, {cache:'no-store'}).then(r => r.json()).then(json => {
       libraryItems = json.items || [];
       renderMediaGrid();
+      renderMediaDatalist();
     }).catch(() => {});
   }
 
@@ -1327,6 +1340,7 @@
         if (selectedLibraryId === id) selectedLibraryId = null;
         if (selectedLogoLibraryId === id) selectedLogoLibraryId = null;
         renderMediaGrid();
+        renderMediaDatalist();
         updateSelectedCreativeLabel();
         updateSelectedLogoLabel();
       }).catch(() => {});
@@ -1334,17 +1348,38 @@
 
   document.getElementById('mediaUploadBtn').addEventListener('click', () => {
     const input = document.getElementById('mediaFileInput');
+    const nameInput = document.getElementById('mediaNameInput');
     const note = document.getElementById('mediaUploadNote');
     const file = input.files[0];
     if (!file) return;
+    const name = nameInput.value.trim() || file.name;
     const form = new FormData();
     form.append('file', file);
-    form.append('name', file.name);
+    form.append('name', name);
     note.textContent = 'Enviando…';
     fetch(LIBRARY_API, { method: 'POST', headers: { 'X-Access-Key': COSTS_API_KEY }, body: form })
       .then(r => { if (!r.ok) throw new Error(); return r.json(); })
-      .then(json => { libraryItems = json.items || []; renderMediaGrid(); input.value = ''; note.textContent = ''; })
+      .then(json => { libraryItems = json.items || []; renderMediaGrid(); renderMediaDatalist(); input.value = ''; nameInput.value = ''; note.textContent = ''; })
       .catch(() => { note.textContent = 'Falhou — tenta de novo.'; });
+  });
+
+  function renderMediaDatalist(){
+    const dl = document.getElementById('mediaNamesList');
+    dl.innerHTML = libraryItems.map(it => '<option value="' + it.name.replace(/"/g, '&quot;') + '">').join('');
+  }
+
+  document.getElementById('mediaSearchInput').addEventListener('change', (e) => {
+    const typed = e.target.value.trim().toLowerCase();
+    if (!typed) return;
+    const match = libraryItems.find(it => it.name.toLowerCase() === typed) ||
+      libraryItems.find(it => it.name.toLowerCase().indexOf(typed) !== -1);
+    if (match) {
+      selectedLibraryId = match.id;
+      updateSelectedCreativeLabel();
+      renderMediaGrid();
+      e.target.value = '';
+      e.target.blur();
+    }
   });
 
   // ---- Presets de copy ----
@@ -1412,35 +1447,18 @@
   function loadCcLinks(){
     return fetch(LINKS_API, { cache: 'no-store' }).then(r => r.json()).then(json => {
       ccLinks = json.links || {};
-      renderLinksTable();
-      renderSubAccountCheckboxes();
+      renderAccountCards();
     }).catch(() => {});
   }
 
-  function renderLinksTable(){
-    const wrap = document.getElementById('linksTableWrap');
-    if (!allSubAccounts.length){ wrap.innerHTML = '<div class="empty-state">Carregando sub-contas…</div>'; return; }
-    const rows = allSubAccounts.map(a => {
-      const existing = ccLinks[a.id];
-      return '<tr><td>' + a.accountLabel + ' ···' + a.id.slice(-3) + '<div class="cell-muted" style="font-size:11px;">' + a.name + '</div></td>' +
-        '<td><input type="text" data-link-input="' + a.id + '" value="' + (existing ? existing.url.replace(/"/g, '&quot;') : '') + '" placeholder="https://..." style="width:100%; border:1px solid var(--line); border-radius:8px; padding:7px 9px; font:inherit; font-size:12.5px;"></td>' +
-        '<td class="num"><button class="remove-btn" data-save-link="' + a.id + '" style="color:var(--good);">salvar</button></td></tr>';
-    }).join('');
-    wrap.innerHTML = '<table><thead><tr><th style="text-align:left;">Sub-conta</th><th style="text-align:left;">Link</th><th></th></tr></thead><tbody>' + rows + '</tbody></table>';
-    wrap.querySelectorAll('[data-save-link]').forEach(btn => btn.addEventListener('click', () => {
-      const id = btn.dataset.saveLink;
-      const input = wrap.querySelector('[data-link-input="' + id + '"]');
-      const acc = allSubAccounts.find(a => a.id === id);
-      const urlVal = input.value.trim();
-      if (!urlVal) return;
-      fetch(LINKS_API, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY },
-        body: JSON.stringify({ adAccountId: id, accountKey: acc.accountKey, accountName: acc.name, url: urlVal }),
-      }).then(r => r.json()).then(json => { ccLinks = json.links || {}; renderSubAccountCheckboxes(); });
-    }));
+  function saveAccountLink(acc, urlVal){
+    return fetch(LINKS_API, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY },
+      body: JSON.stringify({ adAccountId: acc.id, accountKey: acc.accountKey, accountName: acc.name, url: urlVal }),
+    }).then(r => r.json()).then(json => { ccLinks = json.links || {}; renderAccountCards(); });
   }
 
-  // ---- Sub-contas (multi-seleção pra espelhar campanha) ----
+  // ---- Sub-contas (multi-seleção pra espelhar campanha), cada card já traz o link ----
   function loadAllSubAccounts(){
     return Promise.all(ACCOUNTS.map(a =>
       fetch(NB_ADACCOUNTS_API + '?accountKey=' + a.key, { headers: { 'X-Access-Key': COSTS_API_KEY } })
@@ -1449,22 +1467,61 @@
         .catch(() => [])
     )).then(results => {
       allSubAccounts = results.flat();
-      renderSubAccountCheckboxes();
+      renderAccountCards();
     });
   }
 
-  function renderSubAccountCheckboxes(){
+  let editingLinkForId = null;
+
+  function renderAccountCards(){
     const el = document.getElementById('ccSubAccounts');
     if (!allSubAccounts.length){ el.innerHTML = '<span class="cell-muted">Nenhuma sub-conta disponível (contas com token quebrado não aparecem aqui).</span>'; return; }
     el.innerHTML = allSubAccounts.map(a => {
-      const hasLink = !!ccLinks[a.id];
-      return '<label><input type="checkbox" value="' + a.id + '" data-subaccount-checkbox' + (selectedSubAccountIds.indexOf(a.id) !== -1 ? ' checked' : '') + '>' +
-        a.accountLabel + ' ···' + a.id.slice(-3) + (hasLink ? '' : ' ⚠') + '</label>';
+      const link = ccLinks[a.id];
+      const isSelected = selectedSubAccountIds.indexOf(a.id) !== -1;
+      const isEditing = editingLinkForId === a.id;
+      let linkRow;
+      if (isEditing) {
+        linkRow = '<div class="acc-link-form">' +
+          '<input type="text" data-link-edit-input="' + a.id + '" value="' + (link ? link.url.replace(/"/g, '&quot;') : '') + '" placeholder="https://..." onclick="event.stopPropagation()">' +
+          '<button type="button" data-save-link="' + a.id + '">salvar</button>' +
+        '</div>';
+      } else {
+        linkRow = '<div class="acc-link-status">' +
+          (link ? '<span class="acc-link-url" title="' + link.url.replace(/"/g, '&quot;') + '">' + link.url.replace(/^https?:\/\//, '') + '</span>' : '<span class="acc-link-missing">sem link</span>') +
+          '<button type="button" class="acc-link-edit" data-edit-link="' + a.id + '">' + (link ? 'editar' : '+ adicionar') + '</button>' +
+        '</div>';
+      }
+      return '<div class="account-card' + (isSelected ? ' selected' : '') + '" data-account-card="' + a.id + '">' +
+        '<div class="acc-name"><span class="acc-check">✓</span>' + a.accountLabel + ' ···' + a.id.slice(-3) + '</div>' +
+        '<div class="acc-sub" title="' + a.name.replace(/"/g, '&quot;') + '">' + a.name + '</div>' +
+        '<div class="acc-link-row">' + linkRow + '</div>' +
+      '</div>';
     }).join('');
-    el.querySelectorAll('[data-subaccount-checkbox]').forEach(cb => cb.addEventListener('change', () => {
-      const id = cb.value;
-      if (cb.checked) { if (selectedSubAccountIds.indexOf(id) === -1) selectedSubAccountIds.push(id); }
-      else { selectedSubAccountIds = selectedSubAccountIds.filter(x => x !== id); }
+
+    el.querySelectorAll('[data-account-card]').forEach(card => card.addEventListener('click', (e) => {
+      if (e.target.closest('.acc-link-row')) return;
+      const id = card.dataset.accountCard;
+      const idx = selectedSubAccountIds.indexOf(id);
+      if (idx === -1) selectedSubAccountIds.push(id); else selectedSubAccountIds.splice(idx, 1);
+      renderAccountCards();
+    }));
+    el.querySelectorAll('[data-edit-link]').forEach(btn => btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      editingLinkForId = btn.dataset.editLink;
+      renderAccountCards();
+      const input = el.querySelector('[data-link-edit-input="' + editingLinkForId + '"]');
+      if (input) input.focus();
+    }));
+    el.querySelectorAll('[data-save-link]').forEach(btn => btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const id = btn.dataset.saveLink;
+      const input = el.querySelector('[data-link-edit-input="' + id + '"]');
+      const acc = allSubAccounts.find(a => a.id === id);
+      const urlVal = input.value.trim();
+      if (!urlVal) return;
+      editingLinkForId = null;
+      saveAccountLink(acc, urlVal);
     }));
   }
 
