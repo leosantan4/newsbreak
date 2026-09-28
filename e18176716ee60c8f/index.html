@@ -609,7 +609,7 @@
         <section class="panel">
           <div class="step-head">
             <div class="step-head-left"><span class="step-title">Galeria de anúncios</span></div>
-            <span class="step-desc">banco próprio da ferramenta (não é Google Drive) — envie vários arquivos de uma vez; metadados são limpos automaticamente; não deixa subir dois anúncios com o mesmo nome</span>
+            <span class="step-desc">banco próprio da ferramenta (não é Google Drive) — envie vários arquivos de uma vez; metadados são limpos automaticamente; não deixa subir dois anúncios com o mesmo nome; pasta Criativos aceita img/gif/vídeo, pasta Logos só aceita imagem</span>
           </div>
           <div class="creative-search">
             <span class="cell-muted" style="font-size:11.5px; text-transform:uppercase; letter-spacing:.05em;">Enviar pra pasta:</span>
@@ -1388,7 +1388,19 @@
     el.querySelectorAll('button').forEach(btn => btn.addEventListener('click', () => {
       galleryUploadFolder = btn.dataset.folder;
       renderGalleryUploadFolderToggle();
+      updateGalleryFileInputAccept();
     }));
+    updateGalleryFileInputAccept();
+  }
+
+  function updateGalleryFileInputAccept(){
+    const input = document.getElementById('galleryFileInput');
+    input.accept = galleryUploadFolder === 'logo' ? 'image/*' : 'image/*,video/*';
+  }
+
+  function isAllowedForFolder(file, folder){
+    if (folder !== 'logo') return true;
+    return /^image\//.test(file.type) && file.type !== 'image/gif';
   }
 
   function renderGalleryFolderFilter(){
@@ -1565,6 +1577,11 @@
     const note = document.getElementById('galleryUploadNote');
     const files = Array.from(input.files || []);
     if (!files.length) return;
+    const notAllowed = files.filter(f => !isAllowedForFolder(f, galleryUploadFolder));
+    if (notAllowed.length) {
+      note.textContent = 'Pasta Logos só aceita imagem (JPG/PNG/WebP) — sem GIF/vídeo: ' + notAllowed.map(f => f.name).join(', ') + '. Nada foi enviado.';
+      return;
+    }
     const customName = nameInput.value.trim();
     const existingNames = new Set(libraryItems.map(it => it.name));
     const proposedNames = [];
