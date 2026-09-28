@@ -150,7 +150,7 @@
   .form-field.span2{grid-column:span 2;}
   .checkbox-row{display:flex; flex-wrap:wrap; gap:10px 16px;}
   .checkbox-row label{display:flex; align-items:center; gap:5px; font-size:12.5px; font-weight:400; text-transform:none; letter-spacing:0; color:var(--ink);}
-  .create-log{padding:14px 18px; font-size:12.5px; font-family:"IBM Plex Mono",monospace; white-space:pre-wrap; max-height:280px; overflow-y:auto; background:var(--bg); border-top:1px solid var(--line); margin:14px -20px -20px; border-radius:0 0 14px 14px;}
+  .create-log{padding:10px 12px; font-size:11.5px; font-family:"IBM Plex Mono",monospace; white-space:pre-wrap; max-height:200px; overflow-y:auto; background:var(--bg); border:1px solid var(--line); border-radius:8px;}
   .create-log .ok{color:var(--good);}
   .create-log .err{color:var(--bad); font-weight:600;}
 
@@ -195,7 +195,7 @@
   .criar-subtab.active{color:var(--ink); border-bottom-color:var(--accent);}
   .criar-subtab:hover{color:var(--ink);}
   .account-card.links-row{cursor:default;}
-  .criar-layout{display:grid; grid-template-columns:minmax(0,1fr) 320px; gap:20px; align-items:start;}
+  .criar-layout{display:grid; grid-template-columns:minmax(0,1fr) 320px; gap:20px;}
   .criar-main{min-width:0;}
   .cc-summary{position:sticky; top:20px; background:var(--surface-raised); border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow); padding:20px; margin-bottom:16px;}
   .cc-summary h3{font-size:11px; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); margin:0 0 12px; font-weight:700;}
@@ -214,6 +214,12 @@
   .cc-progress-track{height:8px; border-radius:4px; background:var(--line); overflow:hidden;}
   .cc-progress-fill{height:100%; width:0%; background:var(--accent); transition:width .25s ease;}
   .cc-progress-label{margin-top:6px; font-size:11.5px; color:var(--muted); text-align:center;}
+  .cc-progress-status{margin-top:8px; font-size:12.5px; font-weight:600; text-align:center; min-height:17px;}
+  .cc-progress-status.err{color:var(--bad);}
+  .cc-log-details{margin-top:8px;}
+  .cc-log-details summary{font-size:11.5px; color:var(--muted); cursor:pointer; text-align:center; list-style:none;}
+  .cc-log-details summary::-webkit-details-marker{display:none;}
+  .cc-log-details[open] summary{margin-bottom:4px;}
   .cc-submit-btn{width:100%; border:none; background:var(--accent); color:var(--accent-ink); font:inherit; font-weight:700; font-size:14px; padding:13px 22px; border-radius:10px; cursor:pointer; margin-top:14px;}
   .cc-submit-btn:disabled{opacity:.5; cursor:not-allowed;}
   @media (max-width:980px){
@@ -601,8 +607,12 @@
             <div class="cc-progress-wrap" id="ccProgressWrap" hidden>
               <div class="cc-progress-track"><div class="cc-progress-fill" id="ccProgressFill"></div></div>
               <div class="cc-progress-label" id="ccProgressLabel"></div>
+              <div class="cc-progress-status" id="ccStatusLine"></div>
+              <details class="cc-log-details" id="ccLogDetails">
+                <summary id="ccLogSummary">ver detalhes</summary>
+                <div class="create-log" id="ccLog"></div>
+              </details>
             </div>
-            <div class="create-log" id="ccLog" hidden></div>
           </div>
         </aside>
       </div>
@@ -2002,14 +2012,25 @@
     }
   }
 
+  let ccErrorCount = 0;
+
   function ccLog(msg, cls){
+    document.getElementById('ccProgressWrap').hidden = false;
     const el = document.getElementById('ccLog');
-    el.hidden = false;
     const line = document.createElement('div');
     if (cls) line.className = cls;
     line.textContent = msg;
     el.appendChild(line);
     el.scrollTop = el.scrollHeight;
+
+    const status = document.getElementById('ccStatusLine');
+    status.textContent = msg;
+    status.className = 'cc-progress-status' + (cls === 'err' ? ' err' : '');
+    if (cls === 'err') {
+      ccErrorCount++;
+      document.getElementById('ccLogSummary').textContent = ccErrorCount + ' erro(s) — ver detalhes';
+      document.getElementById('ccLogDetails').open = true;
+    }
   }
 
   let criarSubView = 'nova';
@@ -2178,9 +2199,10 @@
 
   document.getElementById('ccSubmitBtn').addEventListener('click', async () => {
     const btn = document.getElementById('ccSubmitBtn');
-    const log = document.getElementById('ccLog');
-    log.hidden = false;
-    log.innerHTML = '';
+    document.getElementById('ccLog').innerHTML = '';
+    document.getElementById('ccLogDetails').open = false;
+    document.getElementById('ccLogSummary').textContent = 'ver detalhes';
+    ccErrorCount = 0;
     btn.disabled = true;
 
     const name = document.getElementById('ccName').value.trim();
@@ -2214,7 +2236,7 @@
       await createCampaignForAccount(acc, shared);
     }
     ccProgressFinish();
-    ccLog('Concluído.');
+    ccLog(ccErrorCount ? 'Concluído com ' + ccErrorCount + ' erro(s) — confira os detalhes.' : 'Concluído — tudo certo.', ccErrorCount ? 'err' : 'ok');
     btn.disabled = false;
   });
 
