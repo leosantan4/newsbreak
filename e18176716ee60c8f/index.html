@@ -706,6 +706,10 @@
             <label for="newAccountToken">Token de API da NewsBreak</label>
             <input type="password" id="newAccountToken" placeholder="Cole o token aqui">
           </div>
+          <div class="form-field span2">
+            <label for="newAccountOrgId">Org ID (opcional — só se souber; se não, deixa em branco e a gente resolve depois se precisar)</label>
+            <input type="text" id="newAccountOrgId" placeholder="Ex: 2018483047221407745">
+          </div>
         </div>
         <div id="addAccountActions" style="padding:0 18px 18px; display:flex; gap:10px; align-items:center;" hidden>
           <button type="button" id="addAccountSaveBtn" style="border:none; background:var(--accent); color:var(--accent-ink); font:inherit; font-weight:600; font-size:13px; padding:9px 16px; border-radius:var(--radius-sm); cursor:pointer;">Salvar conta</button>
@@ -1461,6 +1465,7 @@
   let copyPresets = [];
   let ccLinks = {};
   let allSubAccounts = [];
+  let subAccountsLoaded = false;
   let selectedSubAccountIds = [];
   let genderSel = ['male'];
   let ageSel = ['all'];
@@ -1876,6 +1881,7 @@
         .catch(() => [])
     )).then(results => {
       allSubAccounts = results.flat();
+      subAccountsLoaded = true;
       renderAccountCards();
       renderAccountsList();
     });
@@ -2346,8 +2352,18 @@
           subsHtml = '<div class="acc-sub-list">' + subs.map(s =>
             '<div class="acc-sub-item"><span>' + subAccountLabel(s) + '</span></div>'
           ).join('') + '</div>';
-        } else {
+        } else if (!subAccountsLoaded) {
           subsHtml = '<div class="acc-sub-list"><span class="cell-muted">carregando subcontas…</span></div>';
+        } else if (isCustom) {
+          subsHtml = '<div class="acc-sub-list">' +
+            '<span class="cell-muted">Nenhuma subconta encontrada — se o token não tem cargo de admin na NewsBreak, informe o Org ID da conta pra localizar:</span>' +
+            '<div class="creative-search" style="padding:8px 0 0;">' +
+              '<input type="text" data-org-id-input="' + a.key + '" placeholder="Org ID (ex: 2018483047221407745)">' +
+              '<button type="button" data-org-id-save="' + a.key + '" style="border:none; background:var(--accent); color:var(--accent-ink); font:inherit; font-weight:600; font-size:12.5px; padding:9px 14px; border-radius:var(--radius-sm); cursor:pointer;">Salvar</button>' +
+            '</div>' +
+          '</div>';
+        } else {
+          subsHtml = '<div class="acc-sub-list"><span class="cell-muted">Nenhuma subconta encontrada.</span></div>';
         }
       }
       return '<div class="account-row-wrap">' +
@@ -2394,6 +2410,19 @@
         loadAllSubAccounts();
       });
     }));
+    el.querySelectorAll('[data-org-id-save]').forEach(btn => btn.addEventListener('click', () => {
+      const key = btn.dataset.orgIdSave;
+      const input = el.querySelector('[data-org-id-input="' + key + '"]');
+      const orgId = input.value.trim();
+      if (!orgId) return;
+      btn.disabled = true;
+      fetch(ACCOUNTS_API + '/' + encodeURIComponent(key) + '/org-id', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY },
+        body: JSON.stringify({ orgId }),
+      }).then(r => r.json()).then(() => {
+        loadAllSubAccounts();
+      }).catch(() => { btn.disabled = false; });
+    }));
   }
 
   function renderAddAccountForm(){
@@ -2409,12 +2438,13 @@
     document.getElementById('addAccountSaveBtn').addEventListener('click', () => {
       const label = document.getElementById('newAccountLabel').value.trim();
       const token = document.getElementById('newAccountToken').value.trim();
+      const orgId = document.getElementById('newAccountOrgId').value.trim();
       const note = document.getElementById('addAccountNote');
       if (!label || !token) { note.textContent = 'Preenche nome e token.'; return; }
       note.textContent = 'Salvando…';
       fetch(ACCOUNTS_API, {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY },
-        body: JSON.stringify({ label, token }),
+        body: JSON.stringify({ label, token, orgId }),
       }).then(r => r.json()).then(json => {
         if (json.error) { note.textContent = 'Falhou — tenta de novo.'; return; }
         customAccounts = json.accounts || [];
@@ -2422,6 +2452,7 @@
         ensureDataKeys();
         document.getElementById('newAccountLabel').value = '';
         document.getElementById('newAccountToken').value = '';
+        document.getElementById('newAccountOrgId').value = '';
         note.textContent = '';
         form.hidden = true;
         actions.hidden = true;
