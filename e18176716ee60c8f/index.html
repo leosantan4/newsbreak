@@ -8,24 +8,24 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <style>
   :root{
-    --bg:#0a0f0c;
-    --surface:#10160f;
-    --surface-raised:#141b13;
-    --ink:#eef2ef;
-    --muted:#8fa398;
-    --line:#243029;
+    --bg:#09090b;
+    --surface:#111113;
+    --surface-raised:#17181a;
+    --ink:#fafafa;
+    --muted:#9a9ba3;
+    --line:#232327;
     --accent:#22c55e;
     --accent-ink:#04150b;
-    --good:#4ade80;
-    --good-bg:rgba(74,222,128,.14);
+    --good:#34d399;
+    --good-bg:rgba(52,211,153,.13);
     --bad:#f87171;
-    --bad-bg:rgba(248,113,113,.14);
-    --neutral-bg:#182019;
-    --shadow: 0 1px 2px rgba(0,0,0,.5), 0 16px 36px -18px rgba(0,0,0,.75);
+    --bad-bg:rgba(248,113,113,.13);
+    --neutral-bg:#1c1c1f;
+    --shadow: 0 1px 2px rgba(0,0,0,.3);
     --radius-xs:6px;
-    --radius-sm:10px;
+    --radius-sm:9px;
     --radius-md:12px;
-    --radius-lg:16px;
+    --radius-lg:14px;
   }
 
   *{box-sizing:border-box;}
@@ -47,6 +47,8 @@
 
   .sidenav{flex:0 0 220px; background:var(--surface-raised); border-right:1px solid var(--line); min-height:100vh; padding:22px 14px; position:sticky; top:0; display:flex; flex-direction:column; gap:2px;}
   .sidenav-brand{font-size:14px; font-weight:700; padding:6px 10px 18px; letter-spacing:-.01em;}
+  .sidenav-group-label{font-size:10.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); font-weight:600; padding:16px 12px 6px;}
+  .sidenav-group-label:first-of-type{padding-top:0;}
   .nav-item{display:flex; align-items:center; gap:10px; text-align:left; border:none; background:none; color:var(--muted); font:inherit; font-size:13.5px; font-weight:600; padding:10px 12px; border-radius:var(--radius-sm); cursor:pointer; width:100%;}
   .nav-item .ic{font-size:15px; width:18px; text-align:center; flex:none;}
   .nav-item:hover{background:var(--neutral-bg); color:var(--ink);}
@@ -256,6 +258,7 @@
       z-index:50;
     }
     .sidenav-brand{display:none;}
+    .sidenav-group-label{display:none;}
     .nav-item{flex-direction:column; width:auto; flex:1 1 0; white-space:nowrap; gap:3px; padding:7px 2px 6px; border-radius:var(--radius-sm); font-size:10.5px; font-weight:600;}
     .nav-item .ic{font-size:17px; width:auto;}
     .nav-item.active{background:var(--neutral-bg); color:var(--accent);}
@@ -281,11 +284,14 @@
 <div class="shell">
   <nav class="sidenav" id="sidenav">
     <div class="sidenav-brand">Native Ads</div>
+    <div class="sidenav-group-label">Visão geral</div>
     <button class="nav-item" data-view="painel"><span class="ic">▦</span>Painel</button>
     <button class="nav-item" data-view="campanhas"><span class="ic">▶</span>Campanhas</button>
+    <div class="sidenav-group-label">Financeiro</div>
     <button class="nav-item" data-view="dre"><span class="ic">▤</span>DRE Mensal</button>
     <button class="nav-item" data-view="custos"><span class="ic">$</span>Custos Fixos</button>
     <button class="nav-item" data-view="saldo"><span class="ic">◒</span>Saldo</button>
+    <div class="sidenav-group-label">Mídia</div>
     <button class="nav-item" data-view="vturb"><span class="ic">◉</span>VSL</button>
     <button class="nav-item" data-view="criar"><span class="ic">✚</span>Criar Campanha</button>
   </nav>
