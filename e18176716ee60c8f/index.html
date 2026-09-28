@@ -692,6 +692,23 @@
           <span class="step-desc">desative uma conta pra ela parar de aparecer no Painel e no seletor da Criar Campanha — não apaga histórico nem dados já sincronizados</span>
         </div>
         <div id="accountsList" class="accounts-list"></div>
+        <div style="padding:0 18px 18px;">
+          <button type="button" id="addAccountToggleBtn" style="border:none; background:var(--surface-raised); color:var(--ink); border:1px solid var(--line); font:inherit; font-weight:600; font-size:12.5px; padding:9px 16px; border-radius:var(--radius-sm); cursor:pointer;">+ Adicionar conta</button>
+        </div>
+        <div id="addAccountForm" class="form-grid" hidden>
+          <div class="form-field">
+            <label for="newAccountLabel">Nome da empresa/conta</label>
+            <input type="text" id="newAccountLabel" placeholder="Ex: Empresa Nova">
+          </div>
+          <div class="form-field">
+            <label for="newAccountToken">Token de API da NewsBreak</label>
+            <input type="password" id="newAccountToken" placeholder="Cole o token aqui">
+          </div>
+        </div>
+        <div id="addAccountActions" style="padding:0 18px 18px; display:flex; gap:10px; align-items:center;" hidden>
+          <button type="button" id="addAccountSaveBtn" style="border:none; background:var(--accent); color:var(--accent-ink); font:inherit; font-weight:600; font-size:13px; padding:9px 16px; border-radius:var(--radius-sm); cursor:pointer;">Salvar conta</button>
+          <span class="cell-muted" id="addAccountNote"></span>
+        </div>
       </section>
     </div>
 
@@ -701,13 +718,15 @@
 
 <script>
 (function(){
-  const ACCOUNTS = [
+  const STATIC_ACCOUNTS = [
     {key:'vini', label:'Vini'},
     {key:'pretorian', label:'Pretorian'},
     {key:'neia', label:'Neia'},
     {key:'alan', label:'Alan'},
     {key:'troya', label:'Troya'},
   ];
+  let customAccounts = [];
+  let ACCOUNTS = STATIC_ACCOUNTS.slice();
   let accountSettings = {};
   function isAccountActive(key){ return accountSettings[key] ? accountSettings[key].active !== false : true; }
   function activeAccounts(){ return ACCOUNTS.filter(a => isAccountActive(a.key)); }
@@ -738,6 +757,7 @@
   const NB_TRACKING_ID_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/nb/tracking-id';
   const CC_SETTINGS_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/cc-settings';
   const ACCOUNT_SETTINGS_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/account-settings';
+  const ACCOUNTS_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/accounts';
   const DATA_API = './data.json';
   const COSTS_API_KEY = 'HrcFGQUO4Wq_smjouctnZuDZxIatbjPT';
 
@@ -2295,20 +2315,32 @@
     }).catch(() => {});
   }
 
+  function loadCustomAccounts(){
+    return fetch(ACCOUNTS_API, {cache:'no-store'}).then(r => r.json()).then(json => {
+      customAccounts = json.accounts || [];
+      ACCOUNTS = STATIC_ACCOUNTS.concat(customAccounts);
+    }).catch(() => {});
+  }
+
   function renderAccountsList(){
     const el = document.getElementById('accountsList');
     if (!el) return;
+    const customKeys = new Set(customAccounts.map(a => a.key));
     el.innerHTML = ACCOUNTS.map(a => {
       const active = isAccountActive(a.key);
+      const isCustom = customKeys.has(a.key);
       return '<div class="account-row' + (active ? '' : ' inactive') + '">' +
         '<div>' +
-          '<div class="acc-row-name">' + a.label + '</div>' +
+          '<div class="acc-row-name">' + a.label + (isCustom ? ' <span class="cell-muted" style="font-weight:400; font-size:11.5px;">(adicionada)</span>' : '') + '</div>' +
           '<div class="acc-row-status">' + (active ? 'Ativa — aparece no Painel e na Criar Campanha' : 'Inativa — escondida do Painel e da Criar Campanha') + '</div>' +
         '</div>' +
-        '<label class="toggle-switch">' +
-          '<input type="checkbox" data-account-toggle="' + a.key + '"' + (active ? ' checked' : '') + '>' +
-          '<span class="toggle-track"></span>' +
-        '</label>' +
+        '<div style="display:flex; align-items:center; gap:14px;">' +
+          (isCustom ? '<button type="button" class="remove-btn" data-remove-account="' + a.key + '" title="Remover conta">×</button>' : '') +
+          '<label class="toggle-switch">' +
+            '<input type="checkbox" data-account-toggle="' + a.key + '"' + (active ? ' checked' : '') + '>' +
+            '<span class="toggle-track"></span>' +
+          '</label>' +
+        '</div>' +
       '</div>';
     }).join('');
     el.querySelectorAll('[data-account-toggle]').forEach(input => input.addEventListener('change', (e) => {
@@ -2324,9 +2356,59 @@
         loadAllSubAccounts();
       }).catch(() => { e.target.checked = !active; renderAccountsList(); });
     }));
+    el.querySelectorAll('[data-remove-account]').forEach(btn => btn.addEventListener('click', () => {
+      const key = btn.dataset.removeAccount;
+      if (!confirm('Remover essa conta? Isso apaga o token cadastrado — não dá pra desfazer.')) return;
+      fetch(ACCOUNTS_API + '/' + encodeURIComponent(key), {
+        method: 'DELETE', headers: { 'X-Access-Key': COSTS_API_KEY },
+      }).then(r => r.json()).then(json => {
+        customAccounts = json.accounts || [];
+        ACCOUNTS = STATIC_ACCOUNTS.concat(customAccounts);
+        renderAccountsList();
+        renderAll();
+        loadAllSubAccounts();
+      });
+    }));
   }
 
-  loadAccountSettings().then(() => {
+  function renderAddAccountForm(){
+    const toggleBtn = document.getElementById('addAccountToggleBtn');
+    const form = document.getElementById('addAccountForm');
+    const actions = document.getElementById('addAccountActions');
+    toggleBtn.addEventListener('click', () => {
+      const show = form.hidden;
+      form.hidden = !show;
+      actions.hidden = !show;
+      toggleBtn.textContent = show ? 'Cancelar' : '+ Adicionar conta';
+    });
+    document.getElementById('addAccountSaveBtn').addEventListener('click', () => {
+      const label = document.getElementById('newAccountLabel').value.trim();
+      const token = document.getElementById('newAccountToken').value.trim();
+      const note = document.getElementById('addAccountNote');
+      if (!label || !token) { note.textContent = 'Preenche nome e token.'; return; }
+      note.textContent = 'Salvando…';
+      fetch(ACCOUNTS_API, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY },
+        body: JSON.stringify({ label, token }),
+      }).then(r => r.json()).then(json => {
+        if (json.error) { note.textContent = 'Falhou — tenta de novo.'; return; }
+        customAccounts = json.accounts || [];
+        ACCOUNTS = STATIC_ACCOUNTS.concat(customAccounts);
+        document.getElementById('newAccountLabel').value = '';
+        document.getElementById('newAccountToken').value = '';
+        note.textContent = '';
+        form.hidden = true;
+        actions.hidden = true;
+        toggleBtn.textContent = '+ Adicionar conta';
+        renderAccountsList();
+        renderAll();
+        loadAllSubAccounts();
+      }).catch(() => { note.textContent = 'Falhou — tenta de novo.'; });
+    });
+  }
+
+  renderAddAccountForm();
+  Promise.all([loadAccountSettings(), loadCustomAccounts()]).then(() => {
     loadData();
     loadVturb();
     loadLivePainel();
