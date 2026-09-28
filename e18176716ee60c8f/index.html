@@ -176,9 +176,7 @@
   .account-row .acc-row-name{font-weight:600; font-size:14.5px;}
   .account-row .acc-row-status{font-size:12px; color:var(--muted); margin-top:2px;}
   .acc-sub-list{margin:6px 0 0; padding:10px 18px; background:var(--bg); border:1px solid var(--line); border-radius:var(--radius-md); display:flex; flex-direction:column; gap:7px;}
-  .acc-sub-item{display:flex; justify-content:space-between; gap:12px; font-size:12.5px;}
-  .acc-sub-item span:first-child{font-weight:600; color:var(--ink); flex:none;}
-  .acc-sub-item span:last-child{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .acc-sub-item{font-size:12.5px; font-weight:600; color:var(--ink);}
   .toggle-switch{position:relative; display:inline-block; width:40px; height:23px; flex:none;}
   .toggle-switch input{opacity:0; width:0; height:0;}
   .toggle-switch .toggle-track{position:absolute; inset:0; background:var(--neutral-bg); border:1px solid var(--line); border-radius:999px; cursor:pointer; transition:background-color .15s ease, border-color .15s ease;}
@@ -1889,6 +1887,11 @@
     return hpidMatch ? hpidMatch[1] + '…' : noScheme;
   }
 
+  function subAccountLabel(s){
+    const cleanName = (s.name || '').replace(/^\[.*?\]\s*/, '').trim();
+    return (cleanName || s.accountLabel) + ' ···' + s.id.slice(-3);
+  }
+
   function renderAccountCards(){
     const el = document.getElementById('ccSubAccounts');
     if (!allSubAccounts.length){ el.innerHTML = '<span class="cell-muted">Nenhuma sub-conta disponível (contas com token quebrado não aparecem aqui).</span>'; return; }
@@ -1897,7 +1900,7 @@
       return '<div class="account-card' + (isSelected ? ' selected' : '') + '" data-account-card="' + a.id + '">' +
         '<span class="acc-check">✓</span>' +
         '<div class="acc-id">' +
-          '<div class="acc-name">' + a.accountLabel + ' ···' + a.id.slice(-3) + '</div>' +
+          '<div class="acc-name">' + subAccountLabel(a) + '</div>' +
         '</div>' +
       '</div>';
     }).join('');
@@ -1933,7 +1936,7 @@
       }
       return '<div class="account-card links-row" data-account-card="' + a.id + '">' +
         '<div class="acc-id">' +
-          '<div class="acc-name">' + a.accountLabel + ' ···' + a.id.slice(-3) + '</div>' +
+          '<div class="acc-name">' + subAccountLabel(a) + '</div>' +
         '</div>' +
         '<div class="acc-link-row">' + linkRow + '</div>' +
       '</div>';
@@ -2037,7 +2040,7 @@
   function renderCcSummary(){
     const accounts = allSubAccounts.filter(a => selectedSubAccountIds.indexOf(a.id) !== -1);
     document.getElementById('ccSumAccounts').textContent = accounts.length
-      ? accounts.map(a => a.accountLabel + ' ···' + a.id.slice(-3)).join(', ')
+      ? accounts.map(a => subAccountLabel(a)).join(', ')
       : 'nenhuma';
 
     const name = document.getElementById('ccName').value.trim();
@@ -2166,7 +2169,7 @@
   }
 
   async function createCampaignForAccount(acc, shared){
-    const prefix = '[' + acc.accountLabel + ' ···' + acc.id.slice(-3) + '] ';
+    const prefix = '[' + subAccountLabel(acc) + '] ';
     const link = ccLinks[acc.id];
     if (!link || !link.url) { ccLog(prefix + 'sem link cadastrado — pulando. Cadastra o link na tabela acima primeiro.', 'err'); ccProgressFinish(); return; }
 
@@ -2341,7 +2344,7 @@
       if (active) {
         if (subs.length) {
           subsHtml = '<div class="acc-sub-list">' + subs.map(s =>
-            '<div class="acc-sub-item"><span>' + a.label + ' ···' + s.id.slice(-3) + '</span><span class="cell-muted" title="' + s.name.replace(/"/g, '&quot;') + '">' + s.name.replace(/^\[.*?\]\s*/, '') + '</span></div>'
+            '<div class="acc-sub-item"><span>' + subAccountLabel(s) + '</span></div>'
           ).join('') + '</div>';
         } else {
           subsHtml = '<div class="acc-sub-list"><span class="cell-muted">carregando subcontas…</span></div>';
