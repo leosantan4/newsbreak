@@ -39,7 +39,8 @@
   .nav-item:hover{background:var(--neutral-bg); color:var(--ink);}
   .nav-item.active{background:var(--accent); color:var(--accent-ink);}
 
-  .content{flex:1; min-width:0; max-width:900px; margin:0 auto; padding:28px 24px 60px;}
+  .content{flex:1; min-width:0; max-width:1160px; margin:0 auto; padding:28px 24px 60px;}
+  .content.wide{max-width:1320px;}
 
   header{display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:22px; flex-wrap:wrap;}
   header h1{font-size:20px; font-weight:700; margin:0 0 4px; letter-spacing:-.01em;}
@@ -171,6 +172,34 @@
   .account-card .acc-link-form button{border:none; background:var(--accent); color:var(--accent-ink); font:inherit; font-weight:600; font-size:11px; padding:6px 9px; border-radius:6px; cursor:pointer;}
   .creative-search{display:flex; gap:10px; align-items:center; padding:0 18px 14px; flex-wrap:wrap;}
   .creative-search input{flex:1; min-width:180px; border:1px solid var(--line); border-radius:8px; padding:9px 10px; font:inherit; font-size:13px; background:var(--bg); color:var(--ink);}
+
+  .step-head{display:flex; align-items:flex-start; justify-content:space-between; gap:16px; padding:18px 20px 14px; flex-wrap:wrap; border-bottom:1px solid var(--line);}
+  .step-head-left{display:flex; align-items:center; gap:12px;}
+  .step-num{width:26px; height:26px; border-radius:50%; background:var(--accent); color:var(--accent-ink); font-weight:700; font-size:12.5px; display:flex; align-items:center; justify-content:center; flex:none;}
+  .step-title{font-size:15px; font-weight:700; letter-spacing:-.005em;}
+  .step-desc{font-size:12px; color:var(--muted); text-align:right; max-width:320px;}
+
+  .pill-row{display:flex; flex-wrap:wrap; gap:8px;}
+  .pill{border:1.5px solid var(--line); background:var(--surface-raised); color:var(--ink); font:inherit; font-weight:600; font-size:12.5px; padding:8px 16px; border-radius:999px; cursor:pointer; transition:border-color .12s, background .12s, color .12s;}
+  .pill:hover{border-color:color-mix(in srgb, var(--accent) 55%, var(--line));}
+  .pill.active{background:var(--accent); border-color:var(--accent); color:var(--accent-ink);}
+
+  .criar-layout{display:grid; grid-template-columns:1fr 320px; gap:20px; align-items:start;}
+  .cc-summary{position:sticky; top:20px; background:var(--surface-raised); border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow); padding:20px; margin-bottom:16px;}
+  .cc-summary h3{font-size:11px; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); margin:0 0 12px; font-weight:700;}
+  .cc-summary-row{display:flex; justify-content:space-between; align-items:baseline; gap:10px; padding:8px 0; border-bottom:1px solid var(--line); font-size:12.5px;}
+  .cc-summary-row:last-of-type{border-bottom:none;}
+  .cc-summary-row .cc-label{color:var(--muted); flex:none;}
+  .cc-summary-row .cc-value{font-weight:600; text-align:right; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .cc-summary-accounts{margin-top:2px; margin-bottom:10px; font-size:12px; color:var(--ink); line-height:1.5;}
+  .cc-summary-missing{margin-top:6px; padding:10px 12px; background:var(--bad-bg); color:var(--bad); border-radius:8px; font-size:11.5px; font-weight:600;}
+  .cc-summary-ready{margin-top:6px; padding:10px 12px; background:var(--good-bg); color:var(--good); border-radius:8px; font-size:11.5px; font-weight:600;}
+  .cc-submit-btn{width:100%; border:none; background:var(--accent); color:var(--accent-ink); font:inherit; font-weight:700; font-size:14px; padding:13px 22px; border-radius:10px; cursor:pointer; margin-top:14px;}
+  .cc-submit-btn:disabled{opacity:.5; cursor:not-allowed;}
+  @media (max-width:980px){
+    .criar-layout{grid-template-columns:1fr;}
+    .cc-summary{position:static;}
+  }
   @media (max-width:720px){
     .form-grid{grid-template-columns:1fr; padding:14px 16px;}
     .form-field.span2{grid-column:span 1;}
@@ -222,7 +251,7 @@
     <button class="nav-item" data-view="criar"><span class="ic">✚</span>Criar Campanha</button>
   </nav>
 
-  <main class="content">
+  <main class="content" id="mainContent">
     <header>
       <div>
         <h1>Native Ads — Painel Diário</h1>
@@ -402,147 +431,162 @@
     </div>
 
     <div id="criarView" hidden>
-      <section class="panel">
-        <div class="panel-head">
-          <h2>1. Conta(s)</h2>
-          <span class="cell-muted">marca uma ou mais — cria a mesma campanha em cada uma, com o link de cada conta</span>
-        </div>
-        <div class="account-picker" id="ccSubAccounts"></div>
-        <div class="form-grid">
-          <div class="form-field span2">
-            <label for="ccName">Nome da campanha</label>
-            <input type="text" id="ccName" placeholder="Ex: C1-138 - 27/09">
-          </div>
-        </div>
-      </section>
+      <div class="criar-layout">
+        <div>
+          <section class="panel">
+            <div class="step-head">
+              <div class="step-head-left"><span class="step-num">1</span><span class="step-title">Conta(s)</span></div>
+              <span class="step-desc">marca uma ou mais — cria a mesma campanha em cada uma, com o link de cada conta</span>
+            </div>
+            <div class="account-picker" id="ccSubAccounts"></div>
+            <div class="form-grid">
+              <div class="form-field span2">
+                <label for="ccName">Nome da campanha</label>
+                <input type="text" id="ccName" placeholder="Ex: C1-138 - 27/09">
+              </div>
+            </div>
+          </section>
 
-      <section class="panel">
-        <div class="panel-head">
-          <h2>2. Biblioteca de criativos (imagens/GIFs)</h2>
-          <span></span>
-        </div>
-        <div style="padding:14px 18px 0; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-          <input type="file" id="mediaFileInput" accept="image/*,video/*">
-          <input type="text" id="mediaNameInput" placeholder="Nome pra achar depois (ex: Honey Ritual V3)" style="flex:1; min-width:180px; border:1px solid var(--line); border-radius:8px; padding:9px 10px; font:inherit; font-size:13px; background:var(--bg); color:var(--ink);">
-          <button type="button" id="mediaUploadBtn" style="border:none; background:var(--accent); color:var(--accent-ink); font:inherit; font-weight:600; font-size:13px; padding:9px 16px; border-radius:8px; cursor:pointer;">Adicionar</button>
-          <span class="cell-muted" id="mediaUploadNote"></span>
-        </div>
-        <div class="creative-search">
-          <input type="text" id="mediaSearchInput" list="mediaNamesList" placeholder="Digite o nome do criativo pra achar e selecionar…">
-          <datalist id="mediaNamesList"></datalist>
-        </div>
-        <div class="media-grid" id="mediaGrid"></div>
-      </section>
+          <section class="panel">
+            <div class="step-head">
+              <div class="step-head-left"><span class="step-num">2</span><span class="step-title">Biblioteca de criativos</span></div>
+              <span class="step-desc">imagens/GIFs</span>
+            </div>
+            <div style="padding:14px 18px 0; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+              <input type="file" id="mediaFileInput" accept="image/*,video/*">
+              <input type="text" id="mediaNameInput" placeholder="Nome pra achar depois (ex: Honey Ritual V3)" style="flex:1; min-width:180px; border:1px solid var(--line); border-radius:8px; padding:9px 10px; font:inherit; font-size:13px; background:var(--bg); color:var(--ink);">
+              <button type="button" id="mediaUploadBtn" style="border:none; background:var(--accent); color:var(--accent-ink); font:inherit; font-weight:600; font-size:13px; padding:9px 16px; border-radius:8px; cursor:pointer;">Adicionar</button>
+              <span class="cell-muted" id="mediaUploadNote"></span>
+            </div>
+            <div class="creative-search">
+              <input type="text" id="mediaSearchInput" list="mediaNamesList" placeholder="Digite o nome do criativo pra achar e selecionar…">
+              <datalist id="mediaNamesList"></datalist>
+            </div>
+            <div class="media-grid" id="mediaGrid"></div>
+          </section>
 
-      <section class="panel">
-        <div class="panel-head">
-          <h2>3. Biblioteca de título / marca / descrição</h2>
-          <span></span>
-        </div>
-        <div class="form-grid">
-          <div class="form-field">
-            <label for="presetHeadline">Título</label>
-            <input type="text" id="presetHeadline">
-          </div>
-          <div class="form-field">
-            <label for="presetBrand">Marca</label>
-            <input type="text" id="presetBrand">
-          </div>
-          <div class="form-field span2">
-            <label for="presetDescription">Descrição</label>
-            <input type="text" id="presetDescription">
-          </div>
-          <div class="form-field span2">
-            <label>Logo padrão (opcional — shift+clique num item da biblioteca de criativos acima)</label>
-            <div id="presetLogoSelected" class="cell-muted">Nenhum</div>
-          </div>
-        </div>
-        <div style="padding:0 18px 16px; display:flex; gap:10px; align-items:center;">
-          <button type="button" id="presetSaveBtn" style="border:none; background:var(--accent); color:var(--accent-ink); font:inherit; font-weight:600; font-size:13px; padding:9px 16px; border-radius:8px; cursor:pointer;">Salvar preset</button>
-          <span class="cell-muted" id="presetSaveNote"></span>
-        </div>
-        <div class="table-scroll" id="presetsTableWrap"></div>
-      </section>
+          <section class="panel">
+            <div class="step-head">
+              <div class="step-head-left"><span class="step-num">3</span><span class="step-title">Título / marca / descrição</span></div>
+              <span class="step-desc">biblioteca reutilizável</span>
+            </div>
+            <div class="form-grid">
+              <div class="form-field">
+                <label for="presetHeadline">Título</label>
+                <input type="text" id="presetHeadline">
+              </div>
+              <div class="form-field">
+                <label for="presetBrand">Marca</label>
+                <input type="text" id="presetBrand">
+              </div>
+              <div class="form-field span2">
+                <label for="presetDescription">Descrição</label>
+                <input type="text" id="presetDescription">
+              </div>
+              <div class="form-field span2">
+                <label>Logo padrão (opcional — shift+clique num item da biblioteca de criativos acima)</label>
+                <div id="presetLogoSelected" class="cell-muted">Nenhum</div>
+              </div>
+            </div>
+            <div style="padding:0 18px 16px; display:flex; gap:10px; align-items:center;">
+              <button type="button" id="presetSaveBtn" style="border:none; background:var(--accent); color:var(--accent-ink); font:inherit; font-weight:600; font-size:13px; padding:9px 16px; border-radius:8px; cursor:pointer;">Salvar preset</button>
+              <span class="cell-muted" id="presetSaveNote"></span>
+            </div>
+            <div class="table-scroll" id="presetsTableWrap"></div>
+          </section>
 
-      <section class="panel">
-        <div class="panel-head">
-          <h2>4. Orçamento e agendamento</h2>
-          <span></span>
-        </div>
-        <div class="form-grid">
-          <div class="form-field">
-            <label for="ccBudget">Orçamento diário (USD)</label>
-            <input type="number" id="ccBudget" step="1" min="1" value="200">
-          </div>
-          <div class="form-field span2">
-            <label>Dia de início (semana atual)</label>
-            <div class="checkbox-row" id="ccStartDay"></div>
-          </div>
-          <div class="form-field">
-            <label for="ccStartTime">Hora de início — fuso PDT</label>
-            <input type="time" id="ccStartTime" value="05:00">
-          </div>
-        </div>
-      </section>
+          <section class="panel">
+            <div class="step-head">
+              <div class="step-head-left"><span class="step-num">4</span><span class="step-title">Orçamento e agendamento</span></div>
+              <span class="step-desc"></span>
+            </div>
+            <div class="form-grid">
+              <div class="form-field">
+                <label for="ccBudget">Orçamento diário (USD)</label>
+                <input type="number" id="ccBudget" step="1" min="1" value="200">
+              </div>
+              <div class="form-field span2">
+                <label>Dia de início (semana atual)</label>
+                <div class="pill-row" id="ccStartDay"></div>
+              </div>
+              <div class="form-field">
+                <label for="ccStartTime">Hora de início — fuso PDT</label>
+                <input type="time" id="ccStartTime" value="05:00">
+              </div>
+            </div>
+          </section>
 
-      <section class="panel">
-        <div class="panel-head">
-          <h2>5. Segmentação</h2>
-          <span></span>
-        </div>
-        <div class="form-grid">
-          <div class="form-field span2">
-            <label>Gênero</label>
-            <div class="checkbox-row" id="ccGender"></div>
-          </div>
-          <div class="form-field span2">
-            <label>Idade (pode marcar mais de uma)</label>
-            <div class="checkbox-row" id="ccAge"></div>
-          </div>
-          <div class="form-field span2">
-            <label>Idioma</label>
-            <div class="checkbox-row" id="ccLanguage"></div>
-          </div>
-          <div class="form-field span2">
-            <label>Rede</label>
-            <div class="checkbox-row" id="ccNetwork"></div>
-          </div>
-        </div>
-      </section>
+          <section class="panel">
+            <div class="step-head">
+              <div class="step-head-left"><span class="step-num">5</span><span class="step-title">Segmentação</span></div>
+              <span class="step-desc"></span>
+            </div>
+            <div class="form-grid">
+              <div class="form-field span2">
+                <label>Gênero</label>
+                <div class="pill-row" id="ccGender"></div>
+              </div>
+              <div class="form-field span2">
+                <label>Idade (pode marcar mais de uma)</label>
+                <div class="pill-row" id="ccAge"></div>
+              </div>
+              <div class="form-field span2">
+                <label>Idioma</label>
+                <div class="pill-row" id="ccLanguage"></div>
+              </div>
+              <div class="form-field span2">
+                <label>Rede</label>
+                <div class="pill-row" id="ccNetwork"></div>
+              </div>
+            </div>
+          </section>
 
-      <section class="panel">
-        <div class="panel-head">
-          <h2>6. Anúncio</h2>
-          <span></span>
+          <section class="panel">
+            <div class="step-head">
+              <div class="step-head-left"><span class="step-num">6</span><span class="step-title">Anúncio</span></div>
+              <span class="step-desc">botão sempre "Learn More" · URL vem do link da conta marcada</span>
+            </div>
+            <div class="form-grid">
+              <div class="form-field span2">
+                <label>Criativo (clique num item da biblioteca ou digite o nome acima)</label>
+                <div id="ccSelectedCreative" class="cell-muted">Nenhum selecionado</div>
+              </div>
+              <div class="form-field span2">
+                <label>Presets salvos (clique pra preencher título/marca/descrição)</label>
+                <div class="pill-row" id="ccPresetPicker"></div>
+              </div>
+              <div class="form-field">
+                <label for="ccHeadline">Título</label>
+                <input type="text" id="ccHeadline">
+              </div>
+              <div class="form-field">
+                <label for="ccBrand">Marca</label>
+                <input type="text" id="ccBrand">
+              </div>
+              <div class="form-field span2">
+                <label for="ccDescription">Descrição</label>
+                <input type="text" id="ccDescription">
+              </div>
+            </div>
+            <div class="create-log" id="ccLog" hidden></div>
+          </section>
         </div>
-        <div class="form-grid">
-          <div class="form-field span2">
-            <label>Criativo (clique num item da biblioteca acima pra selecionar)</label>
-            <div id="ccSelectedCreative" class="cell-muted">Nenhum selecionado</div>
+
+        <aside>
+          <div class="cc-summary">
+            <h3>Resumo da campanha</h3>
+            <div class="cc-summary-row"><span class="cc-label">Contas</span><span class="cc-value" id="ccSumAccountsCount">0</span></div>
+            <div class="cc-summary-accounts" id="ccSumAccounts">Nenhuma conta marcada</div>
+            <div class="cc-summary-row"><span class="cc-label">Nome</span><span class="cc-value" id="ccSumName">—</span></div>
+            <div class="cc-summary-row"><span class="cc-label">Orçamento/dia</span><span class="cc-value" id="ccSumBudget">$200</span></div>
+            <div class="cc-summary-row"><span class="cc-label">Início</span><span class="cc-value" id="ccSumStart">—</span></div>
+            <div class="cc-summary-row"><span class="cc-label">Segmentação</span><span class="cc-value" id="ccSumTargeting">—</span></div>
+            <div class="cc-summary-row"><span class="cc-label">Criativo</span><span class="cc-value" id="ccSumCreative">nenhum</span></div>
+            <div id="ccSumStatus"></div>
+            <button type="button" id="ccSubmitBtn" class="cc-submit-btn">Criar campanha</button>
           </div>
-          <div class="form-field span2">
-            <label>Presets salvos (clique pra preencher título/marca/descrição)</label>
-            <div class="checkbox-row" id="ccPresetPicker"></div>
-          </div>
-          <div class="form-field">
-            <label for="ccHeadline">Título</label>
-            <input type="text" id="ccHeadline">
-          </div>
-          <div class="form-field">
-            <label for="ccBrand">Marca</label>
-            <input type="text" id="ccBrand">
-          </div>
-          <div class="form-field span2">
-            <label for="ccDescription">Descrição</label>
-            <input type="text" id="ccDescription">
-          </div>
-        </div>
-        <p class="costs-note">Botão sempre "Learn More". URL de destino vem do link cadastrado pra cada sub-conta marcada acima.</p>
-        <div style="padding:0 18px 16px;">
-          <button type="button" id="ccSubmitBtn" style="border:none; background:var(--accent); color:var(--accent-ink); font:inherit; font-weight:700; font-size:14px; padding:12px 22px; border-radius:8px; cursor:pointer;">Criar campanha</button>
-        </div>
-        <div class="create-log" id="ccLog" hidden></div>
-      </section>
+        </aside>
+      </div>
     </div>
 
     <footer id="footerNote">Link privado — não compartilhe. Painel, Campanhas e VSL atualizam em tempo real (a cada ~20s, direto da NewsBreak/RedTrack/VTurb). Histórico e Saldo sincronizam a cada poucos minutos. Venda e faturamento vêm do RedTrack (postback real do checkout, mais confiável que o pixel da NewsBreak); gasto vem direto da NewsBreak — mas o gasto de HOJE pode estar defasado algumas horas, pois a própria API de relatórios da NewsBreak não fecha o dia em tempo real (confirmado contra o Ad Management deles). Dias anteriores já fecham certo.</footer>
@@ -734,6 +778,7 @@
     document.getElementById('saldoView').hidden = view !== 'saldo';
     document.getElementById('vturbView').hidden = view !== 'vturb';
     document.getElementById('criarView').hidden = view !== 'criar';
+    document.getElementById('mainContent').classList.toggle('wide', view === 'criar');
   }
 
   function vturbBreakdown(list){
@@ -1325,6 +1370,7 @@
       if (e.shiftKey) { selectedLogoLibraryId = el.dataset.id; updateSelectedLogoLabel(); }
       else { selectedLibraryId = el.dataset.id; updateSelectedCreativeLabel(); }
       renderMediaGrid();
+      renderCcSummary();
     }));
     grid.querySelectorAll('.media-remove').forEach(btn => btn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -1377,6 +1423,7 @@
       selectedLibraryId = match.id;
       updateSelectedCreativeLabel();
       renderMediaGrid();
+      renderCcSummary();
       e.target.value = '';
       e.target.blur();
     }
@@ -1405,7 +1452,7 @@
   function renderPresetPicker(){
     const el = document.getElementById('ccPresetPicker');
     if (!copyPresets.length){ el.innerHTML = '<span class="cell-muted">Nenhum preset salvo ainda.</span>'; return; }
-    el.innerHTML = copyPresets.map(p => '<button type="button" class="tab small" data-use-preset="' + p.id + '">' + p.headline + '</button>').join('');
+    el.innerHTML = copyPresets.map(p => '<button type="button" class="pill" data-use-preset="' + p.id + '">' + p.headline + '</button>').join('');
     el.querySelectorAll('[data-use-preset]').forEach(btn => btn.addEventListener('click', () => {
       const p = copyPresets.find(x => x.id === btn.dataset.usePreset);
       if (!p) return;
@@ -1455,7 +1502,7 @@
     return fetch(LINKS_API, {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY },
       body: JSON.stringify({ adAccountId: acc.id, accountKey: acc.accountKey, accountName: acc.name, url: urlVal }),
-    }).then(r => r.json()).then(json => { ccLinks = json.links || {}; renderAccountCards(); });
+    }).then(r => r.json()).then(json => { ccLinks = json.links || {}; renderAccountCards(); renderCcSummary(); });
   }
 
   // ---- Sub-contas (multi-seleção pra espelhar campanha), cada card já traz o link ----
@@ -1505,6 +1552,7 @@
       const idx = selectedSubAccountIds.indexOf(id);
       if (idx === -1) selectedSubAccountIds.push(id); else selectedSubAccountIds.splice(idx, 1);
       renderAccountCards();
+      renderCcSummary();
     }));
     el.querySelectorAll('[data-edit-link]').forEach(btn => btn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -1528,7 +1576,7 @@
   // ---- Pills de segmentação (clique único, sem dropdown) ----
   function renderPillGroup(containerId, options, selArr, multi){
     const el = document.getElementById(containerId);
-    el.innerHTML = options.map(o => '<button type="button" class="tab small' + (selArr.indexOf(o.value) !== -1 ? ' active' : '') + '" data-value="' + o.value + '">' + o.label + '</button>').join('');
+    el.innerHTML = options.map(o => '<button type="button" class="pill' + (selArr.indexOf(o.value) !== -1 ? ' active' : '') + '" data-value="' + o.value + '">' + o.label + '</button>').join('');
     el.querySelectorAll('button').forEach(btn => btn.addEventListener('click', () => {
       const v = btn.dataset.value;
       if (multi) {
@@ -1544,6 +1592,7 @@
         selArr.length = 0; selArr.push(v);
       }
       renderPillGroup(containerId, options, selArr, multi);
+      renderCcSummary();
     }));
   }
 
@@ -1593,12 +1642,64 @@
       const dk = shiftDateKey(todayLA, i);
       const { wd, short } = fmtDate(dk);
       const label = i < labels.length ? labels[i] : (wd + ' ' + short);
-      return '<button type="button" class="tab small' + (startDaySel === i ? ' active' : '') + '" data-day-offset="' + i + '">' + label + '</button>';
+      return '<button type="button" class="pill' + (startDaySel === i ? ' active' : '') + '" data-day-offset="' + i + '">' + label + '</button>';
     }).join('');
     el.querySelectorAll('button').forEach(btn => btn.addEventListener('click', () => {
       startDaySel = parseInt(btn.dataset.dayOffset, 10);
       renderStartDayPills();
+      renderCcSummary();
     }));
+  }
+
+  function renderCcSummary(){
+    const accounts = allSubAccounts.filter(a => selectedSubAccountIds.indexOf(a.id) !== -1);
+    document.getElementById('ccSumAccountsCount').textContent = accounts.length;
+    document.getElementById('ccSumAccounts').textContent = accounts.length
+      ? accounts.map(a => a.accountLabel + ' ···' + a.id.slice(-3)).join(', ')
+      : 'Nenhuma conta marcada';
+
+    const name = document.getElementById('ccName').value.trim();
+    const sumName = document.getElementById('ccSumName');
+    sumName.textContent = name || '—';
+    sumName.title = name;
+
+    const budget = document.getElementById('ccBudget').value || '200';
+    document.getElementById('ccSumBudget').textContent = '$' + budget;
+
+    const dayKey = shiftDateKey(todayKeyLA(), startDaySel);
+    const { wd, short } = fmtDate(dayKey);
+    const timeStr = document.getElementById('ccStartTime').value || '05:00';
+    const dayLabel = startDaySel === 0 ? 'Hoje' : (startDaySel === 1 ? 'Amanhã' : wd + ' ' + short);
+    document.getElementById('ccSumStart').textContent = dayLabel + ' ' + timeStr + ' PDT';
+
+    const genderLabel = { all: 'Todos', male: 'Masc', female: 'Fem', notdisclosed: 'N/I' }[genderSel[0]] || genderSel[0];
+    const ageLabel = ageSel.indexOf('all') !== -1 ? 'todas idades' : ageSel.join('/');
+    document.getElementById('ccSumTargeting').textContent = genderLabel + ' · ' + ageLabel;
+
+    const item = libraryItems.find(i => i.id === selectedLibraryId);
+    const sumCreative = document.getElementById('ccSumCreative');
+    sumCreative.textContent = item ? item.name : 'nenhum';
+    sumCreative.title = item ? item.name : '';
+
+    const missing = [];
+    if (!accounts.length) missing.push('marque uma conta');
+    if (!name) missing.push('nome da campanha');
+    if (!selectedLibraryId) missing.push('criativo');
+    if (!document.getElementById('ccHeadline').value.trim()) missing.push('título');
+    if (!document.getElementById('ccBrand').value.trim()) missing.push('marca');
+    if (!document.getElementById('ccDescription').value.trim()) missing.push('descrição');
+    const withoutLink = accounts.filter(a => !ccLinks[a.id]);
+    if (withoutLink.length) missing.push(withoutLink.length + ' conta(s) sem link');
+
+    const statusEl = document.getElementById('ccSumStatus');
+    const btn = document.getElementById('ccSubmitBtn');
+    if (missing.length) {
+      statusEl.innerHTML = '<div class="cc-summary-missing">Falta: ' + missing.join(', ') + '</div>';
+      btn.disabled = true;
+    } else {
+      statusEl.innerHTML = '<div class="cc-summary-ready">Tudo pronto pra criar</div>';
+      btn.disabled = false;
+    }
   }
 
   function ccLog(msg, cls){
@@ -1616,7 +1717,11 @@
     initTargetingPills();
     loadLibraryItems();
     loadCopyPresets();
-    loadAllSubAccounts().then(loadCcLinks);
+    loadAllSubAccounts().then(() => loadCcLinks().then(renderCcSummary));
+    ['ccName', 'ccBudget', 'ccStartTime', 'ccHeadline', 'ccBrand', 'ccDescription'].forEach(id => {
+      document.getElementById(id).addEventListener('input', renderCcSummary);
+    });
+    renderCcSummary();
   }
 
   async function createCampaignForAccount(acc, shared){
