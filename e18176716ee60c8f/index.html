@@ -170,6 +170,17 @@
   .create-log .err{color:var(--bad); font-weight:600;}
 
   .account-picker{display:flex; flex-direction:column; gap:10px; padding:16px 18px;}
+  .accounts-list{display:flex; flex-direction:column; gap:10px; padding:16px 18px;}
+  .account-row{display:flex; align-items:center; justify-content:space-between; gap:16px; border:1px solid var(--line); border-radius:var(--radius-md); padding:14px 18px; background:var(--surface-raised);}
+  .account-row.inactive{opacity:.55;}
+  .account-row .acc-row-name{font-weight:600; font-size:14.5px;}
+  .account-row .acc-row-status{font-size:12px; color:var(--muted); margin-top:2px;}
+  .toggle-switch{position:relative; display:inline-block; width:40px; height:23px; flex:none;}
+  .toggle-switch input{opacity:0; width:0; height:0;}
+  .toggle-switch .toggle-track{position:absolute; inset:0; background:var(--neutral-bg); border:1px solid var(--line); border-radius:999px; cursor:pointer; transition:background-color .15s ease, border-color .15s ease;}
+  .toggle-switch .toggle-track::before{content:''; position:absolute; width:17px; height:17px; left:2px; top:2px; background:var(--muted); border-radius:50%; transition:transform .15s ease, background-color .15s ease;}
+  .toggle-switch input:checked + .toggle-track{background:color-mix(in srgb, var(--accent) 22%, var(--surface-raised)); border-color:var(--accent);}
+  .toggle-switch input:checked + .toggle-track::before{transform:translateX(17px); background:var(--accent);}
   .account-card{display:flex; align-items:center; gap:16px; border:2px solid var(--line); border-radius:var(--radius-md); padding:14px 18px; cursor:pointer; background:var(--surface-raised); transition:border-color .12s, background .12s;}
   .account-card:hover{border-color:color-mix(in srgb, var(--accent) 45%, var(--line));}
   .account-card.selected{border-color:var(--accent); background:color-mix(in srgb, var(--accent) 10%, var(--surface-raised));}
@@ -294,13 +305,15 @@
     <div class="sidenav-group-label">Mídia</div>
     <button class="nav-item" data-view="vturb"><span class="ic">◉</span>VSL</button>
     <button class="nav-item" data-view="criar"><span class="ic">✚</span>Criar Campanha</button>
+    <div class="sidenav-group-label">Configurações</div>
+    <button class="nav-item" data-view="contas"><span class="ic">⚙</span>Contas</button>
   </nav>
 
   <main class="content" id="mainContent">
     <header>
       <div>
         <h1>Native Ads — Painel Diário</h1>
-        <p>Gasto e conversão das contas NewsBreak · Vini, Pretorian, Neia, Alan, Troya</p>
+        <p id="headerSubtitle">Gasto e conversão das contas NewsBreak · Vini, Pretorian, Neia, Alan, Troya</p>
       </div>
       <div class="panel-head-right">
         <button class="icon-btn" id="syncNowBtn">↻ Atualizar agora</button>
@@ -672,6 +685,16 @@
       </div>
     </div>
 
+    <div id="contasView" hidden>
+      <section class="panel">
+        <div class="step-head">
+          <div class="step-head-left"><span class="step-title">Contas</span></div>
+          <span class="step-desc">desative uma conta pra ela parar de aparecer no Painel e no seletor da Criar Campanha — não apaga histórico nem dados já sincronizados</span>
+        </div>
+        <div id="accountsList" class="accounts-list"></div>
+      </section>
+    </div>
+
     <footer id="footerNote">Link privado — não compartilhe. Painel, Campanhas e VSL atualizam em tempo real (a cada ~20s, direto da NewsBreak/RedTrack/VTurb). Histórico e Saldo sincronizam a cada poucos minutos. Venda e faturamento vêm do RedTrack (postback real do checkout, mais confiável que o pixel da NewsBreak); gasto vem direto da NewsBreak — mas o gasto de HOJE pode estar defasado algumas horas, pois a própria API de relatórios da NewsBreak não fecha o dia em tempo real (confirmado contra o Ad Management deles). Dias anteriores já fecham certo.</footer>
   </main>
 </div>
@@ -685,6 +708,9 @@
     {key:'alan', label:'Alan'},
     {key:'troya', label:'Troya'},
   ];
+  let accountSettings = {};
+  function isAccountActive(key){ return accountSettings[key] ? accountSettings[key].active !== false : true; }
+  function activeAccounts(){ return ACCOUNTS.filter(a => isAccountActive(a.key)); }
   const WEEKDAYS = ['Dom','Seg','Ter','Qua','Qui','Sex','Sab'];
   const MONTHS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   const MONTHS_FULL = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -711,6 +737,7 @@
   const COPY_PRESETS_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/copy-presets';
   const NB_TRACKING_ID_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/nb/tracking-id';
   const CC_SETTINGS_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/cc-settings';
+  const ACCOUNT_SETTINGS_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/account-settings';
   const DATA_API = './data.json';
   const COSTS_API_KEY = 'HrcFGQUO4Wq_smjouctnZuDZxIatbjPT';
 
@@ -862,6 +889,7 @@
     document.getElementById('saldoView').hidden = view !== 'saldo';
     document.getElementById('vturbView').hidden = view !== 'vturb';
     document.getElementById('criarView').hidden = view !== 'criar';
+    document.getElementById('contasView').hidden = view !== 'contas';
     document.getElementById('mainContent').classList.toggle('wide', view === 'criar');
   }
 
@@ -909,7 +937,7 @@
     const grid = document.getElementById('summaryGrid');
     const dates = periodDates(period);
     const periodLabel = PERIODS.find(p => p.key === period).label;
-    const cards = [{key:'geral', label:'Total (' + ACCOUNTS.length + ' contas)', total:true}, ...ACCOUNTS];
+    const cards = [{key:'geral', label:'Total (' + activeAccounts().length + ' contas)', total:true}, ...activeAccounts()];
     grid.innerHTML = cards.map(c => {
       const docs = c.total ? geralDocs() : data[c.key];
       const agg = aggregate(docs, dates);
@@ -1014,7 +1042,7 @@
     const docs = scopeDocs();
     const dates = lastNDates(docs, 14).slice().reverse();
     const showNet = scope === 'geral';
-    document.getElementById('tableTitle').textContent = 'Detalhe diário — ' + (scope==='geral' ? 'Geral (3 contas)' : ACCOUNTS.find(a=>a.key===scope).label);
+    document.getElementById('tableTitle').textContent = 'Detalhe diário — ' + (scope==='geral' ? 'Geral (' + activeAccounts().length + ' contas)' : ACCOUNTS.find(a=>a.key===scope).label);
     const tbody = dates.map(d => {
       const r = docs[d];
       const {wd, short} = fmtDate(d);
@@ -1236,6 +1264,8 @@
   }
 
   function renderAll(){
+    const subtitleEl = document.getElementById('headerSubtitle');
+    if (subtitleEl) subtitleEl.textContent = 'Gasto e conversão das contas NewsBreak · ' + activeAccounts().map(a => a.label).join(', ');
     renderNav();
     renderPeriodTabs();
     renderTabs();
@@ -1816,7 +1846,7 @@
 
   // ---- Sub-contas (multi-seleção pra espelhar campanha), cada card já traz o link ----
   function loadAllSubAccounts(){
-    return Promise.all(ACCOUNTS.map(a =>
+    return Promise.all(activeAccounts().map(a =>
       fetch(NB_ADACCOUNTS_API + '?accountKey=' + a.key, { headers: { 'X-Access-Key': COSTS_API_KEY } })
         .then(r => r.json())
         .then(json => (json.accounts || []).map(acc => ({ id: acc.id, name: acc.name, accountKey: a.key, accountLabel: a.label })))
@@ -2259,11 +2289,51 @@
     btn.disabled = false;
   });
 
-  loadData();
-  loadVturb();
-  loadLivePainel();
-  loadLiveCampanhas();
-  initCriarView();
+  function loadAccountSettings(){
+    return fetch(ACCOUNT_SETTINGS_API, {cache:'no-store'}).then(r => r.json()).then(json => {
+      accountSettings = json.settings || {};
+    }).catch(() => {});
+  }
+
+  function renderAccountsList(){
+    const el = document.getElementById('accountsList');
+    if (!el) return;
+    el.innerHTML = ACCOUNTS.map(a => {
+      const active = isAccountActive(a.key);
+      return '<div class="account-row' + (active ? '' : ' inactive') + '">' +
+        '<div>' +
+          '<div class="acc-row-name">' + a.label + '</div>' +
+          '<div class="acc-row-status">' + (active ? 'Ativa — aparece no Painel e na Criar Campanha' : 'Inativa — escondida do Painel e da Criar Campanha') + '</div>' +
+        '</div>' +
+        '<label class="toggle-switch">' +
+          '<input type="checkbox" data-account-toggle="' + a.key + '"' + (active ? ' checked' : '') + '>' +
+          '<span class="toggle-track"></span>' +
+        '</label>' +
+      '</div>';
+    }).join('');
+    el.querySelectorAll('[data-account-toggle]').forEach(input => input.addEventListener('change', (e) => {
+      const key = e.target.dataset.accountToggle;
+      const active = e.target.checked;
+      fetch(ACCOUNT_SETTINGS_API, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY },
+        body: JSON.stringify({ key, active }),
+      }).then(r => r.json()).then(json => {
+        accountSettings = json.settings || accountSettings;
+        renderAccountsList();
+        renderAll();
+        loadAllSubAccounts();
+      }).catch(() => { e.target.checked = !active; renderAccountsList(); });
+    }));
+  }
+
+  loadAccountSettings().then(() => {
+    loadData();
+    loadVturb();
+    loadLivePainel();
+    loadLiveCampanhas();
+    initCriarView();
+    renderAccountsList();
+  });
   setInterval(loadData, 2 * 60 * 1000);
   setInterval(loadCosts, 30000);
   setInterval(loadVturb, 15000);
