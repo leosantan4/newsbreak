@@ -623,7 +623,8 @@
     if (acc.displayName) return acc.displayName;
     const label = ACCOUNT_LABEL[acc.accountKey] || acc.accountKey || '';
     const suffix = (acc.name || '').split('-').pop();
-    return label ? (label + '-' + suffix) : (acc.name || accId);
+    if (label && /^\d+$/.test(suffix)) return label + '-' + suffix;
+    return acc.name || accId;
   }
 
   function todayKey(){

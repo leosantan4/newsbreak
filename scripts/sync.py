@@ -38,9 +38,16 @@ ACCOUNT_LABEL = {"vini": "Vini", "pretorian": "Pretorian", "neia": "Neia", "alan
 
 def display_name(account_key, raw_name):
     """Friendly name for a sub-account, e.g. 'Pretorian-408433' instead of
-    the raw 'NB_RN_GL_CQZ-408433' — too many sub-accounts to tell apart by id."""
-    suffix = raw_name.rsplit("-", 1)[-1] if raw_name else ""
-    return f"{ACCOUNT_LABEL.get(account_key, account_key)}-{suffix}"
+    the raw 'NB_RN_GL_CQZ-408433' — too many sub-accounts to tell apart by id.
+    Newer accounts (Alan, Troya...) are named like '[Agency Aurora] Alan 1',
+    with no numeric suffix to extract — those are already readable, so keep
+    them as-is instead of prefixing "Alan-" onto the whole string."""
+    if not raw_name:
+        return ACCOUNT_LABEL.get(account_key, account_key)
+    suffix = raw_name.rsplit("-", 1)[-1]
+    if suffix.isdigit():
+        return f"{ACCOUNT_LABEL.get(account_key, account_key)}-{suffix}"
+    return raw_name
 
 PRESERVE_BEFORE = "2026-09-01"
 BASE = "https://business.newsbreak.com/business-api/v1"
