@@ -460,7 +460,7 @@
             <div class="form-grid">
               <div class="form-field span2">
                 <label for="ccName">Nome da campanha</label>
-                <input type="text" id="ccName" placeholder="Ex: C1-138 - 27/09">
+                <input type="text" id="ccName" placeholder="Ex: C1-177 - 28/09 - 1-3-1">
               </div>
             </div>
           </section>
@@ -535,7 +535,7 @@
           <section class="panel">
             <div class="step-head">
               <div class="step-head-left"><span class="step-num">5</span><span class="step-title">Anúncio</span></div>
-              <span class="step-desc">botão sempre "Learn More" · URL vem do link da conta · a imagem fica no final desta seção</span>
+              <span class="step-desc">botão sempre "Learn More" · URL vem do link da conta · nome do conjunto = campanha + nome do criativo · nome do anúncio = nome do criativo · a imagem fica no final desta seção</span>
             </div>
             <div class="form-grid">
               <div class="form-field span2">
@@ -1999,7 +1999,7 @@
       ccLog(prefix + 'Campanha criada (id ' + campaignId + ').', 'ok');
 
       const adSetBody = {
-        accountKey: acc.accountKey, campaignId, name: shared.name + ' - AdSet',
+        accountKey: acc.accountKey, campaignId, name: shared.name + ' - ' + shared.creativeName,
         budgetType: 'DAILY', budget: shared.budgetCents,
         startTime: shared.startTime, endTime: 2146878847,
         bidType: 'MAX_CONVERSION', trackingId, status: 'ON',
@@ -2026,7 +2026,7 @@
       ccLog(prefix + 'Conjunto criado (id ' + adSetId + ').', 'ok');
 
       const adBody = {
-        accountKey: acc.accountKey, adSetId, name: shared.name + ' - Ad', status: 'ON',
+        accountKey: acc.accountKey, adSetId, name: shared.creativeName, status: 'ON',
         creative: {
           type: shared.creativeType, headline: shared.headline, assetUrl,
           description: shared.description, callToAction: 'Learn More',
@@ -2072,7 +2072,7 @@
     const isGif = selectedItem.contentType === 'image/gif';
     const creativeType = isVideo ? 'VIDEO' : (isGif ? 'GIF' : 'IMAGE');
 
-    const shared = { libraryId: selectedLibraryId, logoLibraryId: selectedLogoLibraryId, name, budgetCents, startTime, headline, brandName, description, creativeType };
+    const shared = { libraryId: selectedLibraryId, logoLibraryId: selectedLogoLibraryId, name, creativeName: selectedItem.name, budgetCents, startTime, headline, brandName, description, creativeType };
     const accountsToRun = allSubAccounts.filter(a => selectedSubAccountIds.indexOf(a.id) !== -1);
 
     for (const acc of accountsToRun) {
