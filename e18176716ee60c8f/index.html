@@ -190,7 +190,8 @@
   .pill:hover{border-color:color-mix(in srgb, var(--accent) 55%, var(--line));}
   .pill.active{background:var(--accent); border-color:var(--accent); color:var(--accent-ink);}
 
-  .criar-layout{display:grid; grid-template-columns:1fr 320px; gap:20px; align-items:start;}
+  .criar-layout{display:grid; grid-template-columns:minmax(0,1fr) 320px; gap:20px; align-items:start;}
+  .criar-main{min-width:0;}
   .cc-summary{position:sticky; top:20px; background:var(--surface-raised); border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow); padding:20px; margin-bottom:16px;}
   .cc-summary h3{font-size:11px; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); margin:0 0 12px; font-weight:700;}
   .cc-summary-row{display:flex; justify-content:space-between; align-items:baseline; gap:10px; padding:8px 0; border-bottom:1px solid var(--line); font-size:12.5px;}
@@ -438,7 +439,7 @@
 
     <div id="criarView" hidden>
       <div class="criar-layout">
-        <div>
+        <div class="criar-main">
           <section class="panel">
             <div class="step-head">
               <div class="step-head-left"><span class="step-num">1</span><span class="step-title">Conta(s)</span></div>
@@ -456,7 +457,7 @@
           <section class="panel">
             <div class="step-head">
               <div class="step-head-left"><span class="step-num">2</span><span class="step-title">Biblioteca de criativos</span></div>
-              <span class="step-desc">imagens/GIFs — pode selecionar vários arquivos de uma vez</span>
+              <span class="step-desc">banco de imagens/GIFs dentro da própria ferramenta (não é Google Drive) — envie vários arquivos de uma vez, fica salvo aqui pra sempre e reaproveita em qualquer campanha</span>
             </div>
             <div style="padding:14px 18px 0; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
               <input type="file" id="mediaFileInput" accept="image/*,video/*" multiple>
@@ -477,28 +478,7 @@
 
           <section class="panel">
             <div class="step-head">
-              <div class="step-head-left"><span class="step-num">3</span><span class="step-title">Marca &amp; logo padrão</span></div>
-              <span class="step-desc">fica salvo — não precisa repetir em toda campanha</span>
-            </div>
-            <div class="form-grid">
-              <div class="form-field">
-                <label for="ccBrandDefault">Marca</label>
-                <input type="text" id="ccBrandDefault" placeholder="Nome da marca">
-              </div>
-              <div class="form-field">
-                <label>Logo padrão</label>
-                <div id="ccLogoSelected" class="cell-muted">Nenhum — selecione acima com "Logo padrão" marcado</div>
-              </div>
-            </div>
-            <div style="padding:0 18px 16px; display:flex; gap:10px; align-items:center;">
-              <button type="button" id="ccBrandSaveBtn" style="border:none; background:var(--accent); color:var(--accent-ink); font:inherit; font-weight:600; font-size:13px; padding:9px 16px; border-radius:8px; cursor:pointer;">Salvar</button>
-              <span class="cell-muted" id="ccBrandSaveNote"></span>
-            </div>
-          </section>
-
-          <section class="panel">
-            <div class="step-head">
-              <div class="step-head-left"><span class="step-num">4</span><span class="step-title">Orçamento e agendamento</span></div>
+              <div class="step-head-left"><span class="step-num">3</span><span class="step-title">Orçamento e agendamento</span></div>
               <span class="step-desc"></span>
             </div>
             <div class="form-grid">
@@ -519,7 +499,7 @@
 
           <section class="panel">
             <div class="step-head">
-              <div class="step-head-left"><span class="step-num">5</span><span class="step-title">Segmentação</span></div>
+              <div class="step-head-left"><span class="step-num">4</span><span class="step-title">Segmentação</span></div>
               <span class="step-desc"></span>
             </div>
             <div class="form-grid">
@@ -544,13 +524,21 @@
 
           <section class="panel">
             <div class="step-head">
-              <div class="step-head-left"><span class="step-num">6</span><span class="step-title">Anúncio</span></div>
-              <span class="step-desc">marca/logo usam o padrão · botão sempre "Learn More" · URL vem do link da conta</span>
+              <div class="step-head-left"><span class="step-num">5</span><span class="step-title">Anúncio</span></div>
+              <span class="step-desc">botão sempre "Learn More" · URL vem do link da conta · marca/logo ficam salvos como padrão, direto aqui</span>
             </div>
             <div class="form-grid">
               <div class="form-field span2">
-                <label>Criativo (clique num item da biblioteca ou digite o nome acima)</label>
+                <label>Criativo (clique num item da biblioteca acima ou digite o nome pra achar)</label>
                 <div id="ccSelectedCreative" class="cell-muted">Nenhum selecionado</div>
+              </div>
+              <div class="form-field">
+                <label for="ccBrandDefault">Marca</label>
+                <input type="text" id="ccBrandDefault" placeholder="Nome da marca">
+              </div>
+              <div class="form-field">
+                <label>Logo padrão (selecione na biblioteca acima com "Logo padrão" marcado)</label>
+                <div id="ccLogoSelected" class="cell-muted">Nenhum — selecione acima com "Logo padrão" marcado</div>
               </div>
               <div class="form-field span2">
                 <label>Presets salvos (clique pra preencher título/descrição)</label>
@@ -565,7 +553,9 @@
                 <input type="text" id="ccDescription">
               </div>
             </div>
-            <div style="padding:0 18px 16px; display:flex; gap:10px; align-items:center;">
+            <div style="padding:0 18px 16px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+              <button type="button" id="ccBrandSaveBtn" style="border:none; background:var(--surface-raised); color:var(--ink); border:1px solid var(--line); font:inherit; font-weight:600; font-size:12.5px; padding:8px 14px; border-radius:8px; cursor:pointer;">salvar marca/logo como padrão</button>
+              <span class="cell-muted" id="ccBrandSaveNote"></span>
               <button type="button" id="presetSaveBtn" style="border:none; background:var(--surface-raised); color:var(--ink); border:1px solid var(--line); font:inherit; font-weight:600; font-size:12.5px; padding:8px 14px; border-radius:8px; cursor:pointer;">+ salvar título/descrição como preset</button>
               <span class="cell-muted" id="presetSaveNote"></span>
             </div>
@@ -1574,6 +1564,12 @@
 
   let editingLinkForId = null;
 
+  function shortLinkForDisplay(url){
+    const noScheme = url.replace(/^https?:\/\//, '');
+    const hpidMatch = noScheme.match(/^(.*?hpid=[^&]*)/);
+    return hpidMatch ? hpidMatch[1] + '…' : noScheme;
+  }
+
   function renderAccountCards(){
     const el = document.getElementById('ccSubAccounts');
     if (!allSubAccounts.length){ el.innerHTML = '<span class="cell-muted">Nenhuma sub-conta disponível (contas com token quebrado não aparecem aqui).</span>'; return; }
@@ -1589,7 +1585,7 @@
         '</div>';
       } else {
         linkRow = '<div class="acc-link-status">' +
-          (link ? '<span class="acc-link-url" title="' + link.url.replace(/"/g, '&quot;') + '">' + link.url.replace(/^https?:\/\//, '') + '</span>' : '<span class="acc-link-missing">sem link</span>') +
+          (link ? '<span class="acc-link-url" title="' + link.url.replace(/"/g, '&quot;') + '">' + shortLinkForDisplay(link.url) + '</span>' : '<span class="acc-link-missing">sem link</span>') +
           '<button type="button" class="acc-link-edit" data-edit-link="' + a.id + '">' + (link ? 'editar' : '+ adicionar') + '</button>' +
         '</div>';
       }
