@@ -156,9 +156,7 @@
   .media-item img, .media-item video{width:100%; height:100%; object-fit:cover; display:block;}
   .media-item.selected{border-color:var(--accent);}
   .media-item .media-name{position:absolute; bottom:0; left:0; right:0; background:rgba(0,0,0,.62); color:#fff; font-size:10px; padding:3px 5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-  .media-item .media-remove{position:absolute; top:3px; right:3px; background:rgba(0,0,0,.62); color:#fff; border:none; border-radius:4px; width:18px; height:18px; font-size:12px; cursor:pointer; line-height:1;}
   .media-item .media-check{position:absolute; top:3px; right:3px; background:var(--accent); color:var(--accent-ink); border-radius:4px; width:18px; height:18px; font-size:11px; line-height:18px; text-align:center; font-weight:700;}
-  .media-item .media-move-select{position:absolute; top:3px; left:3px; max-width:calc(100% - 26px); background:rgba(0,0,0,.72); color:#fff; border:none; border-radius:4px; font-size:9.5px; padding:2px 3px; cursor:pointer;}
   .media-grid-note-row{display:flex; align-items:center; justify-content:space-between; gap:10px; padding-right:18px;}
   .media-grid-note-row .media-grid-note{padding-right:0;}
   .select-all-btn{border:1px solid var(--line); background:var(--surface-raised); color:var(--ink); font:inherit; font-weight:600; font-size:11.5px; padding:6px 13px; border-radius:var(--radius-xs); cursor:pointer; flex:none; white-space:nowrap;}
@@ -279,6 +277,11 @@
   .gallery-folder-icon{font-size:34px; line-height:1;}
   .gallery-folder-name{font-weight:700; font-size:13px;}
   .gallery-folder-count{font-size:11px; color:var(--muted);}
+  .gallery-bulkbar{display:flex; align-items:center; gap:12px; padding:0 18px 12px; flex-wrap:wrap;}
+  .gallery-bulk-actions{display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
+  .gallery-bulk-actions select{border:1px solid var(--line); border-radius:var(--radius-sm); padding:8px 10px; font:inherit; font-size:12.5px; background:var(--bg); color:var(--ink);}
+  .gallery-action-btn.bad{background:var(--bad-bg); color:var(--bad); border-color:transparent;}
+  .gallery-action-btn.bad:hover{filter:brightness(1.15);}
 
   .pill-row{display:flex; flex-wrap:wrap; gap:8px;}
   .pill{border:1.5px solid var(--line); background:var(--surface-raised); color:var(--ink); font:inherit; font-weight:600; font-size:12.5px; padding:8px 16px; border-radius:999px; cursor:pointer; transition:border-color .12s, background .12s, color .12s;}
@@ -766,6 +769,15 @@
           </div>
           <div class="cell-muted" id="galleryUploadNote" style="padding:0 18px 10px;"></div>
           <div class="gallery-folder-grid" id="galleryFolderGrid"></div>
+          <div class="gallery-bulkbar" id="galleryBulkBar" hidden>
+            <button type="button" id="gallerySelectAllBtn" class="gallery-action-btn"></button>
+            <span class="cell-muted" id="gallerySelectedCount"></span>
+            <span class="gallery-bulk-actions" id="galleryBulkActions" hidden>
+              <select id="galleryMoveSelect"></select>
+              <button type="button" id="galleryMoveBtn" class="gallery-action-btn">Mover</button>
+              <button type="button" id="galleryDeleteSelectedBtn" class="gallery-action-btn bad"></button>
+            </span>
+          </div>
           <div class="media-grid-note" id="galleryGridNote"></div>
           <div class="media-grid" id="galleryGrid"></div>
         </section>
@@ -1697,6 +1709,7 @@
   let mediaSearchQuery = '';
   let logoSearchQuery = '';
   let galleryOpenFolder = null;
+  let selectedGalleryIds = [];
   let niches = [];
   let selectedNiche = loadPref('ccNiche', '');
 
@@ -1751,6 +1764,7 @@
 
   function openGalleryFolder(code){
     galleryOpenFolder = code;
+    selectedGalleryIds = [];
     document.getElementById('addAdsInline').hidden = true;
     const fileInput = document.getElementById('galleryFileInput');
     fileInput.value = '';
@@ -1787,31 +1801,86 @@
     wrap.querySelectorAll('.gallery-folder-tile').forEach(el => el.addEventListener('click', () => openGalleryFolder(el.dataset.folder)));
   }
 
-  function galleryItemHtml(it){
-    const isVideo = (it.contentType || '').indexOf('video') === 0;
-    const fileUrl = LIBRARY_API + '/' + it.id + '/file';
-    const media = isVideo ? '<video src="' + fileUrl + '" muted></video>' : '<img src="' + fileUrl + '" loading="lazy">';
-    const uploadedDate = it.uploadedAt ? new Date(it.uploadedAt).toLocaleDateString('pt-BR') : '';
-    const cat = itemCategory(it);
-    const options = folderList().map(code => '<option value="' + code + '"' + (code === cat ? ' selected' : '') + '>' + folderLabel(code) + '</option>').join('');
-    return '<div class="media-item" data-id="' + it.id + '">' +
-      media +
-      '<button type="button" class="media-remove" data-remove-id="' + it.id + '">×</button>' +
-      '<select class="media-move-select" data-move-id="' + it.id + '" title="Mover pra outra pasta">' + options + '</select>' +
-      '<div class="media-name" title="' + it.name.replace(/"/g, '&quot;') + ' · ' + uploadedDate + '">' + it.name + (uploadedDate ? ' · ' + uploadedDate : '') + '</div>' +
-    '</div>';
+  async function bulkMoveSelected(category){
+    const note = document.getElementById('galleryGridNote');
+    const ids = selectedGalleryIds.slice();
+    for (let i = 0; i < ids.length; i++) {
+      note.textContent = 'Movendo ' + (i + 1) + '/' + ids.length + '…';
+      try {
+        const r = await fetch(LIBRARY_API + '/' + ids[i] + '/category', {
+          method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY },
+          body: JSON.stringify({ category }),
+        });
+        const json = await r.json();
+        if (!r.ok) throw new Error(json.error || 'failed');
+        libraryItems = json.items || libraryItems;
+      } catch (e) {
+        note.textContent = (e.message === 'name_conflict_in_folder' ? 'Já existe anúncio com esse nome na pasta destino — ' : 'Falhou — ') + 'parei em ' + (i + 1) + '/' + ids.length + '.';
+        selectedGalleryIds = selectedGalleryIds.filter(id => ids.indexOf(id) < i);
+        renderGalleryPanel();
+        return;
+      }
+    }
+    selectedGalleryIds = [];
+    renderGalleryPanel();
   }
 
-  function moveLibraryItem(id, category){
+  async function bulkDeleteSelected(){
+    const ids = selectedGalleryIds.slice();
+    if (!ids.length) return;
+    if (!confirm('Apagar ' + ids.length + ' anúncio(s) selecionado(s)? Isso não pode ser desfeito.')) return;
     const note = document.getElementById('galleryGridNote');
-    fetch(LIBRARY_API + '/' + id + '/category', {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY },
-      body: JSON.stringify({ category }),
-    }).then(r => r.json().then(json => ({ ok: r.ok, json }))).then(({ ok, json }) => {
-      if (!ok) { note.textContent = json.error === 'name_conflict_in_folder' ? 'Já existe um anúncio com esse nome nessa pasta.' : 'Não consegui mover — tenta de novo.'; renderGalleryPanel(); return; }
-      libraryItems = json.items || libraryItems;
+    for (let i = 0; i < ids.length; i++) {
+      note.textContent = 'Apagando ' + (i + 1) + '/' + ids.length + '…';
+      try {
+        const r = await fetch(LIBRARY_API + '/' + ids[i], { method: 'DELETE', headers: { 'X-Access-Key': COSTS_API_KEY } });
+        const json = await r.json();
+        libraryItems = json.items || libraryItems;
+        const idx = selectedCreativeIds.indexOf(ids[i]);
+        if (idx !== -1) selectedCreativeIds.splice(idx, 1);
+        if (selectedLogoLibraryId === ids[i]) selectedLogoLibraryId = null;
+      } catch (e) {
+        note.textContent = 'Falhou — parei em ' + (i + 1) + '/' + ids.length + '.';
+        selectedGalleryIds = selectedGalleryIds.filter(id => ids.indexOf(id) < i);
+        renderGalleryPanel();
+        renderSelectedCreativesList();
+        updateSelectedLogoLabel();
+        return;
+      }
+    }
+    selectedGalleryIds = [];
+    renderGalleryPanel();
+    renderSelectedCreativesList();
+    updateSelectedLogoLabel();
+  }
+
+  function renderGalleryBulkBar(shown){
+    const bar = document.getElementById('galleryBulkBar');
+    if (!shown.length) { bar.hidden = true; return; }
+    bar.hidden = false;
+    const allSelected = shown.every(it => selectedGalleryIds.indexOf(it.id) !== -1);
+    const selectAllBtn = document.getElementById('gallerySelectAllBtn');
+    selectAllBtn.textContent = (allSelected ? 'Desmarcar todos' : 'Marcar todos') + ' (' + shown.length + ')';
+    selectAllBtn.onclick = () => {
+      if (allSelected) {
+        const shownIds = new Set(shown.map(it => it.id));
+        selectedGalleryIds = selectedGalleryIds.filter(id => !shownIds.has(id));
+      } else {
+        shown.forEach(it => { if (selectedGalleryIds.indexOf(it.id) === -1) selectedGalleryIds.push(it.id); });
+      }
       renderGalleryPanel();
-    }).catch(() => { note.textContent = 'Não consegui mover — tenta de novo.'; });
+    };
+    const count = selectedGalleryIds.length;
+    document.getElementById('gallerySelectedCount').textContent = count ? count + ' selecionado(s)' : '';
+    const actions = document.getElementById('galleryBulkActions');
+    actions.hidden = !count;
+    if (count) {
+      const moveSelect = document.getElementById('galleryMoveSelect');
+      moveSelect.innerHTML = folderList().filter(c => c !== galleryOpenFolder).map(c => '<option value="' + c + '">' + folderLabel(c) + '</option>').join('');
+      document.getElementById('galleryMoveBtn').onclick = () => bulkMoveSelected(moveSelect.value);
+      document.getElementById('galleryDeleteSelectedBtn').textContent = 'Apagar (' + count + ')';
+      document.getElementById('galleryDeleteSelectedBtn').onclick = () => bulkDeleteSelected();
+    }
   }
 
   function renderGalleryPanel(){
@@ -1820,23 +1889,19 @@
     document.getElementById('addAdsBtn').disabled = !galleryOpenFolder;
     const grid = document.getElementById('galleryGrid');
     const note = document.getElementById('galleryGridNote');
-    if (!galleryOpenFolder) { grid.innerHTML = ''; note.textContent = ''; return; }
+    if (!galleryOpenFolder) { grid.innerHTML = ''; note.textContent = ''; document.getElementById('galleryBulkBar').hidden = true; return; }
     const inFolder = libraryItems.filter(it => itemCategory(it) === galleryOpenFolder);
+    renderGalleryBulkBar(inFolder);
     if (!inFolder.length){ note.textContent = '0 anúncio(s) nessa pasta'; grid.innerHTML = '<div class="empty-state">Nenhum anúncio nessa pasta ainda.</div>'; return; }
     note.textContent = inFolder.length + ' anúncio(s) nessa pasta';
     const shown = inFolder.slice().reverse();
-    grid.innerHTML = shown.map(it => galleryItemHtml(it)).join('');
-    grid.querySelectorAll('.media-remove').forEach(btn => btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      deleteLibraryItem(btn.dataset.removeId);
+    grid.innerHTML = shown.map(it => mediaItemHtml(it, selectedGalleryIds)).join('');
+    grid.querySelectorAll('.media-item').forEach(el => el.addEventListener('click', () => {
+      const id = el.dataset.id;
+      const idx = selectedGalleryIds.indexOf(id);
+      if (idx !== -1) selectedGalleryIds.splice(idx, 1); else selectedGalleryIds.push(id);
+      renderGalleryPanel();
     }));
-    grid.querySelectorAll('.media-move-select').forEach(sel => {
-      sel.addEventListener('click', (e) => e.stopPropagation());
-      sel.addEventListener('change', (e) => {
-        e.stopPropagation();
-        moveLibraryItem(sel.dataset.moveId, sel.value);
-      });
-    });
   }
 
   function loadLibraryItems(){
@@ -1878,7 +1943,7 @@
     if (!selectedCreativeIds.length){ wrap.hidden = true; return; }
     wrap.hidden = false;
     const items = selectedCreativeIds.map(id => libraryItems.find(i => i.id === id)).filter(Boolean);
-    el.innerHTML = items.map(it => mediaItemHtml(it, selectedCreativeIds, false)).join('');
+    el.innerHTML = items.map(it => mediaItemHtml(it, selectedCreativeIds)).join('');
     el.querySelectorAll('.media-item').forEach(node => node.addEventListener('click', () => {
       const id = node.dataset.id;
       const idx = selectedCreativeIds.indexOf(id);
@@ -1895,15 +1960,13 @@
     el.textContent = item ? item.name : 'Nenhum selecionado';
   }
 
-  function mediaItemHtml(it, selectedId, removable){
+  function mediaItemHtml(it, selectedId){
     const isVideo = (it.contentType || '').indexOf('video') === 0;
     const fileUrl = LIBRARY_API + '/' + it.id + '/file';
     const media = isVideo ? '<video src="' + fileUrl + '" muted></video>' : '<img src="' + fileUrl + '" loading="lazy">';
     const isSel = Array.isArray(selectedId) ? selectedId.indexOf(it.id) !== -1 : selectedId === it.id;
     const uploadedDate = it.uploadedAt ? new Date(it.uploadedAt).toLocaleDateString('pt-BR') : '';
-    const badge = removable
-      ? '<button type="button" class="media-remove" data-remove-id="' + it.id + '">×</button>'
-      : (isSel ? '<div class="media-check">✓</div>' : '');
+    const badge = isSel ? '<div class="media-check">✓</div>' : '';
     return '<div class="media-item' + (isSel ? ' selected' : '') + '" data-id="' + it.id + '">' +
       media +
       badge +
@@ -1949,7 +2012,7 @@
       renderMediaGrid();
       renderCcSummary();
     };
-    grid.innerHTML = shown.map(it => mediaItemHtml(it, selectedCreativeIds, false)).join('');
+    grid.innerHTML = shown.map(it => mediaItemHtml(it, selectedCreativeIds)).join('');
     grid.querySelectorAll('.media-item').forEach(el => el.addEventListener('click', () => {
       const id = el.dataset.id;
       const idx = selectedCreativeIds.indexOf(id);
@@ -1973,27 +2036,13 @@
     const shown = libraryItems.filter(it => itemCategory(it) === 'logo' && it.name.toLowerCase().indexOf(q) !== -1).slice().reverse();
     note.textContent = shown.length + ' resultado(s) na pasta Logos pra "' + logoSearchQuery.trim() + '"';
     if (!shown.length){ grid.innerHTML = '<div class="empty-state">Nenhum logo encontrado pra "' + logoSearchQuery.trim() + '". Confira o nome ou a pasta na Galeria.</div>'; return; }
-    grid.innerHTML = shown.map(it => mediaItemHtml(it, selectedLogoLibraryId, false)).join('');
+    grid.innerHTML = shown.map(it => mediaItemHtml(it, selectedLogoLibraryId)).join('');
     grid.querySelectorAll('.media-item').forEach(el => el.addEventListener('click', () => {
       selectedLogoLibraryId = el.dataset.id;
       updateSelectedLogoLabel();
       renderLogoGrid();
       renderCcSummary();
     }));
-  }
-
-  function deleteLibraryItem(id){
-    fetch(LIBRARY_API + '/' + id, { method: 'DELETE', headers: { 'X-Access-Key': COSTS_API_KEY } })
-      .then(r => r.json())
-      .then(json => {
-        libraryItems = json.items || [];
-        const idx = selectedCreativeIds.indexOf(id);
-        if (idx !== -1) selectedCreativeIds.splice(idx, 1);
-        if (selectedLogoLibraryId === id) selectedLogoLibraryId = null;
-        refreshLibraryViews();
-        renderSelectedCreativesList();
-        updateSelectedLogoLabel();
-      }).catch(() => {});
   }
 
   function stripImageMetadata(file){
