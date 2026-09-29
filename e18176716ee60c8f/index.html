@@ -184,6 +184,39 @@
   .toggle-switch .toggle-track::before{content:''; position:absolute; width:17px; height:17px; left:2px; top:2px; background:var(--muted); border-radius:50%; transition:transform .15s ease, background-color .15s ease;}
   .toggle-switch input:checked + .toggle-track{background:color-mix(in srgb, var(--accent) 22%, var(--surface-raised)); border-color:var(--accent);}
   .toggle-switch input:checked + .toggle-track::before{transform:translateX(17px); background:var(--accent);}
+  .toggle-switch.small{width:34px; height:19px;}
+  .toggle-switch.small .toggle-track::before{width:13px; height:13px;}
+  .toggle-switch.small input:checked + .toggle-track::before{transform:translateX(15px);}
+  .toggle-switch[data-busy]{opacity:.5; pointer-events:none;}
+
+  .camp-search{border:1px solid var(--line); background:var(--surface-raised); color:var(--ink); font:inherit; font-size:13px; padding:7px 12px; border-radius:var(--radius-sm); width:200px;}
+  .camp-search:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 24%, transparent);}
+  .camp-wrap{padding:8px 18px 18px;}
+  .camp-list{display:flex; flex-direction:column; gap:10px;}
+  .camp-card{border:1px solid var(--line); border-radius:var(--radius-md); background:var(--bg); overflow:hidden;}
+  .camp-head{display:flex; align-items:center; gap:14px; padding:13px 16px; cursor:pointer; user-select:none;}
+  .camp-head:hover{background:color-mix(in srgb, var(--accent) 5%, transparent);}
+  .camp-chevron{display:inline-block; transition:transform .15s ease; color:var(--muted); font-size:10px; flex:none; width:10px;}
+  .camp-card.expanded > .camp-head .camp-chevron{transform:rotate(90deg);}
+  .camp-head-main{flex:1; min-width:0;}
+  .camp-head-name{font-weight:600; font-size:13.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .camp-head-sub{font-size:11px; color:var(--muted); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .camp-head-metrics{display:flex; gap:20px; align-items:center; flex:none;}
+  .camp-metric{text-align:right; min-width:56px;}
+  .camp-metric-val{font-size:13px; font-weight:600;}
+  .camp-metric-label{font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.03em; margin-top:1px;}
+  .camp-body{border-top:1px solid var(--line); padding:10px 16px 14px; display:flex; flex-direction:column; gap:8px;}
+  .adset-row{border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--surface-raised);}
+  .adset-head{display:flex; align-items:center; gap:12px; padding:9px 12px; cursor:pointer; user-select:none;}
+  .adset-head-main{flex:1; min-width:0; font-size:12.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .adset-head-sub{font-size:10.5px; color:var(--muted); margin-top:1px; font-weight:400;}
+  .adset-budget-wrap{display:flex; align-items:center; gap:4px; font-size:11.5px; color:var(--muted); flex:none;}
+  .adset-budget-input{width:72px; border:1px solid var(--line); background:var(--bg); color:var(--ink); font:inherit; font-size:12px; padding:5px 7px; border-radius:var(--radius-xs); text-align:right;}
+  .adset-budget-input:focus{outline:none; border-color:var(--accent);}
+  .adset-body{padding:0 12px 9px 34px; display:flex; flex-direction:column; gap:5px;}
+  .ad-row{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:6px 0; border-top:1px solid var(--line); font-size:12px;}
+  .ad-row:first-child{border-top:none;}
+  .ad-row-name{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--muted);}
   .account-card{display:flex; align-items:center; gap:16px; border:2px solid var(--line); border-radius:var(--radius-md); padding:14px 18px; cursor:pointer; background:var(--surface-raised); transition:border-color .12s, background .12s;}
   .account-card:hover{border-color:color-mix(in srgb, var(--accent) 45%, var(--line));}
   .account-card.selected{border-color:var(--accent); background:color-mix(in srgb, var(--accent) 10%, var(--surface-raised));}
@@ -362,11 +395,12 @@
         <div class="panel-head">
           <h2 id="campStatsHead">Campanhas</h2>
           <div class="panel-head-right">
+            <input type="text" id="campSearchInput" class="camp-search" placeholder="Buscar campanha…">
             <div class="tabs" id="campFilterTabs" style="margin:0;"></div>
           </div>
         </div>
-        <p class="dre-intro">Uma campanha só conta como <b>ativa de verdade</b> quando a campanha, pelo menos um conjunto e pelo menos um anúncio dentro dele estão todos ligados. "Liga mas não entrega" é quando o botão tá ON só na campanha, mas nada por dentro está rodando.</p>
-        <div class="table-scroll" id="campWrap"></div>
+        <p class="dre-intro">Uma campanha só conta como <b>ativa de verdade</b> quando a campanha, pelo menos um conjunto e pelo menos um anúncio dentro dele estão todos ligados. "Liga mas não entrega" é quando o botão tá ON só na campanha, mas nada por dentro está rodando. Clique numa campanha pra ver os conjuntos de anúncios; clique num conjunto pra ver os anúncios. Dá pra pausar/ativar e mudar orçamento direto aqui.</p>
+        <div class="camp-wrap" id="campWrap"></div>
       </section>
     </div>
 
@@ -765,6 +799,8 @@
   const CC_SETTINGS_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/cc-settings';
   const ACCOUNT_SETTINGS_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/account-settings';
   const ACCOUNTS_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/accounts';
+  const NB_ENTITY_STATUS_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/nb/entity-status';
+  const NB_ADSET_BUDGET_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/nb/adset-budget';
   const DATA_API = './data.json';
   const COSTS_API_KEY = 'HrcFGQUO4Wq_smjouctnZuDZxIatbjPT';
 
@@ -788,6 +824,13 @@
   const data = {vini:{}, pretorian:{}, neia:{}, alan:{}, troya:{}};
   function ensureDataKeys(){ ACCOUNTS.forEach(a => { if (!data[a.key]) data[a.key] = {}; }); }
   const ACCOUNT_LABEL = {vini:'Vini', pretorian:'Pretorian', neia:'Neia', alan:'Alan', troya:'Troya'};
+  function accountLabelFor(key){
+    const acc = ACCOUNTS.find(a => a.key === key);
+    return (acc && acc.label) || ACCOUNT_LABEL[key] || key;
+  }
+  let expandedCampaigns = new Set();
+  let expandedAdsets = new Set();
+  let campSearch = '';
 
   function subDisplayName(accId){
     const acc = subAccounts[accId];
@@ -1156,11 +1199,143 @@
     return {label:'Pausada', cls:'flat'};
   }
 
+  function adsetStatus(a){
+    if (a.reallyActive) return {label:'Ativo', cls:'good'};
+    if (a.status === 'ON') return {label:'Sem anúncio ativo', cls:'bad'};
+    return {label:'Pausado', cls:'flat'};
+  }
+
   function renderCampFilterTabs(){
     const wrap = document.getElementById('campFilterTabs');
     const opts = [{key:'active', label:'Só ativas'}, {key:'all', label:'Todas'}];
     wrap.innerHTML = opts.map(o => '<button class="tab small' + (campFilter===o.key?' active':'') + '" data-camp-filter="' + o.key + '">' + o.label + '</button>').join('');
     wrap.querySelectorAll('.tab').forEach(btn => btn.addEventListener('click', () => { campFilter = btn.dataset.campFilter; savePref('campFilter', campFilter); renderCampanhas(); }));
+  }
+
+  function setEntityStatus(accountKey, entityType, id, status){
+    return fetch(NB_ENTITY_STATUS_API, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY },
+      body: JSON.stringify({ accountKey, entityType, id, status }),
+    }).then(r => r.json().catch(() => ({})).then(json => { if (!r.ok) throw new Error(json.detail || 'falhou'); return json; }));
+  }
+
+  function setAdsetBudget(accountKey, id, budget){
+    return fetch(NB_ADSET_BUDGET_API, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY },
+      body: JSON.stringify({ accountKey, id, budget }),
+    }).then(r => r.json().catch(() => ({})).then(json => { if (!r.ok) throw new Error(json.detail || 'falhou'); return json; }));
+  }
+
+  function renderCampMetric(val, label, kind){
+    let text = '—';
+    if (val != null) text = kind === 'usd' ? fmtUSD(val) : kind === 'int' ? String(val) : val;
+    return '<div class="camp-metric"><div class="camp-metric-val">' + text + '</div><div class="camp-metric-label">' + label + '</div></div>';
+  }
+
+  function renderAdRow(c, ad){
+    return '<div class="ad-row">' +
+      '<span class="ad-row-name">' + ad.name + '</span>' +
+      '<label class="toggle-switch small"><input type="checkbox" data-ad-status="' + ad.id + '" data-account-key="' + c.accountKey + '"' + (ad.status==='ON'?' checked':'') + '><span class="toggle-track"></span></label>' +
+    '</div>';
+  }
+
+  function renderAdsetRow(c, a){
+    const st = adsetStatus(a);
+    const expanded = expandedAdsets.has(a.id);
+    const ads = (a.ads || []).slice().sort((x,y) => (y.status==='ON') - (x.status==='ON') || x.name.localeCompare(y.name));
+    return '<div class="adset-row' + (expanded?' expanded':'') + '">' +
+      '<div class="adset-head" data-adset-toggle="' + a.id + '">' +
+        '<span class="camp-chevron" style="font-size:9px;">▶</span>' +
+        '<div class="adset-head-main">' + a.name + '<div class="adset-head-sub">' + a.adsOn + '/' + a.adsTotal + ' anúncios ativos' + (a.todayCost!=null ? ' · ' + fmtUSD(a.todayCost) + ' hoje' : '') + '</div></div>' +
+        '<span class="roas-pill ' + st.cls + '" style="font-size:10.5px;">' + st.label + '</span>' +
+        '<div class="adset-budget-wrap" onclick="event.stopPropagation()">$<input type="number" class="adset-budget-input" data-adset-budget="' + a.id + '" data-account-key="' + c.accountKey + '" value="' + (a.budget!=null?a.budget:'') + '" min="10" step="1" placeholder="orç."> /dia</div>' +
+        '<label class="toggle-switch small" onclick="event.stopPropagation()"><input type="checkbox" data-adset-status="' + a.id + '" data-account-key="' + c.accountKey + '"' + (a.status==='ON'?' checked':'') + '><span class="toggle-track"></span></label>' +
+      '</div>' +
+      '<div class="adset-body">' + (expanded ? (ads.map(ad => renderAdRow(c, ad)).join('') || '<div class="cell-muted" style="font-size:11.5px;">Nenhum anúncio.</div>') : '') + '</div>' +
+    '</div>';
+  }
+
+  function renderCampCard(c){
+    const st = campStatus(c);
+    const expanded = expandedCampaigns.has(c.id);
+    const subName = subAccounts[c.adAccountId] ? subDisplayName(c.adAccountId) : c.adAccountName;
+    const adSets = c.adSets.slice().sort((x,y) => (y.reallyActive - x.reallyActive) || x.name.localeCompare(y.name));
+    return '<div class="camp-card' + (expanded?' expanded':'') + '">' +
+      '<div class="camp-head" data-camp-toggle="' + c.id + '">' +
+        '<span class="camp-chevron">▶</span>' +
+        '<div class="camp-head-main">' +
+          '<div class="camp-head-name">' + c.name + '</div>' +
+          '<div class="camp-head-sub">' + accountLabelFor(c.accountKey) + ' · ' + subName + '</div>' +
+        '</div>' +
+        '<span class="roas-pill ' + st.cls + '">' + st.label + '</span>' +
+        '<div class="camp-head-metrics">' +
+          renderCampMetric(c.todayCost, 'gasto hoje', 'usd') +
+          renderCampMetric(c.todayVenda, 'vendas hoje', 'int') +
+          renderCampMetric(c.adSetsOn + '/' + c.adSetsTotal, 'conjuntos') +
+          renderCampMetric(c.activeBudget, 'orç./dia', 'usd') +
+        '</div>' +
+        '<label class="toggle-switch" onclick="event.stopPropagation()"><input type="checkbox" data-camp-status="' + c.id + '" data-account-key="' + c.accountKey + '"' + (c.status==='ON'?' checked':'') + '><span class="toggle-track"></span></label>' +
+      '</div>' +
+      '<div class="camp-body">' + (expanded ? (adSets.map(a => renderAdsetRow(c, a)).join('') || '<div class="cell-muted" style="font-size:12px;">Nenhum conjunto de anúncios.</div>') : '') + '</div>' +
+    '</div>';
+  }
+
+  function wireCampanhaEvents(){
+    document.querySelectorAll('[data-camp-toggle]').forEach(el => el.addEventListener('click', () => {
+      const id = el.dataset.campToggle;
+      if (expandedCampaigns.has(id)) expandedCampaigns.delete(id); else expandedCampaigns.add(id);
+      renderCampanhas();
+    }));
+    document.querySelectorAll('[data-adset-toggle]').forEach(el => el.addEventListener('click', () => {
+      const id = el.dataset.adsetToggle;
+      if (expandedAdsets.has(id)) expandedAdsets.delete(id); else expandedAdsets.add(id);
+      renderCampanhas();
+    }));
+    document.querySelectorAll('[data-camp-status]').forEach(el => el.addEventListener('change', () => {
+      const prev = !el.checked;
+      const status = el.checked ? 'ON' : 'OFF';
+      el.closest('.toggle-switch').setAttribute('data-busy', '1');
+      setEntityStatus(el.dataset.accountKey, 'campaign', el.dataset.campStatus, status)
+        .then(() => loadLiveCampanhas())
+        .catch(() => { el.checked = prev; alert('Não consegui atualizar o status da campanha.'); })
+        .finally(() => { const t = el.closest('.toggle-switch'); if (t) t.removeAttribute('data-busy'); });
+    }));
+    document.querySelectorAll('[data-adset-status]').forEach(el => el.addEventListener('change', () => {
+      const prev = !el.checked;
+      const status = el.checked ? 'ON' : 'OFF';
+      el.closest('.toggle-switch').setAttribute('data-busy', '1');
+      setEntityStatus(el.dataset.accountKey, 'adset', el.dataset.adsetStatus, status)
+        .then(() => loadLiveCampanhas())
+        .catch(() => { el.checked = prev; alert('Não consegui atualizar o status do conjunto.'); })
+        .finally(() => { const t = el.closest('.toggle-switch'); if (t) t.removeAttribute('data-busy'); });
+    }));
+    document.querySelectorAll('[data-ad-status]').forEach(el => el.addEventListener('change', () => {
+      const prev = !el.checked;
+      const status = el.checked ? 'ON' : 'OFF';
+      el.closest('.toggle-switch').setAttribute('data-busy', '1');
+      setEntityStatus(el.dataset.accountKey, 'ad', el.dataset.adStatus, status)
+        .then(() => loadLiveCampanhas())
+        .catch(() => { el.checked = prev; alert('Não consegui atualizar o status do anúncio.'); })
+        .finally(() => { const t = el.closest('.toggle-switch'); if (t) t.removeAttribute('data-busy'); });
+    }));
+    document.querySelectorAll('[data-adset-budget]').forEach(el => {
+      el.addEventListener('keydown', (e) => { if (e.key === 'Enter') el.blur(); });
+      el.addEventListener('blur', () => {
+        const val = parseFloat(el.value);
+        if (!isFinite(val) || val < 10) return;
+        el.disabled = true;
+        setAdsetBudget(el.dataset.accountKey, el.dataset.adsetBudget, val)
+          .then(() => loadLiveCampanhas())
+          .catch(() => alert('Não consegui atualizar o orçamento (mínimo $10/dia).'))
+          .finally(() => { el.disabled = false; });
+      });
+    });
+    const search = document.getElementById('campSearchInput');
+    if (search && !search.dataset.wired) {
+      search.dataset.wired = '1';
+      search.value = campSearch;
+      search.addEventListener('input', () => { campSearch = search.value; renderCampanhas(); });
+    }
   }
 
   function renderCampanhas(){
@@ -1171,25 +1346,17 @@
       'Campanhas — ' + activeCount + ' ativa' + (activeCount===1?'':'s') + ' de ' + campaigns.length +
       (mismatchCount ? ' · ' + mismatchCount + ' ligada' + (mismatchCount===1?'':'s') + ' sem entregar' : '');
 
-    const list = campFilter === 'active'
+    let list = campFilter === 'active'
       ? campaigns.filter(c => c.reallyActive || (c.status === 'ON' && !c.reallyActive))
       : campaigns.slice();
+    const q = campSearch.trim().toLowerCase();
+    if (q) list = list.filter(c => c.name.toLowerCase().includes(q) || accountLabelFor(c.accountKey).toLowerCase().includes(q));
     list.sort((a,b) => (b.reallyActive - a.reallyActive) || a.name.localeCompare(b.name));
 
-    const rows = list.map(c => {
-      const st = campStatus(c);
-      return '<tr>' +
-        '<td>' + (ACCOUNT_LABEL[c.accountKey] || c.accountKey) + '</td>' +
-        '<td>' + c.name + '<div class="cell-muted" style="font-size:11px;">' + (subAccounts[c.adAccountId] ? subDisplayName(c.adAccountId) : c.adAccountName) + '</div></td>' +
-        '<td class="num roas-pill ' + st.cls + '">' + st.label + '</td>' +
-        '<td class="num">' + c.adSetsOn + ' / ' + c.adSetsTotal + '</td>' +
-        '<td class="num">' + fmtUSD(c.activeBudget) + (c.activeBudget!=null ? '/dia' : '') + '</td>' +
-      '</tr>';
-    }).join('');
-
-    document.getElementById('campWrap').innerHTML =
-      '<table><thead><tr><th style="text-align:left;">Conta</th><th style="text-align:left;">Campanha</th><th>Status</th><th>Conjuntos on</th><th>Orçamento</th></tr></thead><tbody>' +
-      (rows || '<tr><td colspan="5" class="empty-state">Nenhuma campanha encontrada.</td></tr>') + '</tbody></table>';
+    document.getElementById('campWrap').innerHTML = '<div class="camp-list">' +
+      (list.map(renderCampCard).join('') || '<div class="empty-state">Nenhuma campanha encontrada.</div>') +
+    '</div>';
+    wireCampanhaEvents();
   }
 
   function computeBalance(accId){
