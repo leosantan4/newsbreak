@@ -152,6 +152,7 @@
   .stat-bar-value{min-width:80px; text-align:right; color:var(--muted);}
 
   .media-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:10px; padding:16px 18px;}
+  .logo-preview-grid{grid-template-columns:repeat(auto-fill,minmax(64px,64px)); gap:8px;}
   .media-item{position:relative; border:2px solid var(--line); border-radius:var(--radius-sm); overflow:hidden; background:var(--bg); aspect-ratio:1; display:flex; align-items:center; justify-content:center; cursor:pointer;}
   .media-item img, .media-item video{width:100%; height:100%; object-fit:cover; display:block;}
   .media-item.selected{border-color:var(--accent);}
@@ -179,13 +180,13 @@
   .create-log .err{color:var(--bad); font-weight:600;}
 
   .account-picker{display:flex; flex-direction:column; gap:10px; padding:16px 18px;}
-  .account-select{position:relative; padding:16px 18px 0;}
+  .account-select{padding:16px 18px 0;}
   .account-select-trigger{width:100%; display:flex; align-items:center; justify-content:space-between; gap:10px; border:2px solid var(--line); border-radius:var(--radius-md); padding:14px 18px; background:var(--surface-raised); color:var(--ink); font:inherit; font-size:14.5px; font-weight:600; cursor:pointer;}
   .account-select-trigger:hover{border-color:color-mix(in srgb, var(--accent) 45%, var(--line));}
   .account-select-chevron{color:var(--muted); font-size:12px; transition:transform .15s ease; flex:none;}
   .account-select.open .account-select-chevron{transform:rotate(180deg);}
   .account-select.open .account-select-trigger{border-color:var(--accent);}
-  .account-select-dropdown{position:absolute; top:calc(100% - 2px); left:18px; right:18px; z-index:20; background:var(--bg); border:1px solid var(--line); border-radius:var(--radius-md); box-shadow:0 12px 28px rgba(0,0,0,.45); max-height:360px; overflow-y:auto; margin:0; padding:10px;}
+  .account-select-dropdown{background:var(--bg); border:1px solid var(--line); border-radius:var(--radius-md); max-height:320px; overflow-y:auto; margin:8px 0 0; padding:10px;}
   .accounts-list{display:flex; flex-direction:column; gap:10px; padding:16px 18px;}
   .account-row{display:flex; align-items:center; justify-content:space-between; gap:16px; border:1px solid var(--line); border-radius:var(--radius-md); padding:14px 18px; background:var(--surface-raised);}
   .account-row.inactive{opacity:.55;}
@@ -647,7 +648,6 @@
           <section class="panel">
             <div class="step-head">
               <div class="step-head-left"><span class="step-num">4</span><span class="step-title">Marca &amp; logo padrão</span></div>
-              <span class="step-desc">fica salvo — não precisa repetir em toda campanha. O logo vem da pasta "Logos" da Galeria</span>
             </div>
             <div class="form-grid">
               <div class="form-field">
@@ -659,11 +659,8 @@
                 <div id="ccLogoSelected" class="cell-muted">Nenhum selecionado</div>
               </div>
             </div>
-            <div class="creative-search">
-              <input type="text" id="logoSearchInput" placeholder="Filtrar por nome (opcional)…">
-            </div>
             <div class="media-grid-note" id="logoGridNote"></div>
-            <div class="media-grid" id="logoGrid"></div>
+            <div class="media-grid logo-preview-grid" id="logoGrid"></div>
             <div style="padding:0 18px 16px; display:flex; gap:10px; align-items:center;">
               <button type="button" id="ccBrandSaveBtn" style="border:none; background:var(--accent); color:var(--accent-ink); font:inherit; font-weight:600; font-size:13px; padding:9px 16px; border-radius:var(--radius-sm); cursor:pointer;">Salvar</button>
               <span class="cell-muted" id="ccBrandSaveNote"></span>
@@ -1719,7 +1716,6 @@
   let startDaySel = 0;
 
   let mediaSearchQuery = '';
-  let logoSearchQuery = '';
   let galleryOpenFolder = (function(){ const v = loadPref('galleryOpenFolder', '__root__'); return v === '__root__' ? null : v; })();
   let selectedGalleryIds = [];
   let niches = [];
@@ -2053,12 +2049,9 @@
     const grid = document.getElementById('logoGrid');
     const note = document.getElementById('logoGridNote');
     if (!grid) return;
-    const q = logoSearchQuery.trim().toLowerCase();
-    const all = libraryItems.filter(it => itemCategory(it) === 'logo');
-    const shown = (q ? all.filter(it => it.name.toLowerCase().indexOf(q) !== -1) : all).slice().reverse();
-    if (!all.length){ note.textContent = 'nenhum logo na pasta Logos ainda — envie na Galeria de anúncios'; grid.innerHTML = ''; return; }
-    if (!shown.length){ note.textContent = 'Nenhum logo encontrado pra "' + logoSearchQuery.trim() + '".'; grid.innerHTML = ''; return; }
-    note.textContent = shown.length + ' logo' + (shown.length === 1 ? '' : 's');
+    const shown = libraryItems.filter(it => itemCategory(it) === 'logo').slice().reverse();
+    if (!shown.length){ note.textContent = 'nenhum logo na pasta Logos ainda — envie na Galeria de anúncios'; grid.innerHTML = ''; return; }
+    note.textContent = '';
     grid.innerHTML = shown.map(it => mediaItemHtml(it, selectedLogoLibraryId)).join('');
     grid.querySelectorAll('.media-item').forEach(el => el.addEventListener('click', () => {
       selectedLogoLibraryId = el.dataset.id;
@@ -2216,29 +2209,6 @@
     }
   });
 
-  document.getElementById('logoSearchInput').addEventListener('input', (e) => {
-    logoSearchQuery = e.target.value;
-    renderLogoGrid();
-  });
-
-  document.getElementById('logoSearchInput').addEventListener('keydown', (e) => {
-    if (e.key !== 'Enter') return;
-    const typed = logoSearchQuery.trim().toLowerCase();
-    if (!typed) return;
-    const pool = libraryItems.filter(it => itemCategory(it) === 'logo');
-    const matches = pool.filter(it => it.name.toLowerCase().indexOf(typed) !== -1);
-    const match = matches.length === 1 ? matches[0] : pool.find(it => it.name.toLowerCase() === typed);
-    if (match) {
-      selectedLogoLibraryId = match.id;
-      updateSelectedLogoLabel();
-      logoSearchQuery = '';
-      e.target.value = '';
-      renderLogoGrid();
-      renderCcSummary();
-      e.target.blur();
-    }
-  });
-
   // ---- Marca & logo padrão ----
   function loadCcSettings(){
     return fetch(CC_SETTINGS_API, { cache: 'no-store' }).then(r => r.json()).then(json => {
@@ -2279,7 +2249,7 @@
   function renderPresetsTable(){
     const wrap = document.getElementById('presetsTableWrap');
     if (!selectedNiche){ wrap.innerHTML = '<div class="empty-state">Selecione um nicho pra ver as headlines salvas.</div>'; return; }
-    const list = copyPresets.filter(p => !p.niche || p.niche === selectedNiche);
+    const list = copyPresets.filter(p => p.niche === selectedNiche);
     if (!list.length){ wrap.innerHTML = '<div class="empty-state">Nenhum preset salvo ainda pro nicho ' + selectedNiche + '.</div>'; return; }
     const rows = list.map(p =>
       '<tr><td>' + p.headline + '</td><td>' + p.description + '</td>' +
