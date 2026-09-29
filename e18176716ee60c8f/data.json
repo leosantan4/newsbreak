@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-29T00:37:24.703622+00:00",
+  "generatedAt": "2026-09-29T00:43:19.809056+00:00",
   "accounts": {
     "vini": {
       "2026-08-20": {
@@ -855,15 +855,15 @@
       },
       "2026-09-28": {
         "date": "2026-09-28",
-        "cost": 1054.86,
-        "click": 8927,
-        "cpc": 0.1182,
+        "cost": 1175.54,
+        "click": 9915,
+        "cpc": 0.1186,
         "ic": 28,
-        "custoIc": 37.67,
+        "custoIc": 41.98,
         "venda": 5,
         "faturamento": 1325,
-        "cpa": 210.97,
-        "roas": 1.2561,
+        "cpa": 235.11,
+        "roas": 1.1271,
         "partial": true,
         "vendaSource": "redtrack"
       }
@@ -896,15 +896,15 @@
       },
       "2026-09-28": {
         "date": "2026-09-28",
-        "cost": 450.51,
-        "click": 3812,
-        "cpc": 0.1182,
+        "cost": 451.44,
+        "click": 3824,
+        "cpc": 0.1181,
         "ic": 16,
-        "custoIc": 28.16,
+        "custoIc": 28.21,
         "venda": 6,
         "faturamento": 1590,
-        "cpa": 75.08,
-        "roas": 3.5293,
+        "cpa": 75.24,
+        "roas": 3.5221,
         "partial": true,
         "vendaSource": "redtrack"
       }
@@ -5597,7 +5597,7 @@
         "2026-09-25": 760.32,
         "2026-09-26": 644.41,
         "2026-09-27": 239.66,
-        "2026-09-28": 259.59
+        "2026-09-28": 270.94
       },
       "accountKey": "alan",
       "displayName": "[Agency Aurora] Alan 1"
@@ -5608,7 +5608,7 @@
         "2026-09-25": 776.04,
         "2026-09-26": 819.19,
         "2026-09-27": 71.25,
-        "2026-09-28": 795.28
+        "2026-09-28": 904.6
       },
       "accountKey": "alan",
       "displayName": "[Agency Aurora] Alan 2"
@@ -5618,7 +5618,7 @@
       "costByDate": {
         "2026-09-26": 248.13,
         "2026-09-27": 783.51,
-        "2026-09-28": 3.34
+        "2026-09-28": 3.46
       },
       "accountKey": "troya",
       "displayName": "[Agency Aurora] Troya"
@@ -5627,7 +5627,7 @@
       "name": "[Agency Aurora] Troya 2",
       "costByDate": {
         "2026-09-27": 296.8,
-        "2026-09-28": 447.17
+        "2026-09-28": 447.97
       },
       "accountKey": "troya",
       "displayName": "[Agency Aurora] Troya 2"
