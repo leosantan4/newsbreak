@@ -1622,6 +1622,8 @@
       } else if (json.campaigns) {
         campaigns = json.campaigns;
       }
+      const active = document.activeElement;
+      if (active && active.matches && active.matches('[data-adset-budget]')) return;
       renderCampanhas();
     }).catch(() => {});
   }
