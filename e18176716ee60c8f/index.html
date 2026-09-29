@@ -2548,7 +2548,7 @@
     }
   }
 
-  let criarSubView = 'nova';
+  let criarSubView = loadPref('criarSubView', 'nova');
 
   function renderCriarSubNav(){
     document.querySelectorAll('.criar-subtab').forEach(btn => {
@@ -2586,6 +2586,8 @@
     });
     document.querySelectorAll('.criar-subtab').forEach(btn => btn.addEventListener('click', () => {
       criarSubView = btn.dataset.criarsub;
+      savePref('criarSubView', criarSubView);
+      if (criarSubView === 'galeria') openGalleryFolder(null);
       renderCriarSubNav();
     }));
     renderCriarSubNav();
