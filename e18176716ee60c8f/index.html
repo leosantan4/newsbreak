@@ -158,6 +158,7 @@
   .media-item .media-name{position:absolute; bottom:0; left:0; right:0; background:rgba(0,0,0,.62); color:#fff; font-size:10px; padding:3px 5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   .media-item .media-remove{position:absolute; top:3px; right:3px; background:rgba(0,0,0,.62); color:#fff; border:none; border-radius:4px; width:18px; height:18px; font-size:12px; cursor:pointer; line-height:1;}
   .media-item .media-check{position:absolute; top:3px; right:3px; background:var(--accent); color:var(--accent-ink); border-radius:4px; width:18px; height:18px; font-size:11px; line-height:18px; text-align:center; font-weight:700;}
+  .media-item .media-move-select{position:absolute; top:3px; left:3px; max-width:calc(100% - 26px); background:rgba(0,0,0,.72); color:#fff; border:none; border-radius:4px; font-size:9.5px; padding:2px 3px; cursor:pointer;}
   .media-grid-note-row{display:flex; align-items:center; justify-content:space-between; gap:10px; padding-right:18px;}
   .media-grid-note-row .media-grid-note{padding-right:0;}
   .select-all-btn{border:1px solid var(--line); background:var(--surface-raised); color:var(--ink); font:inherit; font-weight:600; font-size:11.5px; padding:6px 13px; border-radius:var(--radius-xs); cursor:pointer; flex:none; white-space:nowrap;}
@@ -1700,8 +1701,16 @@
   let selectedNiche = loadPref('ccNiche', '');
 
   function itemCategory(it){ return it.category === 'logo' ? 'logo' : (it.category || '').toUpperCase(); }
-  function folderLabel(code){ return code === 'logo' ? 'Logos' : code; }
-  function folderList(){ return ['logo'].concat(niches); }
+  function folderLabel(code){
+    if (code === 'logo') return 'Logos';
+    if (code === 'CREATIVE') return 'Sem pasta (antigo)';
+    return code;
+  }
+  function folderList(){
+    const known = new Set(['logo'].concat(niches));
+    const extra = Array.from(new Set(libraryItems.map(it => itemCategory(it)).filter(c => c && !known.has(c))));
+    return ['logo'].concat(niches, extra);
+  }
 
   function loadNiches(){
     return fetch(NICHES_API, { cache: 'no-store' }).then(r => r.json()).then(json => {
@@ -1778,6 +1787,33 @@
     wrap.querySelectorAll('.gallery-folder-tile').forEach(el => el.addEventListener('click', () => openGalleryFolder(el.dataset.folder)));
   }
 
+  function galleryItemHtml(it){
+    const isVideo = (it.contentType || '').indexOf('video') === 0;
+    const fileUrl = LIBRARY_API + '/' + it.id + '/file';
+    const media = isVideo ? '<video src="' + fileUrl + '" muted></video>' : '<img src="' + fileUrl + '" loading="lazy">';
+    const uploadedDate = it.uploadedAt ? new Date(it.uploadedAt).toLocaleDateString('pt-BR') : '';
+    const cat = itemCategory(it);
+    const options = folderList().map(code => '<option value="' + code + '"' + (code === cat ? ' selected' : '') + '>' + folderLabel(code) + '</option>').join('');
+    return '<div class="media-item" data-id="' + it.id + '">' +
+      media +
+      '<button type="button" class="media-remove" data-remove-id="' + it.id + '">×</button>' +
+      '<select class="media-move-select" data-move-id="' + it.id + '" title="Mover pra outra pasta">' + options + '</select>' +
+      '<div class="media-name" title="' + it.name.replace(/"/g, '&quot;') + ' · ' + uploadedDate + '">' + it.name + (uploadedDate ? ' · ' + uploadedDate : '') + '</div>' +
+    '</div>';
+  }
+
+  function moveLibraryItem(id, category){
+    const note = document.getElementById('galleryGridNote');
+    fetch(LIBRARY_API + '/' + id + '/category', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY },
+      body: JSON.stringify({ category }),
+    }).then(r => r.json().then(json => ({ ok: r.ok, json }))).then(({ ok, json }) => {
+      if (!ok) { note.textContent = json.error === 'name_conflict_in_folder' ? 'Já existe um anúncio com esse nome nessa pasta.' : 'Não consegui mover — tenta de novo.'; renderGalleryPanel(); return; }
+      libraryItems = json.items || libraryItems;
+      renderGalleryPanel();
+    }).catch(() => { note.textContent = 'Não consegui mover — tenta de novo.'; });
+  }
+
   function renderGalleryPanel(){
     renderGalleryBreadcrumb();
     renderGalleryFolderGrid();
@@ -1789,11 +1825,18 @@
     if (!inFolder.length){ note.textContent = '0 anúncio(s) nessa pasta'; grid.innerHTML = '<div class="empty-state">Nenhum anúncio nessa pasta ainda.</div>'; return; }
     note.textContent = inFolder.length + ' anúncio(s) nessa pasta';
     const shown = inFolder.slice().reverse();
-    grid.innerHTML = shown.map(it => mediaItemHtml(it, null, true)).join('');
+    grid.innerHTML = shown.map(it => galleryItemHtml(it)).join('');
     grid.querySelectorAll('.media-remove').forEach(btn => btn.addEventListener('click', (e) => {
       e.stopPropagation();
       deleteLibraryItem(btn.dataset.removeId);
     }));
+    grid.querySelectorAll('.media-move-select').forEach(sel => {
+      sel.addEventListener('click', (e) => e.stopPropagation());
+      sel.addEventListener('change', (e) => {
+        e.stopPropagation();
+        moveLibraryItem(sel.dataset.moveId, sel.value);
+      });
+    });
   }
 
   function loadLibraryItems(){
@@ -2037,7 +2080,7 @@
       return;
     }
     const customName = nameInput.value.trim();
-    const existingNames = new Set(libraryItems.map(it => it.name));
+    const existingNames = new Set(libraryItems.filter(it => itemCategory(it) === folder).map(it => it.name));
     const proposedNames = [];
     const conflicts = [];
     files.forEach((f) => {
@@ -2046,7 +2089,7 @@
       proposedNames.push(baseName);
     });
     if (conflicts.length) {
-      note.textContent = 'Já existe anúncio com esse nome: ' + Array.from(new Set(conflicts)).join(', ') + ' — renomeie e tente de novo. Nada foi enviado.';
+      note.textContent = 'Já existe anúncio com esse nome nessa pasta: ' + Array.from(new Set(conflicts)).join(', ') + ' — renomeie ou mude de pasta. Nada foi enviado.';
       return;
     }
     for (let i = 0; i < files.length; i++) {
