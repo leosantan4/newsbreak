@@ -179,6 +179,13 @@
   .create-log .err{color:var(--bad); font-weight:600;}
 
   .account-picker{display:flex; flex-direction:column; gap:10px; padding:16px 18px;}
+  .account-select{position:relative; padding:16px 18px 0;}
+  .account-select-trigger{width:100%; display:flex; align-items:center; justify-content:space-between; gap:10px; border:2px solid var(--line); border-radius:var(--radius-md); padding:14px 18px; background:var(--surface-raised); color:var(--ink); font:inherit; font-size:14.5px; font-weight:600; cursor:pointer;}
+  .account-select-trigger:hover{border-color:color-mix(in srgb, var(--accent) 45%, var(--line));}
+  .account-select-chevron{color:var(--muted); font-size:12px; transition:transform .15s ease; flex:none;}
+  .account-select.open .account-select-chevron{transform:rotate(180deg);}
+  .account-select.open .account-select-trigger{border-color:var(--accent);}
+  .account-select-dropdown{position:absolute; top:calc(100% - 2px); left:18px; right:18px; z-index:20; background:var(--bg); border:1px solid var(--line); border-radius:var(--radius-md); box-shadow:0 12px 28px rgba(0,0,0,.45); max-height:360px; overflow-y:auto; margin:0; padding:10px;}
   .accounts-list{display:flex; flex-direction:column; gap:10px; padding:16px 18px;}
   .account-row{display:flex; align-items:center; justify-content:space-between; gap:16px; border:1px solid var(--line); border-radius:var(--radius-md); padding:14px 18px; background:var(--surface-raised);}
   .account-row.inactive{opacity:.55;}
@@ -576,7 +583,13 @@
               <div class="step-head-left"><span class="step-num">1</span><span class="step-title">Conta(s)</span></div>
               <span class="step-desc">escolha a conta que vai rodar essa campanha</span>
             </div>
-            <div class="account-picker" id="ccSubAccounts"></div>
+            <div class="account-select" id="accountSelectWrap">
+              <button type="button" class="account-select-trigger" id="accountSelectTrigger">
+                <span id="accountSelectLabel">Selecione a conta</span>
+                <span class="account-select-chevron">▾</span>
+              </button>
+              <div class="account-picker account-select-dropdown" id="ccSubAccounts" hidden></div>
+            </div>
             <div class="form-grid">
               <div class="form-field span2">
                 <label for="ccName">Nome da campanha</label>
@@ -1701,7 +1714,7 @@
   let subAccountsLoaded = false;
   let selectedSubAccountIds = [];
   let genderSel = ['male'];
-  let ageSel = ['all'];
+  let ageSel = ['31-44', '45-64', '65+'];
   let languageSel = ['en_us'];
   let networkSel = ['all'];
   let startDaySel = 0;
@@ -2334,9 +2347,41 @@
     return (cleanName || s.accountLabel) + ' ···' + s.id.slice(-3);
   }
 
+  let accountSelectOpen = false;
+
+  function selectedAccount(){
+    return allSubAccounts.find(a => selectedSubAccountIds.indexOf(a.id) !== -1) || null;
+  }
+
+  function renderAccountSelectTrigger(){
+    const label = document.getElementById('accountSelectLabel');
+    const acc = selectedAccount();
+    label.textContent = acc ? subAccountLabel(acc) : 'Selecione a conta';
+    document.getElementById('accountSelectWrap').classList.toggle('open', accountSelectOpen);
+    document.getElementById('ccSubAccounts').hidden = !accountSelectOpen;
+  }
+
+  function toggleAccountSelect(open){
+    accountSelectOpen = open != null ? open : !accountSelectOpen;
+    renderAccountSelectTrigger();
+  }
+
+  function prefillCampaignName(account){
+    const nameInput = document.getElementById('ccName');
+    const suffix = account.id.slice(-3);
+    const dateStr = fmtDateShort(todayKeyLA());
+    nameInput.value = 'C-' + suffix + ' - ' + dateStr + ' - ';
+    nameInput.focus();
+    nameInput.setSelectionRange(1, 1);
+  }
+
   function renderAccountCards(){
     const el = document.getElementById('ccSubAccounts');
-    if (!allSubAccounts.length){ el.innerHTML = '<span class="cell-muted">Nenhuma sub-conta disponível (contas com token quebrado não aparecem aqui).</span>'; return; }
+    if (!allSubAccounts.length){
+      el.innerHTML = '<span class="cell-muted">Nenhuma sub-conta disponível (contas com token quebrado não aparecem aqui).</span>';
+      renderAccountSelectTrigger();
+      return;
+    }
     el.innerHTML = allSubAccounts.map(a => {
       const isSelected = selectedSubAccountIds.indexOf(a.id) !== -1;
       return '<div class="account-card' + (isSelected ? ' selected' : '') + '" data-account-card="' + a.id + '">' +
@@ -2349,10 +2394,17 @@
 
     el.querySelectorAll('[data-account-card]').forEach(card => card.addEventListener('click', () => {
       const id = card.dataset.accountCard;
-      selectedSubAccountIds = selectedSubAccountIds.indexOf(id) !== -1 ? [] : [id];
+      const wasSelected = selectedSubAccountIds.indexOf(id) !== -1;
+      selectedSubAccountIds = wasSelected ? [] : [id];
+      if (!wasSelected) {
+        const acc = allSubAccounts.find(a => a.id === id);
+        if (acc) prefillCampaignName(acc);
+      }
       renderAccountCards();
       renderCcSummary();
+      toggleAccountSelect(false);
     }));
+    renderAccountSelectTrigger();
   }
 
   let linksEditingId = null;
@@ -2568,6 +2620,12 @@
   function initCriarView(){
     renderStartDayPills();
     initTargetingPills();
+    document.getElementById('accountSelectTrigger').addEventListener('click', () => toggleAccountSelect());
+    document.addEventListener('click', (e) => {
+      if (!accountSelectOpen) return;
+      const wrap = document.getElementById('accountSelectWrap');
+      if (wrap && !wrap.contains(e.target)) toggleAccountSelect(false);
+    });
     loadNiches().then(() => {
       renderNicheSelect();
       renderMediaGrid();
