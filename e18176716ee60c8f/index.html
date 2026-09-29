@@ -268,8 +268,9 @@
   .account-card.links-row{cursor:default;}
   .criar-layout{display:grid; grid-template-columns:minmax(0,1fr) 320px; gap:20px;}
   .criar-main{min-width:0;}
-  .cc-summary{position:sticky; top:20px; background:var(--surface-raised); border:1px solid var(--line); border-radius:var(--radius-lg); box-shadow:var(--shadow); padding:20px; margin-bottom:16px;}
-  .cc-summary h3{font-size:11px; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); margin:0 0 12px; font-weight:700;}
+  .cc-summary, .cc-card{background:var(--surface-raised); border:1px solid var(--line); border-radius:var(--radius-lg); box-shadow:var(--shadow); padding:20px; margin-bottom:16px;}
+  .cc-summary{position:sticky; top:20px;}
+  .cc-summary h3, .cc-card h3{font-size:11px; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); margin:0 0 12px; font-weight:700;}
   .cc-summary-row{display:flex; justify-content:space-between; align-items:baseline; gap:10px; padding:8px 0; border-bottom:1px solid var(--line); font-size:12.5px;}
   .cc-summary-row:last-of-type{border-bottom:none;}
   .cc-summary-row .cc-label{color:var(--muted); flex:none;}
@@ -691,7 +692,7 @@
               </details>
             </div>
           </div>
-          <div class="cc-summary" id="ccSelectedPreviewWrap" hidden>
+          <div class="cc-card" id="ccSelectedPreviewWrap" hidden>
             <h3>Anúncios selecionados</h3>
             <div class="cc-selected-preview" id="ccSelectedPreview"></div>
           </div>
