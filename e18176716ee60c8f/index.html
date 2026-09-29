@@ -638,6 +638,10 @@
             </div>
             <div class="form-grid">
               <div class="form-field span2">
+                <label for="ccNicheSelect">Nicho — define quais headlines e criativos aparecem abaixo</label>
+                <select id="ccNicheSelect"><option value="">Selecione um nicho…</option></select>
+              </div>
+              <div class="form-field span2">
                 <label>Criativos selecionados — um vira um conjunto de anúncios cada (ex: 3 criativos = estrutura 1 campanha / 3 conjuntos / 1 anúncio cada)</label>
                 <div id="ccSelectedCreatives" class="cc-chip-list"><span class="cell-muted">Nenhum selecionado ainda</span></div>
               </div>
@@ -716,7 +720,13 @@
         <section class="panel">
           <div class="step-head">
             <div class="step-head-left"><span class="step-title">Galeria de anúncios</span></div>
-            <span class="step-desc">banco próprio da ferramenta (não é Google Drive) — envie vários arquivos de uma vez; metadados são limpos automaticamente; não deixa subir dois anúncios com o mesmo nome; pasta Criativos aceita img/gif/vídeo, pasta Logos só aceita imagem</span>
+            <span class="step-desc">banco próprio da ferramenta (não é Google Drive) — envie vários arquivos de uma vez; metadados são limpos automaticamente; não deixa subir dois anúncios com o mesmo nome; pasta Logos só aceita imagem, as demais pastas (nichos) aceitam img/gif/vídeo</span>
+          </div>
+          <div class="creative-search">
+            <span class="cell-muted" style="font-size:11.5px; text-transform:uppercase; letter-spacing:.05em;">Nova pasta (nicho):</span>
+            <input type="text" id="newNicheInput" placeholder="Ex: ED" maxlength="12" style="width:100px; border:1px solid var(--line); border-radius:var(--radius-sm); padding:7px 10px; font:inherit; font-size:12.5px; background:var(--bg); color:var(--ink); text-transform:uppercase;">
+            <button type="button" id="newNicheBtn" style="border:none; background:var(--surface-raised); color:var(--ink); border:1px solid var(--line); font:inherit; font-weight:600; font-size:12px; padding:7px 13px; border-radius:var(--radius-sm); cursor:pointer;">+ criar pasta</button>
+            <span class="cell-muted" id="newNicheNote"></span>
           </div>
           <div class="creative-search">
             <span class="cell-muted" style="font-size:11.5px; text-transform:uppercase; letter-spacing:.05em;">Enviar pra pasta:</span>
@@ -811,6 +821,7 @@
   const NB_AD_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/nb/ad';
   const LINKS_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/links';
   const COPY_PRESETS_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/copy-presets';
+  const NICHES_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/niches';
   const NB_TRACKING_ID_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/nb/tracking-id';
   const CC_SETTINGS_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/cc-settings';
   const ACCOUNT_SETTINGS_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/account-settings';
@@ -1661,14 +1672,54 @@
 
   let mediaSearchQuery = '';
   let logoSearchQuery = '';
-  let galleryUploadFolder = 'creative';
-  let galleryFolderFilter = 'creative';
+  let galleryUploadFolder = 'logo';
+  let galleryFolderFilter = 'logo';
+  let niches = [];
+  let selectedNiche = loadPref('ccNiche', '');
 
-  function itemCategory(it){ return it.category === 'logo' ? 'logo' : 'creative'; }
+  function itemCategory(it){ return it.category === 'logo' ? 'logo' : (it.category || '').toUpperCase(); }
+
+  function loadNiches(){
+    return fetch(NICHES_API, { cache: 'no-store' }).then(r => r.json()).then(json => {
+      niches = json.niches || [];
+      if (!galleryUploadFolder || (galleryUploadFolder !== 'logo' && niches.indexOf(galleryUploadFolder) === -1)) {
+        galleryUploadFolder = niches[0] || 'logo';
+      }
+      if (!galleryFolderFilter || (galleryFolderFilter !== 'logo' && niches.indexOf(galleryFolderFilter) === -1)) {
+        galleryFolderFilter = niches[0] || 'logo';
+      }
+    }).catch(() => {});
+  }
+
+  function createNiche(code){
+    const note = document.getElementById('newNicheNote');
+    const clean = code.trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12);
+    if (!clean) { note.textContent = 'Digite um código pra pasta (ex: ED).'; return; }
+    note.textContent = 'Criando…';
+    fetch(NICHES_API, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY },
+      body: JSON.stringify({ code: clean }),
+    }).then(r => r.json()).then(json => {
+      niches = json.niches || niches;
+      document.getElementById('newNicheInput').value = '';
+      note.textContent = '';
+      renderGalleryUploadFolderToggle();
+      renderGalleryFolderFilter();
+      renderNicheSelect();
+    }).catch(() => { note.textContent = 'Falhou — tenta de novo.'; });
+  }
+
+  function renderNicheSelect(){
+    const sel = document.getElementById('ccNicheSelect');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">Selecione um nicho…</option>' +
+      niches.map(n => '<option value="' + n + '"' + (n === selectedNiche ? ' selected' : '') + '>' + n + '</option>').join('');
+    sel.value = selectedNiche;
+  }
 
   function renderGalleryUploadFolderToggle(){
     const el = document.getElementById('galleryUploadFolderToggle');
-    const opts = [{ value: 'creative', label: 'Criativos' }, { value: 'logo', label: 'Logos' }];
+    const opts = [{ value: 'logo', label: 'Logos' }].concat(niches.map(n => ({ value: n, label: n })));
     el.innerHTML = opts.map(o => '<button type="button" class="pill' + (galleryUploadFolder === o.value ? ' active' : '') + '" data-folder="' + o.value + '">' + o.label + '</button>').join('');
     el.querySelectorAll('button').forEach(btn => btn.addEventListener('click', () => {
       galleryUploadFolder = btn.dataset.folder;
@@ -1690,7 +1741,7 @@
 
   function renderGalleryFolderFilter(){
     const el = document.getElementById('galleryFolderFilter');
-    const opts = [{ value: 'creative', label: 'Criativos' }, { value: 'logo', label: 'Logos' }];
+    const opts = [{ value: 'logo', label: 'Logos' }].concat(niches.map(n => ({ value: n, label: n })));
     el.innerHTML = opts.map(o => '<button type="button" class="pill' + (galleryFolderFilter === o.value ? ' active' : '') + '" data-folder="' + o.value + '">' + o.label + '</button>').join('');
     el.querySelectorAll('button').forEach(btn => btn.addEventListener('click', () => {
       galleryFolderFilter = btn.dataset.folder;
@@ -1775,17 +1826,23 @@
     const grid = document.getElementById('mediaGrid');
     const note = document.getElementById('mediaGridNote');
     const selectAllBtn = document.getElementById('mediaSelectAllBtn');
-    const q = mediaSearchQuery.trim().toLowerCase();
-    if (!q) {
-      note.textContent = 'digite o nome/número do anúncio pra encontrá-lo';
+    if (!selectedNiche) {
+      note.textContent = 'selecione um nicho primeiro';
       grid.innerHTML = '';
       selectAllBtn.hidden = true;
       return;
     }
-    const shown = libraryItems.filter(it => itemCategory(it) === 'creative' && it.name.toLowerCase().indexOf(q) !== -1).slice().reverse();
-    note.textContent = shown.length + ' resultado(s) nos Criativos pra "' + mediaSearchQuery.trim() + '"';
+    const q = mediaSearchQuery.trim().toLowerCase();
+    if (!q) {
+      note.textContent = 'digite o nome/número do anúncio pra encontrá-lo na pasta ' + selectedNiche;
+      grid.innerHTML = '';
+      selectAllBtn.hidden = true;
+      return;
+    }
+    const shown = libraryItems.filter(it => itemCategory(it) === selectedNiche && it.name.toLowerCase().indexOf(q) !== -1).slice().reverse();
+    note.textContent = shown.length + ' resultado(s) na pasta ' + selectedNiche + ' pra "' + mediaSearchQuery.trim() + '"';
     if (!shown.length){
-      grid.innerHTML = '<div class="empty-state">Nenhum anúncio encontrado nos Criativos pra "' + mediaSearchQuery.trim() + '". Confira o nome na Galeria.</div>';
+      grid.innerHTML = '<div class="empty-state">Nenhum anúncio encontrado na pasta ' + selectedNiche + ' pra "' + mediaSearchQuery.trim() + '". Confira o nome na Galeria.</div>';
       selectAllBtn.hidden = true;
       return;
     }
@@ -1890,7 +1947,7 @@
     const form = new FormData();
     form.append('file', file);
     form.append('name', name);
-    form.append('category', category || 'creative');
+    form.append('category', category || 'logo');
     return fetch(LIBRARY_API, { method: 'POST', headers: { 'X-Access-Key': COSTS_API_KEY }, body: form })
       .then(r => { if (!r.ok) throw new Error(); return r.json(); })
       .then(json => { libraryItems = json.items || []; });
@@ -1947,7 +2004,8 @@
 
   function renderMediaDatalist(){
     const dl = document.getElementById('mediaNamesList');
-    dl.innerHTML = libraryItems.map(it => '<option value="' + it.name.replace(/"/g, '&quot;') + '">').join('');
+    const pool = selectedNiche ? libraryItems.filter(it => itemCategory(it) === selectedNiche) : [];
+    dl.innerHTML = pool.map(it => '<option value="' + it.name.replace(/"/g, '&quot;') + '">').join('');
   }
 
   document.getElementById('mediaSearchInput').addEventListener('input', (e) => {
@@ -1958,8 +2016,8 @@
   document.getElementById('mediaSearchInput').addEventListener('keydown', (e) => {
     if (e.key !== 'Enter') return;
     const typed = mediaSearchQuery.trim().toLowerCase();
-    if (!typed) return;
-    const pool = libraryItems.filter(it => itemCategory(it) === 'creative');
+    if (!typed || !selectedNiche) return;
+    const pool = libraryItems.filter(it => itemCategory(it) === selectedNiche);
     const matches = pool.filter(it => it.name.toLowerCase().indexOf(typed) !== -1);
     const match = matches.length === 1 ? matches[0] : pool.find(it => it.name.toLowerCase() === typed);
     if (match) {
@@ -2034,8 +2092,10 @@
 
   function renderPresetsTable(){
     const wrap = document.getElementById('presetsTableWrap');
-    if (!copyPresets.length){ wrap.innerHTML = '<div class="empty-state">Nenhum preset salvo ainda.</div>'; return; }
-    const rows = copyPresets.map(p =>
+    if (!selectedNiche){ wrap.innerHTML = '<div class="empty-state">Selecione um nicho pra ver as headlines salvas.</div>'; return; }
+    const list = copyPresets.filter(p => !p.niche || p.niche === selectedNiche);
+    if (!list.length){ wrap.innerHTML = '<div class="empty-state">Nenhum preset salvo ainda pro nicho ' + selectedNiche + '.</div>'; return; }
+    const rows = list.map(p =>
       '<tr><td>' + p.headline + '</td><td>' + p.description + '</td>' +
       '<td class="num"><button type="button" class="use-btn" data-use-preset="' + p.id + '">usar</button> <button class="remove-btn" data-preset-id="' + p.id + '">remover</button></td></tr>'
     ).join('');
@@ -2055,11 +2115,12 @@
     const headline = document.getElementById('ccHeadline').value.trim();
     const description = document.getElementById('ccDescription').value.trim();
     const note = document.getElementById('presetSaveNote');
+    if (!selectedNiche){ note.textContent = 'Selecione um nicho primeiro.'; return; }
     if (!headline || !description){ note.textContent = 'Preenche título e descrição primeiro.'; return; }
     note.textContent = 'Salvando…';
     fetch(COPY_PRESETS_API, {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY },
-      body: JSON.stringify({ headline, description }),
+      body: JSON.stringify({ headline, description, niche: selectedNiche }),
     }).then(r => r.json()).then(json => {
       copyPresets = json.items || [];
       renderPresetsTable();
@@ -2343,14 +2404,34 @@
   function initCriarView(){
     renderStartDayPills();
     initTargetingPills();
-    renderGalleryUploadFolderToggle();
-    renderGalleryFolderFilter();
+    loadNiches().then(() => {
+      renderGalleryUploadFolderToggle();
+      renderGalleryFolderFilter();
+      renderNicheSelect();
+      renderMediaGrid();
+      renderPresetsTable();
+    });
     loadLibraryItems();
     loadCopyPresets();
     loadCcSettings().then(renderCcSummary);
     loadAllSubAccounts().then(() => loadCcLinks().then(renderCcSummary));
     ['ccName', 'ccBudget', 'ccStartTime', 'ccHeadline', 'ccBrandDefault', 'ccDescription'].forEach(id => {
       document.getElementById(id).addEventListener('input', renderCcSummary);
+    });
+    document.getElementById('ccNicheSelect').addEventListener('change', (e) => {
+      selectedNiche = e.target.value;
+      savePref('ccNiche', selectedNiche);
+      mediaSearchQuery = '';
+      document.getElementById('mediaSearchInput').value = '';
+      renderMediaGrid();
+      renderMediaDatalist();
+      renderPresetsTable();
+    });
+    document.getElementById('newNicheBtn').addEventListener('click', () => {
+      createNiche(document.getElementById('newNicheInput').value);
+    });
+    document.getElementById('newNicheInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') createNiche(e.target.value);
     });
     document.querySelectorAll('.criar-subtab').forEach(btn => btn.addEventListener('click', () => {
       criarSubView = btn.dataset.criarsub;
