@@ -1708,7 +1708,7 @@
 
   let mediaSearchQuery = '';
   let logoSearchQuery = '';
-  let galleryOpenFolder = null;
+  let galleryOpenFolder = (function(){ const v = loadPref('galleryOpenFolder', '__root__'); return v === '__root__' ? null : v; })();
   let selectedGalleryIds = [];
   let niches = [];
   let selectedNiche = loadPref('ccNiche', '');
@@ -1764,6 +1764,7 @@
 
   function openGalleryFolder(code){
     galleryOpenFolder = code;
+    savePref('galleryOpenFolder', code || '__root__');
     selectedGalleryIds = [];
     document.getElementById('addAdsInline').hidden = true;
     const fileInput = document.getElementById('galleryFileInput');
