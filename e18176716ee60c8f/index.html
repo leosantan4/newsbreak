@@ -660,7 +660,7 @@
               </div>
             </div>
             <div class="creative-search">
-              <input type="text" id="logoSearchInput" placeholder="Digite o nome/número do logo…">
+              <input type="text" id="logoSearchInput" placeholder="Filtrar por nome (opcional)…">
             </div>
             <div class="media-grid-note" id="logoGridNote"></div>
             <div class="media-grid" id="logoGrid"></div>
@@ -673,12 +673,11 @@
           <section class="panel">
             <div class="step-head">
               <div class="step-head-left"><span class="step-num">5</span><span class="step-title">Anúncio</span></div>
-              <span class="step-desc">botão sempre "Learn More" · URL vem do link da conta · cada criativo escolhido vira um conjunto de anúncios diferente, todos na mesma campanha · nome do conjunto = campanha + nome do criativo · nome do anúncio = nome do criativo · a imagem fica no final desta seção</span>
             </div>
             <div class="form-grid">
               <div class="form-field span2">
-                <label for="ccNicheSelect">Nicho — define quais headlines e criativos aparecem abaixo</label>
-                <select id="ccNicheSelect"><option value="">Selecione um nicho…</option></select>
+                <label>Nicho — define quais headlines e criativos aparecem abaixo</label>
+                <div class="pill-row" id="ccNichePills"></div>
               </div>
               <div class="form-field span2">
                 <label>Criativos selecionados — um vira um conjunto de anúncios cada (ex: 3 criativos = estrutura 1 campanha / 3 conjuntos / 1 anúncio cada)</label>
@@ -1762,12 +1761,25 @@
     }).catch(() => { note.textContent = 'Falhou — tenta de novo.'; });
   }
 
+  const NICHE_EMOJI = { ED: '🔥', BS: '🩸', WL: '🥑', TN: '🦻🏼', NP: '🦵🏼' };
+  function nicheLabel(code){ return NICHE_EMOJI[code] ? code + ' ' + NICHE_EMOJI[code] : code; }
+
   function renderNicheSelect(){
-    const sel = document.getElementById('ccNicheSelect');
-    if (!sel) return;
-    sel.innerHTML = '<option value="">Selecione um nicho…</option>' +
-      niches.map(n => '<option value="' + n + '"' + (n === selectedNiche ? ' selected' : '') + '>' + n + '</option>').join('');
-    sel.value = selectedNiche;
+    const el = document.getElementById('ccNichePills');
+    if (!el) return;
+    el.innerHTML = niches.map(n =>
+      '<button type="button" class="pill' + (n === selectedNiche ? ' active' : '') + '" data-niche="' + n + '">' + nicheLabel(n) + '</button>'
+    ).join('');
+    el.querySelectorAll('[data-niche]').forEach(btn => btn.addEventListener('click', () => {
+      selectedNiche = btn.dataset.niche === selectedNiche ? '' : btn.dataset.niche;
+      savePref('ccNiche', selectedNiche);
+      mediaSearchQuery = '';
+      document.getElementById('mediaSearchInput').value = '';
+      renderNicheSelect();
+      renderMediaGrid();
+      renderMediaDatalist();
+      renderPresetsTable();
+    }));
   }
 
   function isAllowedForFolder(file, folder){
@@ -2042,14 +2054,11 @@
     const note = document.getElementById('logoGridNote');
     if (!grid) return;
     const q = logoSearchQuery.trim().toLowerCase();
-    if (!q) {
-      note.textContent = 'digite o nome/número do logo pra encontrá-lo';
-      grid.innerHTML = '';
-      return;
-    }
-    const shown = libraryItems.filter(it => itemCategory(it) === 'logo' && it.name.toLowerCase().indexOf(q) !== -1).slice().reverse();
-    note.textContent = shown.length + ' resultado(s) na pasta Logos pra "' + logoSearchQuery.trim() + '"';
-    if (!shown.length){ grid.innerHTML = '<div class="empty-state">Nenhum logo encontrado pra "' + logoSearchQuery.trim() + '". Confira o nome ou a pasta na Galeria.</div>'; return; }
+    const all = libraryItems.filter(it => itemCategory(it) === 'logo');
+    const shown = (q ? all.filter(it => it.name.toLowerCase().indexOf(q) !== -1) : all).slice().reverse();
+    if (!all.length){ note.textContent = 'nenhum logo na pasta Logos ainda — envie na Galeria de anúncios'; grid.innerHTML = ''; return; }
+    if (!shown.length){ note.textContent = 'Nenhum logo encontrado pra "' + logoSearchQuery.trim() + '".'; grid.innerHTML = ''; return; }
+    note.textContent = shown.length + ' logo' + (shown.length === 1 ? '' : 's');
     grid.innerHTML = shown.map(it => mediaItemHtml(it, selectedLogoLibraryId)).join('');
     grid.querySelectorAll('.media-item').forEach(el => el.addEventListener('click', () => {
       selectedLogoLibraryId = el.dataset.id;
@@ -2638,15 +2647,6 @@
     loadAllSubAccounts().then(() => loadCcLinks().then(renderCcSummary));
     ['ccName', 'ccBudget', 'ccStartTime', 'ccHeadline', 'ccBrandDefault', 'ccDescription'].forEach(id => {
       document.getElementById(id).addEventListener('input', renderCcSummary);
-    });
-    document.getElementById('ccNicheSelect').addEventListener('change', (e) => {
-      selectedNiche = e.target.value;
-      savePref('ccNiche', selectedNiche);
-      mediaSearchQuery = '';
-      document.getElementById('mediaSearchInput').value = '';
-      renderMediaGrid();
-      renderMediaDatalist();
-      renderPresetsTable();
     });
     document.querySelectorAll('.criar-subtab').forEach(btn => btn.addEventListener('click', () => {
       criarSubView = btn.dataset.criarsub;
