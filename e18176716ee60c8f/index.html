@@ -313,10 +313,6 @@
   .cc-summary-accounts{margin-top:2px; margin-bottom:10px; font-size:12px; color:var(--ink); line-height:1.5;}
   .cc-summary-missing{margin-top:6px; padding:10px 12px; background:var(--bad-bg); color:var(--bad); border-radius:var(--radius-sm); font-size:11.5px; font-weight:600;}
   .cc-summary-ready{margin-top:6px; padding:10px 12px; background:var(--good-bg); color:var(--good); border-radius:var(--radius-sm); font-size:11.5px; font-weight:600;}
-  .cc-chip-list{display:flex; flex-wrap:wrap; gap:8px;}
-  .cc-chip{display:inline-flex; align-items:center; gap:6px; background:var(--surface-raised); border:1px solid var(--line); border-radius:999px; padding:5px 8px 5px 12px; font-size:12.5px; font-weight:600;}
-  .cc-chip button{border:none; background:none; cursor:pointer; color:var(--muted); font-size:15px; line-height:1; padding:2px;}
-  .cc-chip button:hover{color:var(--bad);}
   .cc-progress-wrap{margin-top:12px;}
   .cc-progress-track{height:8px; border-radius:4px; background:var(--line); overflow:hidden;}
   .cc-progress-fill{height:100%; width:0%; background:var(--accent); transition:width .25s ease;}
@@ -677,8 +673,7 @@
                 <div class="pill-row" id="ccNichePills"></div>
               </div>
               <div class="form-field span2">
-                <label>Criativos selecionados — um vira um conjunto de anúncios cada (ex: 3 criativos = estrutura 1 campanha / 3 conjuntos / 1 anúncio cada)</label>
-                <div id="ccSelectedCreatives" class="cc-chip-list"><span class="cell-muted">Nenhum selecionado ainda</span></div>
+                <span class="step-desc" style="text-align:left; display:block;">Criativos selecionados — um vira um conjunto de anúncios cada (ex: 3 criativos = estrutura 1 campanha / 3 conjuntos / 1 anúncio cada). A seleção aparece no resumo da campanha, ao lado.</span>
               </div>
               <div class="form-field span2">
                 <label for="ccHeadline">Título</label>
@@ -697,7 +692,7 @@
 
             <div class="step-head" style="margin-top:8px;">
               <div class="step-head-left"><span class="step-title" style="font-size:13px;">Imagem do anúncio</span></div>
-              <span class="step-desc">mostra os anúncios da pasta do nicho selecionado — digite pra filtrar por nome. Suba criativos novos na aba "Galeria de anúncios"</span>
+              <span class="step-desc">digite o nome do anúncio pra achar na galeria — nada é exibido até você digitar. Suba criativos novos na aba "Galeria de anúncios"</span>
             </div>
             <div class="creative-search">
               <input type="text" id="mediaSearchInput" list="mediaNamesList" placeholder="Digite o nome/número do anúncio…">
@@ -1865,14 +1860,12 @@
         note.textContent = 'Falhou — parei em ' + (i + 1) + '/' + ids.length + '.';
         selectedGalleryIds = selectedGalleryIds.filter(id => ids.indexOf(id) < i);
         renderGalleryPanel();
-        renderSelectedCreativesList();
         updateSelectedLogoLabel();
         return;
       }
     }
     selectedGalleryIds = [];
     renderGalleryPanel();
-    renderSelectedCreativesList();
     updateSelectedLogoLabel();
   }
 
@@ -1941,24 +1934,6 @@
     renderMediaDatalist();
   }
 
-  function renderSelectedCreativesList(){
-    const el = document.getElementById('ccSelectedCreatives');
-    if (!selectedCreativeIds.length){ el.innerHTML = '<span class="cell-muted">Nenhum selecionado ainda</span>'; return; }
-    el.innerHTML = selectedCreativeIds.map(id => {
-      const item = libraryItems.find(i => i.id === id);
-      const label = (item ? item.name : id).replace(/"/g, '&quot;');
-      return '<span class="cc-chip">' + label + '<button type="button" data-remove-creative="' + id + '">×</button></span>';
-    }).join('');
-    el.querySelectorAll('[data-remove-creative]').forEach(btn => btn.addEventListener('click', () => {
-      const id = btn.dataset.removeCreative;
-      const idx = selectedCreativeIds.indexOf(id);
-      if (idx !== -1) selectedCreativeIds.splice(idx, 1);
-      renderSelectedCreativesList();
-      renderMediaGrid();
-      renderCcSummary();
-    }));
-  }
-
   function renderSelectedPreview(){
     const wrap = document.getElementById('ccSelectedPreviewWrap');
     const el = document.getElementById('ccSelectedPreview');
@@ -1970,7 +1945,6 @@
       const id = node.dataset.id;
       const idx = selectedCreativeIds.indexOf(id);
       if (idx !== -1) selectedCreativeIds.splice(idx, 1);
-      renderSelectedCreativesList();
       renderMediaGrid();
       renderCcSummary();
     }));
@@ -2007,13 +1981,16 @@
       return;
     }
     const q = mediaSearchQuery.trim().toLowerCase();
-    const inFolder = libraryItems.filter(it => itemCategory(it) === selectedNiche);
-    const shown = (q ? inFolder.filter(it => it.name.toLowerCase().indexOf(q) !== -1) : inFolder).slice().reverse();
-    note.textContent = q
-      ? shown.length + ' resultado(s) na pasta ' + selectedNiche + ' pra "' + mediaSearchQuery.trim() + '"'
-      : shown.length + ' anúncio(s) na pasta ' + selectedNiche;
+    if (!q) {
+      note.textContent = 'digite o nome/número do anúncio pra encontrá-lo na pasta ' + selectedNiche;
+      grid.innerHTML = '';
+      selectAllBtn.hidden = true;
+      return;
+    }
+    const shown = libraryItems.filter(it => itemCategory(it) === selectedNiche && it.name.toLowerCase().indexOf(q) !== -1).slice().reverse();
+    note.textContent = shown.length + ' resultado(s) na pasta ' + selectedNiche + ' pra "' + mediaSearchQuery.trim() + '"';
     if (!shown.length){
-      grid.innerHTML = '<div class="empty-state">' + (q ? ('Nenhum anúncio encontrado na pasta ' + selectedNiche + ' pra "' + mediaSearchQuery.trim() + '".') : ('Nenhum anúncio na pasta ' + selectedNiche + ' ainda.')) + ' Confira/envie na Galeria de anúncios.</div>';
+      grid.innerHTML = '<div class="empty-state">Nenhum anúncio encontrado na pasta ' + selectedNiche + ' pra "' + mediaSearchQuery.trim() + '". Confira o nome na Galeria.</div>';
       selectAllBtn.hidden = true;
       return;
     }
@@ -2027,7 +2004,6 @@
       } else {
         shown.forEach(it => { if (selectedCreativeIds.indexOf(it.id) === -1) selectedCreativeIds.push(it.id); });
       }
-      renderSelectedCreativesList();
       renderMediaGrid();
       renderCcSummary();
     };
@@ -2036,7 +2012,6 @@
       const id = el.dataset.id;
       const idx = selectedCreativeIds.indexOf(id);
       if (idx !== -1) selectedCreativeIds.splice(idx, 1); else selectedCreativeIds.push(id);
-      renderSelectedCreativesList();
       renderMediaGrid();
       renderCcSummary();
     }));
@@ -2198,7 +2173,6 @@
     const match = matches.length === 1 ? matches[0] : pool.find(it => it.name.toLowerCase() === typed);
     if (match) {
       if (selectedCreativeIds.indexOf(match.id) === -1) selectedCreativeIds.push(match.id);
-      renderSelectedCreativesList();
       mediaSearchQuery = '';
       e.target.value = '';
       renderMediaGrid();
