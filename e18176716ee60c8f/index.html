@@ -257,6 +257,28 @@
   .step-title{font-size:16px; font-weight:700; letter-spacing:-.005em;}
   .step-desc{font-size:12px; color:var(--muted); text-align:right; max-width:320px;}
 
+  .gallery-toolbar{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:0 18px 14px; flex-wrap:wrap;}
+  .gallery-breadcrumb{font-size:13.5px; color:var(--muted); display:flex; align-items:center; gap:6px; font-weight:600;}
+  .gallery-breadcrumb .crumb-link{color:var(--muted); cursor:pointer;}
+  .gallery-breadcrumb .crumb-link:hover{color:var(--accent);}
+  .gallery-breadcrumb .crumb-current{color:var(--ink);}
+  .gallery-actions{display:flex; gap:10px;}
+  .gallery-action-btn{border:1px solid var(--line); background:var(--surface-raised); color:var(--ink); font:inherit; font-weight:700; font-size:13.5px; padding:11px 20px; border-radius:var(--radius-md); cursor:pointer;}
+  .gallery-action-btn:hover:not(:disabled){border-color:var(--accent);}
+  .gallery-action-btn.accent{background:var(--accent); color:var(--accent-ink); border-color:var(--accent);}
+  .gallery-action-btn:disabled{opacity:.4; cursor:not-allowed;}
+  .gallery-inline-form{display:flex; gap:8px; align-items:center; padding:0 18px 14px; flex-wrap:wrap;}
+  .gallery-inline-form input[type=text]{border:1px solid var(--line); border-radius:var(--radius-sm); padding:8px 10px; font:inherit; font-size:13px; background:var(--bg); color:var(--ink); text-transform:uppercase;}
+  .gallery-inline-form input#galleryNameInput{text-transform:none; min-width:200px;}
+  .gallery-inline-form button{border:none; background:var(--accent); color:var(--accent-ink); font:inherit; font-weight:600; font-size:12.5px; padding:8px 14px; border-radius:var(--radius-sm); cursor:pointer;}
+  .gallery-inline-form button.ghost{background:none; border:1px solid var(--line); color:var(--muted);}
+  .gallery-folder-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:14px; padding:4px 18px 20px;}
+  .gallery-folder-tile{display:flex; flex-direction:column; align-items:center; gap:6px; padding:18px 10px; border:1px solid var(--line); border-radius:var(--radius-md); background:var(--bg); cursor:pointer; text-align:center;}
+  .gallery-folder-tile:hover{border-color:var(--accent); background:color-mix(in srgb, var(--accent) 6%, var(--bg));}
+  .gallery-folder-icon{font-size:34px; line-height:1;}
+  .gallery-folder-name{font-weight:700; font-size:13px;}
+  .gallery-folder-count{font-size:11px; color:var(--muted);}
+
   .pill-row{display:flex; flex-wrap:wrap; gap:8px;}
   .pill{border:1.5px solid var(--line); background:var(--surface-raised); color:var(--ink); font:inherit; font-weight:600; font-size:12.5px; padding:8px 16px; border-radius:999px; cursor:pointer; transition:border-color .12s, background .12s, color .12s;}
   .pill:hover{border-color:color-mix(in srgb, var(--accent) 55%, var(--line));}
@@ -720,28 +742,29 @@
         <section class="panel">
           <div class="step-head">
             <div class="step-head-left"><span class="step-title">Galeria de anúncios</span></div>
-            <span class="step-desc">banco próprio da ferramenta (não é Google Drive) — envie vários arquivos de uma vez; metadados são limpos automaticamente; não deixa subir dois anúncios com o mesmo nome; pasta Logos só aceita imagem, as demais pastas (nichos) aceitam img/gif/vídeo</span>
           </div>
-          <div class="creative-search">
-            <span class="cell-muted" style="font-size:11.5px; text-transform:uppercase; letter-spacing:.05em;">Nova pasta (nicho):</span>
-            <input type="text" id="newNicheInput" placeholder="Ex: ED" maxlength="12" style="width:100px; border:1px solid var(--line); border-radius:var(--radius-sm); padding:7px 10px; font:inherit; font-size:12.5px; background:var(--bg); color:var(--ink); text-transform:uppercase;">
-            <button type="button" id="newNicheBtn" style="border:none; background:var(--surface-raised); color:var(--ink); border:1px solid var(--line); font:inherit; font-weight:600; font-size:12px; padding:7px 13px; border-radius:var(--radius-sm); cursor:pointer;">+ criar pasta</button>
+          <div class="gallery-toolbar">
+            <div class="gallery-breadcrumb" id="galleryBreadcrumb"></div>
+            <div class="gallery-actions">
+              <button type="button" id="addPastaBtn" class="gallery-action-btn">+ Add pasta</button>
+              <button type="button" id="addAdsBtn" class="gallery-action-btn accent">+ Add ads</button>
+            </div>
+          </div>
+          <div class="gallery-inline-form" id="addPastaInline" hidden>
+            <input type="text" id="newNicheInput" placeholder="Nome da pasta (ex: ED)" maxlength="12">
+            <button type="button" id="newNicheConfirmBtn">Criar</button>
+            <button type="button" class="ghost" id="newNicheCancelBtn">cancelar</button>
             <span class="cell-muted" id="newNicheNote"></span>
           </div>
-          <div class="creative-search">
-            <span class="cell-muted" style="font-size:11.5px; text-transform:uppercase; letter-spacing:.05em;">Enviar pra pasta:</span>
-            <div class="pill-row" id="galleryUploadFolderToggle"></div>
+          <input type="file" id="galleryFileInput" accept="image/*,video/*" multiple hidden>
+          <div class="gallery-inline-form" id="addAdsInline" hidden>
+            <span class="cell-muted" id="galleryFilesChosenNote"></span>
+            <input type="text" id="galleryNameInput" placeholder="Nome (só se enviar 1 arquivo)">
+            <button type="button" id="galleryUploadBtn">Enviar</button>
+            <button type="button" class="ghost" id="galleryUploadCancelBtn">cancelar</button>
           </div>
-          <div style="padding:0 18px 0; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-            <input type="file" id="galleryFileInput" accept="image/*,video/*" multiple>
-            <input type="text" id="galleryNameInput" placeholder="Nome (só se enviar 1 arquivo)" style="flex:1; min-width:180px; border:1px solid var(--line); border-radius:var(--radius-sm); padding:9px 10px; font:inherit; font-size:13px; background:var(--bg); color:var(--ink);">
-            <button type="button" id="galleryUploadBtn" style="border:none; background:var(--accent); color:var(--accent-ink); font:inherit; font-weight:600; font-size:13px; padding:9px 16px; border-radius:var(--radius-sm); cursor:pointer;">Adicionar</button>
-          </div>
-          <div class="cell-muted" id="galleryUploadNote" style="padding:8px 18px 0;"></div>
-          <div class="creative-search">
-            <span class="cell-muted" style="font-size:11.5px; text-transform:uppercase; letter-spacing:.05em;">Pasta:</span>
-            <div class="pill-row" id="galleryFolderFilter"></div>
-          </div>
+          <div class="cell-muted" id="galleryUploadNote" style="padding:0 18px 10px;"></div>
+          <div class="gallery-folder-grid" id="galleryFolderGrid"></div>
           <div class="media-grid-note" id="galleryGridNote"></div>
           <div class="media-grid" id="galleryGrid"></div>
         </section>
@@ -1672,22 +1695,17 @@
 
   let mediaSearchQuery = '';
   let logoSearchQuery = '';
-  let galleryUploadFolder = 'logo';
-  let galleryFolderFilter = 'logo';
+  let galleryOpenFolder = null;
   let niches = [];
   let selectedNiche = loadPref('ccNiche', '');
 
   function itemCategory(it){ return it.category === 'logo' ? 'logo' : (it.category || '').toUpperCase(); }
+  function folderLabel(code){ return code === 'logo' ? 'Logos' : code; }
+  function folderList(){ return ['logo'].concat(niches); }
 
   function loadNiches(){
     return fetch(NICHES_API, { cache: 'no-store' }).then(r => r.json()).then(json => {
       niches = json.niches || [];
-      if (!galleryUploadFolder || (galleryUploadFolder !== 'logo' && niches.indexOf(galleryUploadFolder) === -1)) {
-        galleryUploadFolder = niches[0] || 'logo';
-      }
-      if (!galleryFolderFilter || (galleryFolderFilter !== 'logo' && niches.indexOf(galleryFolderFilter) === -1)) {
-        galleryFolderFilter = niches[0] || 'logo';
-      }
     }).catch(() => {});
   }
 
@@ -1703,9 +1721,9 @@
       niches = json.niches || niches;
       document.getElementById('newNicheInput').value = '';
       note.textContent = '';
-      renderGalleryUploadFolderToggle();
-      renderGalleryFolderFilter();
+      document.getElementById('addPastaInline').hidden = true;
       renderNicheSelect();
+      renderGalleryPanel();
     }).catch(() => { note.textContent = 'Falhou — tenta de novo.'; });
   }
 
@@ -1717,36 +1735,64 @@
     sel.value = selectedNiche;
   }
 
-  function renderGalleryUploadFolderToggle(){
-    const el = document.getElementById('galleryUploadFolderToggle');
-    const opts = [{ value: 'logo', label: 'Logos' }].concat(niches.map(n => ({ value: n, label: n })));
-    el.innerHTML = opts.map(o => '<button type="button" class="pill' + (galleryUploadFolder === o.value ? ' active' : '') + '" data-folder="' + o.value + '">' + o.label + '</button>').join('');
-    el.querySelectorAll('button').forEach(btn => btn.addEventListener('click', () => {
-      galleryUploadFolder = btn.dataset.folder;
-      renderGalleryUploadFolderToggle();
-      updateGalleryFileInputAccept();
-    }));
-    updateGalleryFileInputAccept();
-  }
-
-  function updateGalleryFileInputAccept(){
-    const input = document.getElementById('galleryFileInput');
-    input.accept = galleryUploadFolder === 'logo' ? 'image/*' : 'image/*,video/*';
-  }
-
   function isAllowedForFolder(file, folder){
     if (folder !== 'logo') return true;
     return /^image\//.test(file.type) && file.type !== 'image/gif';
   }
 
-  function renderGalleryFolderFilter(){
-    const el = document.getElementById('galleryFolderFilter');
-    const opts = [{ value: 'logo', label: 'Logos' }].concat(niches.map(n => ({ value: n, label: n })));
-    el.innerHTML = opts.map(o => '<button type="button" class="pill' + (galleryFolderFilter === o.value ? ' active' : '') + '" data-folder="' + o.value + '">' + o.label + '</button>').join('');
-    el.querySelectorAll('button').forEach(btn => btn.addEventListener('click', () => {
-      galleryFolderFilter = btn.dataset.folder;
-      renderGalleryFolderFilter();
-      renderGalleryGrid();
+  function openGalleryFolder(code){
+    galleryOpenFolder = code;
+    document.getElementById('addAdsInline').hidden = true;
+    const fileInput = document.getElementById('galleryFileInput');
+    fileInput.value = '';
+    fileInput.accept = code === 'logo' ? 'image/*' : 'image/*,video/*';
+    renderGalleryPanel();
+  }
+
+  function renderGalleryBreadcrumb(){
+    const el = document.getElementById('galleryBreadcrumb');
+    if (!galleryOpenFolder) {
+      el.innerHTML = '<span class="crumb-current">Galeria de anúncios</span>';
+      return;
+    }
+    el.innerHTML = '<span class="crumb-link" id="galleryCrumbRoot">Galeria de anúncios</span><span>/</span><span class="crumb-current">' + folderLabel(galleryOpenFolder) + '</span>';
+    document.getElementById('galleryCrumbRoot').addEventListener('click', () => openGalleryFolder(null));
+  }
+
+  function renderGalleryFolderGrid(){
+    const wrap = document.getElementById('galleryFolderGrid');
+    const gridWrap = document.getElementById('galleryGrid');
+    const note = document.getElementById('galleryGridNote');
+    if (galleryOpenFolder) { wrap.hidden = true; return; }
+    wrap.hidden = false;
+    gridWrap.innerHTML = '';
+    note.textContent = '';
+    wrap.innerHTML = folderList().map(code => {
+      const count = libraryItems.filter(it => itemCategory(it) === code).length;
+      return '<div class="gallery-folder-tile" data-folder="' + code + '">' +
+        '<div class="gallery-folder-icon">📁</div>' +
+        '<div class="gallery-folder-name">' + folderLabel(code) + '</div>' +
+        '<div class="gallery-folder-count">' + count + ' anúncio' + (count === 1 ? '' : 's') + '</div>' +
+      '</div>';
+    }).join('');
+    wrap.querySelectorAll('.gallery-folder-tile').forEach(el => el.addEventListener('click', () => openGalleryFolder(el.dataset.folder)));
+  }
+
+  function renderGalleryPanel(){
+    renderGalleryBreadcrumb();
+    renderGalleryFolderGrid();
+    document.getElementById('addAdsBtn').disabled = !galleryOpenFolder;
+    const grid = document.getElementById('galleryGrid');
+    const note = document.getElementById('galleryGridNote');
+    if (!galleryOpenFolder) { grid.innerHTML = ''; note.textContent = ''; return; }
+    const inFolder = libraryItems.filter(it => itemCategory(it) === galleryOpenFolder);
+    if (!inFolder.length){ note.textContent = '0 anúncio(s) nessa pasta'; grid.innerHTML = '<div class="empty-state">Nenhum anúncio nessa pasta ainda.</div>'; return; }
+    note.textContent = inFolder.length + ' anúncio(s) nessa pasta';
+    const shown = inFolder.slice().reverse();
+    grid.innerHTML = shown.map(it => mediaItemHtml(it, null, true)).join('');
+    grid.querySelectorAll('.media-remove').forEach(btn => btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      deleteLibraryItem(btn.dataset.removeId);
     }));
   }
 
@@ -1761,7 +1807,7 @@
   function refreshLibraryViews(){
     renderMediaGrid();
     renderLogoGrid();
-    renderGalleryGrid();
+    renderGalleryPanel();
     renderMediaDatalist();
   }
 
@@ -1893,21 +1939,6 @@
     }));
   }
 
-  function renderGalleryGrid(){
-    const grid = document.getElementById('galleryGrid');
-    const note = document.getElementById('galleryGridNote');
-    if (!grid) return;
-    const inFolder = libraryItems.filter(it => itemCategory(it) === galleryFolderFilter);
-    if (!inFolder.length){ note.textContent = '0 anúncio(s) nessa pasta'; grid.innerHTML = '<div class="empty-state">Nenhum anúncio nessa pasta ainda. Envie acima.</div>'; return; }
-    note.textContent = inFolder.length + ' anúncio(s) nessa pasta';
-    const shown = inFolder.slice().reverse();
-    grid.innerHTML = shown.map(it => mediaItemHtml(it, null, true)).join('');
-    grid.querySelectorAll('.media-remove').forEach(btn => btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      deleteLibraryItem(btn.dataset.removeId);
-    }));
-  }
-
   function deleteLibraryItem(id){
     fetch(LIBRARY_API + '/' + id, { method: 'DELETE', headers: { 'X-Access-Key': COSTS_API_KEY } })
       .then(r => r.json())
@@ -1958,13 +1989,49 @@
     return idx > 0 ? filename.slice(0, idx) : filename;
   }
 
+  document.getElementById('addPastaBtn').addEventListener('click', () => {
+    const inline = document.getElementById('addPastaInline');
+    inline.hidden = !inline.hidden;
+    if (!inline.hidden) document.getElementById('newNicheInput').focus();
+  });
+  document.getElementById('newNicheCancelBtn').addEventListener('click', () => {
+    document.getElementById('addPastaInline').hidden = true;
+    document.getElementById('newNicheNote').textContent = '';
+  });
+  document.getElementById('newNicheConfirmBtn').addEventListener('click', () => {
+    createNiche(document.getElementById('newNicheInput').value);
+  });
+  document.getElementById('newNicheInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') createNiche(e.target.value);
+  });
+
+  document.getElementById('addAdsBtn').addEventListener('click', () => {
+    if (!galleryOpenFolder) return;
+    document.getElementById('galleryFileInput').click();
+  });
+  document.getElementById('galleryFileInput').addEventListener('change', (e) => {
+    const files = Array.from(e.target.files || []);
+    const inline = document.getElementById('addAdsInline');
+    if (!files.length) { inline.hidden = true; return; }
+    inline.hidden = false;
+    document.getElementById('galleryFilesChosenNote').textContent =
+      files.length === 1 ? files[0].name : files.length + ' arquivos selecionados';
+    document.getElementById('galleryNameInput').hidden = files.length !== 1;
+  });
+  document.getElementById('galleryUploadCancelBtn').addEventListener('click', () => {
+    document.getElementById('addAdsInline').hidden = true;
+    document.getElementById('galleryFileInput').value = '';
+    document.getElementById('galleryUploadNote').textContent = '';
+  });
+
   document.getElementById('galleryUploadBtn').addEventListener('click', async () => {
     const input = document.getElementById('galleryFileInput');
     const nameInput = document.getElementById('galleryNameInput');
     const note = document.getElementById('galleryUploadNote');
+    const folder = galleryOpenFolder;
     const files = Array.from(input.files || []);
-    if (!files.length) return;
-    const notAllowed = files.filter(f => !isAllowedForFolder(f, galleryUploadFolder));
+    if (!folder || !files.length) return;
+    const notAllowed = files.filter(f => !isAllowedForFolder(f, folder));
     if (notAllowed.length) {
       note.textContent = 'Pasta Logos só aceita imagem (JPG/PNG/WebP) — sem GIF/vídeo: ' + notAllowed.map(f => f.name).join(', ') + '. Nada foi enviado.';
       return;
@@ -1987,18 +2054,17 @@
       try {
         const clean = await stripImageMetadata(files[i]);
         note.textContent = 'Enviando ' + (i + 1) + '/' + files.length + '…';
-        await uploadOneFile(clean, proposedNames[i], galleryUploadFolder);
+        await uploadOneFile(clean, proposedNames[i], folder);
       } catch {
         note.textContent = 'Falhou em "' + files[i].name + '" — parei aqui.';
         refreshLibraryViews();
         return;
       }
     }
-    galleryFolderFilter = galleryUploadFolder;
-    renderGalleryFolderFilter();
     refreshLibraryViews();
     input.value = '';
     nameInput.value = '';
+    document.getElementById('addAdsInline').hidden = true;
     note.textContent = '';
   });
 
@@ -2405,11 +2471,10 @@
     renderStartDayPills();
     initTargetingPills();
     loadNiches().then(() => {
-      renderGalleryUploadFolderToggle();
-      renderGalleryFolderFilter();
       renderNicheSelect();
       renderMediaGrid();
       renderPresetsTable();
+      renderGalleryPanel();
     });
     loadLibraryItems();
     loadCopyPresets();
@@ -2426,12 +2491,6 @@
       renderMediaGrid();
       renderMediaDatalist();
       renderPresetsTable();
-    });
-    document.getElementById('newNicheBtn').addEventListener('click', () => {
-      createNiche(document.getElementById('newNicheInput').value);
-    });
-    document.getElementById('newNicheInput').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') createNiche(e.target.value);
     });
     document.querySelectorAll('.criar-subtab').forEach(btn => btn.addEventListener('click', () => {
       criarSubView = btn.dataset.criarsub;
