@@ -697,7 +697,7 @@
 
             <div class="step-head" style="margin-top:8px;">
               <div class="step-head-left"><span class="step-title" style="font-size:13px;">Imagem do anúncio</span></div>
-              <span class="step-desc">digite o nome do anúncio pra achar na galeria — nada é exibido até você digitar. Suba criativos novos na aba "Galeria de anúncios"</span>
+              <span class="step-desc">mostra os anúncios da pasta do nicho selecionado — digite pra filtrar por nome. Suba criativos novos na aba "Galeria de anúncios"</span>
             </div>
             <div class="creative-search">
               <input type="text" id="mediaSearchInput" list="mediaNamesList" placeholder="Digite o nome/número do anúncio…">
@@ -2007,16 +2007,13 @@
       return;
     }
     const q = mediaSearchQuery.trim().toLowerCase();
-    if (!q) {
-      note.textContent = 'digite o nome/número do anúncio pra encontrá-lo na pasta ' + selectedNiche;
-      grid.innerHTML = '';
-      selectAllBtn.hidden = true;
-      return;
-    }
-    const shown = libraryItems.filter(it => itemCategory(it) === selectedNiche && it.name.toLowerCase().indexOf(q) !== -1).slice().reverse();
-    note.textContent = shown.length + ' resultado(s) na pasta ' + selectedNiche + ' pra "' + mediaSearchQuery.trim() + '"';
+    const inFolder = libraryItems.filter(it => itemCategory(it) === selectedNiche);
+    const shown = (q ? inFolder.filter(it => it.name.toLowerCase().indexOf(q) !== -1) : inFolder).slice().reverse();
+    note.textContent = q
+      ? shown.length + ' resultado(s) na pasta ' + selectedNiche + ' pra "' + mediaSearchQuery.trim() + '"'
+      : shown.length + ' anúncio(s) na pasta ' + selectedNiche;
     if (!shown.length){
-      grid.innerHTML = '<div class="empty-state">Nenhum anúncio encontrado na pasta ' + selectedNiche + ' pra "' + mediaSearchQuery.trim() + '". Confira o nome na Galeria.</div>';
+      grid.innerHTML = '<div class="empty-state">' + (q ? ('Nenhum anúncio encontrado na pasta ' + selectedNiche + ' pra "' + mediaSearchQuery.trim() + '".') : ('Nenhum anúncio na pasta ' + selectedNiche + ' ainda.')) + ' Confira/envie na Galeria de anúncios.</div>';
       selectAllBtn.hidden = true;
       return;
     }
