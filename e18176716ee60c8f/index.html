@@ -157,6 +157,15 @@
   .media-item.selected{border-color:var(--accent);}
   .media-item .media-name{position:absolute; bottom:0; left:0; right:0; background:rgba(0,0,0,.62); color:#fff; font-size:10px; padding:3px 5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   .media-item .media-remove{position:absolute; top:3px; right:3px; background:rgba(0,0,0,.62); color:#fff; border:none; border-radius:4px; width:18px; height:18px; font-size:12px; cursor:pointer; line-height:1;}
+  .media-item .media-check{position:absolute; top:3px; right:3px; background:var(--accent); color:var(--accent-ink); border-radius:4px; width:18px; height:18px; font-size:11px; line-height:18px; text-align:center; font-weight:700;}
+  .media-grid-note-row{display:flex; align-items:center; justify-content:space-between; gap:10px; padding-right:18px;}
+  .media-grid-note-row .media-grid-note{padding-right:0;}
+  .select-all-btn{border:1px solid var(--line); background:var(--surface-raised); color:var(--ink); font:inherit; font-weight:600; font-size:11.5px; padding:6px 13px; border-radius:var(--radius-xs); cursor:pointer; flex:none; white-space:nowrap;}
+  .select-all-btn:hover{border-color:var(--accent);}
+  .cc-selected-preview{display:grid; grid-template-columns:repeat(auto-fill,minmax(60px,1fr)); gap:7px;}
+  .cc-selected-preview .media-item{border-width:1px;}
+  .cc-selected-preview .media-name{display:none;}
+  .use-btn{border:none; background:none; color:var(--accent); cursor:pointer; font-size:12px; font-weight:600; padding:2px 8px;}
 
   .form-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px; padding:16px 18px;}
   .form-field{display:flex; flex-direction:column; gap:5px;}
@@ -631,10 +640,6 @@
                 <div id="ccSelectedCreatives" class="cc-chip-list"><span class="cell-muted">Nenhum selecionado ainda</span></div>
               </div>
               <div class="form-field span2">
-                <label>Presets salvos (clique pra preencher título/descrição)</label>
-                <div class="pill-row" id="ccPresetPicker"></div>
-              </div>
-              <div class="form-field span2">
                 <label for="ccHeadline">Título</label>
                 <input type="text" id="ccHeadline">
               </div>
@@ -657,7 +662,10 @@
               <input type="text" id="mediaSearchInput" list="mediaNamesList" placeholder="Digite o nome/número do anúncio…">
               <datalist id="mediaNamesList"></datalist>
             </div>
-            <div class="media-grid-note" id="mediaGridNote"></div>
+            <div class="media-grid-note-row">
+              <div class="media-grid-note" id="mediaGridNote"></div>
+              <button type="button" id="mediaSelectAllBtn" class="select-all-btn" hidden></button>
+            </div>
             <div class="media-grid" id="mediaGrid"></div>
           </section>
         </div>
@@ -682,6 +690,10 @@
                 <div class="create-log" id="ccLog"></div>
               </details>
             </div>
+          </div>
+          <div class="cc-summary" id="ccSelectedPreviewWrap" hidden>
+            <h3>Anúncios selecionados</h3>
+            <div class="cc-selected-preview" id="ccSelectedPreview"></div>
           </div>
         </aside>
       </div>
@@ -1716,21 +1728,41 @@
     }));
   }
 
+  function renderSelectedPreview(){
+    const wrap = document.getElementById('ccSelectedPreviewWrap');
+    const el = document.getElementById('ccSelectedPreview');
+    if (!selectedCreativeIds.length){ wrap.hidden = true; return; }
+    wrap.hidden = false;
+    const items = selectedCreativeIds.map(id => libraryItems.find(i => i.id === id)).filter(Boolean);
+    el.innerHTML = items.map(it => mediaItemHtml(it, selectedCreativeIds, false)).join('');
+    el.querySelectorAll('.media-item').forEach(node => node.addEventListener('click', () => {
+      const id = node.dataset.id;
+      const idx = selectedCreativeIds.indexOf(id);
+      if (idx !== -1) selectedCreativeIds.splice(idx, 1);
+      renderSelectedCreativesList();
+      renderMediaGrid();
+      renderCcSummary();
+    }));
+  }
+
   function updateSelectedLogoLabel(){
     const el = document.getElementById('ccLogoSelected');
     const item = libraryItems.find(i => i.id === selectedLogoLibraryId);
     el.textContent = item ? item.name : 'Nenhum selecionado';
   }
 
-  function mediaItemHtml(it, selectedId){
+  function mediaItemHtml(it, selectedId, removable){
     const isVideo = (it.contentType || '').indexOf('video') === 0;
     const fileUrl = LIBRARY_API + '/' + it.id + '/file';
     const media = isVideo ? '<video src="' + fileUrl + '" muted></video>' : '<img src="' + fileUrl + '" loading="lazy">';
     const isSel = Array.isArray(selectedId) ? selectedId.indexOf(it.id) !== -1 : selectedId === it.id;
     const uploadedDate = it.uploadedAt ? new Date(it.uploadedAt).toLocaleDateString('pt-BR') : '';
+    const badge = removable
+      ? '<button type="button" class="media-remove" data-remove-id="' + it.id + '">×</button>'
+      : (isSel ? '<div class="media-check">✓</div>' : '');
     return '<div class="media-item' + (isSel ? ' selected' : '') + '" data-id="' + it.id + '">' +
       media +
-      '<button type="button" class="media-remove" data-remove-id="' + it.id + '">×</button>' +
+      badge +
       '<div class="media-name" title="' + it.name.replace(/"/g, '&quot;') + ' · ' + uploadedDate + '">' + it.name + (uploadedDate ? ' · ' + uploadedDate : '') + '</div>' +
     '</div>';
   }
@@ -1738,28 +1770,43 @@
   function renderMediaGrid(){
     const grid = document.getElementById('mediaGrid');
     const note = document.getElementById('mediaGridNote');
+    const selectAllBtn = document.getElementById('mediaSelectAllBtn');
     const q = mediaSearchQuery.trim().toLowerCase();
     if (!q) {
       note.textContent = 'digite o nome/número do anúncio pra encontrá-lo';
       grid.innerHTML = '';
+      selectAllBtn.hidden = true;
       return;
     }
     const shown = libraryItems.filter(it => itemCategory(it) === 'creative' && it.name.toLowerCase().indexOf(q) !== -1).slice().reverse();
     note.textContent = shown.length + ' resultado(s) nos Criativos pra "' + mediaSearchQuery.trim() + '"';
-    if (!shown.length){ grid.innerHTML = '<div class="empty-state">Nenhum anúncio encontrado nos Criativos pra "' + mediaSearchQuery.trim() + '". Confira o nome na Galeria.</div>'; return; }
-    grid.innerHTML = shown.map(it => mediaItemHtml(it, selectedCreativeIds)).join('');
-    grid.querySelectorAll('.media-item').forEach(el => el.addEventListener('click', (e) => {
-      if (e.target.closest('.media-remove')) return;
+    if (!shown.length){
+      grid.innerHTML = '<div class="empty-state">Nenhum anúncio encontrado nos Criativos pra "' + mediaSearchQuery.trim() + '". Confira o nome na Galeria.</div>';
+      selectAllBtn.hidden = true;
+      return;
+    }
+    const allSelected = shown.every(it => selectedCreativeIds.indexOf(it.id) !== -1);
+    selectAllBtn.hidden = false;
+    selectAllBtn.textContent = (allSelected ? 'Desmarcar todos' : 'Marcar todos') + ' (' + shown.length + ')';
+    selectAllBtn.onclick = () => {
+      if (allSelected) {
+        const shownIds = new Set(shown.map(it => it.id));
+        selectedCreativeIds = selectedCreativeIds.filter(id => !shownIds.has(id));
+      } else {
+        shown.forEach(it => { if (selectedCreativeIds.indexOf(it.id) === -1) selectedCreativeIds.push(it.id); });
+      }
+      renderSelectedCreativesList();
+      renderMediaGrid();
+      renderCcSummary();
+    };
+    grid.innerHTML = shown.map(it => mediaItemHtml(it, selectedCreativeIds, false)).join('');
+    grid.querySelectorAll('.media-item').forEach(el => el.addEventListener('click', () => {
       const id = el.dataset.id;
       const idx = selectedCreativeIds.indexOf(id);
       if (idx !== -1) selectedCreativeIds.splice(idx, 1); else selectedCreativeIds.push(id);
       renderSelectedCreativesList();
       renderMediaGrid();
       renderCcSummary();
-    }));
-    grid.querySelectorAll('.media-remove').forEach(btn => btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      deleteLibraryItem(btn.dataset.removeId);
     }));
   }
 
@@ -1776,17 +1823,12 @@
     const shown = libraryItems.filter(it => itemCategory(it) === 'logo' && it.name.toLowerCase().indexOf(q) !== -1).slice().reverse();
     note.textContent = shown.length + ' resultado(s) na pasta Logos pra "' + logoSearchQuery.trim() + '"';
     if (!shown.length){ grid.innerHTML = '<div class="empty-state">Nenhum logo encontrado pra "' + logoSearchQuery.trim() + '". Confira o nome ou a pasta na Galeria.</div>'; return; }
-    grid.innerHTML = shown.map(it => mediaItemHtml(it, selectedLogoLibraryId)).join('');
-    grid.querySelectorAll('.media-item').forEach(el => el.addEventListener('click', (e) => {
-      if (e.target.closest('.media-remove')) return;
+    grid.innerHTML = shown.map(it => mediaItemHtml(it, selectedLogoLibraryId, false)).join('');
+    grid.querySelectorAll('.media-item').forEach(el => el.addEventListener('click', () => {
       selectedLogoLibraryId = el.dataset.id;
       updateSelectedLogoLabel();
       renderLogoGrid();
       renderCcSummary();
-    }));
-    grid.querySelectorAll('.media-remove').forEach(btn => btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      deleteLibraryItem(btn.dataset.removeId);
     }));
   }
 
@@ -1798,7 +1840,7 @@
     if (!inFolder.length){ note.textContent = '0 anúncio(s) nessa pasta'; grid.innerHTML = '<div class="empty-state">Nenhum anúncio nessa pasta ainda. Envie acima.</div>'; return; }
     note.textContent = inFolder.length + ' anúncio(s) nessa pasta';
     const shown = inFolder.slice().reverse();
-    grid.innerHTML = shown.map(it => mediaItemHtml(it, null)).join('');
+    grid.innerHTML = shown.map(it => mediaItemHtml(it, null, true)).join('');
     grid.querySelectorAll('.media-remove').forEach(btn => btn.addEventListener('click', (e) => {
       e.stopPropagation();
       deleteLibraryItem(btn.dataset.removeId);
@@ -1975,8 +2017,15 @@
     return fetch(COPY_PRESETS_API, { cache: 'no-store' }).then(r => r.json()).then(json => {
       copyPresets = json.items || [];
       renderPresetsTable();
-      renderPresetPicker();
     }).catch(() => {});
+  }
+
+  function usePreset(id){
+    const p = copyPresets.find(x => x.id === id);
+    if (!p) return;
+    document.getElementById('ccHeadline').value = p.headline;
+    document.getElementById('ccDescription').value = p.description;
+    renderCcSummary();
   }
 
   function renderPresetsTable(){
@@ -1984,29 +2033,17 @@
     if (!copyPresets.length){ wrap.innerHTML = '<div class="empty-state">Nenhum preset salvo ainda.</div>'; return; }
     const rows = copyPresets.map(p =>
       '<tr><td>' + p.headline + '</td><td>' + p.description + '</td>' +
-      '<td class="num"><button class="remove-btn" data-preset-id="' + p.id + '">remover</button></td></tr>'
+      '<td class="num"><button type="button" class="use-btn" data-use-preset="' + p.id + '">usar</button> <button class="remove-btn" data-preset-id="' + p.id + '">remover</button></td></tr>'
     ).join('');
     wrap.innerHTML = '<table><thead><tr><th style="text-align:left;">Título</th><th style="text-align:left;">Descrição</th><th></th></tr></thead><tbody>' + rows + '</tbody></table>';
     wrap.querySelectorAll('[data-preset-id]').forEach(btn => btn.addEventListener('click', () => deleteCopyPreset(btn.dataset.presetId)));
-  }
-
-  function renderPresetPicker(){
-    const el = document.getElementById('ccPresetPicker');
-    if (!copyPresets.length){ el.innerHTML = '<span class="cell-muted">Nenhum preset salvo ainda.</span>'; return; }
-    el.innerHTML = copyPresets.map(p => '<button type="button" class="pill" data-use-preset="' + p.id + '">' + p.headline + '</button>').join('');
-    el.querySelectorAll('[data-use-preset]').forEach(btn => btn.addEventListener('click', () => {
-      const p = copyPresets.find(x => x.id === btn.dataset.usePreset);
-      if (!p) return;
-      document.getElementById('ccHeadline').value = p.headline;
-      document.getElementById('ccDescription').value = p.description;
-      renderCcSummary();
-    }));
+    wrap.querySelectorAll('[data-use-preset]').forEach(btn => btn.addEventListener('click', () => usePreset(btn.dataset.usePreset)));
   }
 
   function deleteCopyPreset(id){
     fetch(COPY_PRESETS_API + '/' + id, { method: 'DELETE', headers: { 'X-Access-Key': COSTS_API_KEY } })
       .then(r => r.json())
-      .then(json => { copyPresets = json.items || []; renderPresetsTable(); renderPresetPicker(); })
+      .then(json => { copyPresets = json.items || []; renderPresetsTable(); })
       .catch(() => {});
   }
 
@@ -2021,7 +2058,7 @@
       body: JSON.stringify({ headline, description }),
     }).then(r => r.json()).then(json => {
       copyPresets = json.items || [];
-      renderPresetsTable(); renderPresetPicker();
+      renderPresetsTable();
       note.textContent = '';
     }).catch(() => { note.textContent = 'Falhou — tenta de novo.'; });
   });
@@ -2244,6 +2281,7 @@
     const sumCreative = document.getElementById('ccSumCreative');
     sumCreative.textContent = creativeNames.length ? creativeNames.length + ' (' + creativeNames.join(', ') + ')' : 'nenhum';
     sumCreative.title = creativeNames.join(', ');
+    renderSelectedPreview();
 
     const missing = [];
     if (!accounts.length) missing.push('marque uma conta');
