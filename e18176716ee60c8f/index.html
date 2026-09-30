@@ -172,6 +172,9 @@
   .form-field{display:flex; flex-direction:column; gap:5px;}
   .form-field label{font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted);}
   .form-field input, .form-field select{border:1px solid var(--line); border-radius:var(--radius-sm); padding:9px 10px; font:inherit; font-size:13px; background:var(--bg); color:var(--ink); width:100%;}
+  .time-with-brt{display:flex; align-items:center; gap:10px;}
+  .time-with-brt input{width:auto; flex:none;}
+  .time-with-brt span{font-size:12.5px; white-space:nowrap;}
   .form-field.span2{grid-column:span 2;}
   .checkbox-row{display:flex; flex-wrap:wrap; gap:10px 16px;}
   .checkbox-row label{display:flex; align-items:center; gap:5px; font-size:12.5px; font-weight:400; text-transform:none; letter-spacing:0; color:var(--ink);}
@@ -611,7 +614,10 @@
               </div>
               <div class="form-field">
                 <label for="ccStartTime">Hora de início — fuso PDT</label>
-                <input type="time" id="ccStartTime" value="05:00">
+                <div class="time-with-brt">
+                  <input type="time" id="ccStartTime" value="05:00">
+                  <span class="cell-muted" id="ccStartTimeBrt"></span>
+                </div>
               </div>
               <div class="form-field span2">
                 <label>Dia de término</label>
@@ -619,7 +625,10 @@
               </div>
               <div class="form-field">
                 <label for="ccEndTime">Hora de término — fuso PDT</label>
-                <input type="time" id="ccEndTime" value="23:59" disabled>
+                <div class="time-with-brt">
+                  <input type="time" id="ccEndTime" value="23:59" disabled>
+                  <span class="cell-muted" id="ccEndTimeBrt"></span>
+                </div>
               </div>
             </div>
           </section>
@@ -2474,6 +2483,12 @@
     return Math.floor(utcMillis / 1000);
   }
 
+  function laWallTimeToBrt(dateKey, timeStr){
+    const epoch = laWallTimeToEpoch(dateKey, timeStr);
+    const fmt = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hour12: false });
+    return fmt.format(new Date(epoch * 1000));
+  }
+
   function renderStartDayPills(){
     const el = document.getElementById('ccStartDay');
     const todayLA = todayKeyLA();
@@ -2532,16 +2547,19 @@
     const timeStr = document.getElementById('ccStartTime').value || '05:00';
     const dayLabel = startDaySel === 0 ? 'Hoje' : (startDaySel === 1 ? 'Amanhã' : wd + ' ' + short);
     document.getElementById('ccSumStart').textContent = dayLabel + ' ' + timeStr + ' PDT';
+    document.getElementById('ccStartTimeBrt').textContent = '→ ' + laWallTimeToBrt(dayKey, timeStr) + ' BRT';
 
     const sumEnd = document.getElementById('ccSumEnd');
     if (endDaySel === null) {
       sumEnd.textContent = 'sem término';
+      document.getElementById('ccEndTimeBrt').textContent = '';
     } else {
       const endDayKey = shiftDateKey(todayKeyLA(), endDaySel);
       const { wd: ewd, short: eshort } = fmtDate(endDayKey);
       const endTimeStr = document.getElementById('ccEndTime').value || '23:59';
       const endDayLabel = endDaySel === 0 ? 'Hoje' : (endDaySel === 1 ? 'Amanhã' : ewd + ' ' + eshort);
       sumEnd.textContent = endDayLabel + ' ' + endTimeStr + ' PDT';
+      document.getElementById('ccEndTimeBrt').textContent = '→ ' + laWallTimeToBrt(endDayKey, endTimeStr) + ' BRT';
     }
 
     const genderLabel = { all: 'Todos', male: 'Masc', female: 'Fem', notdisclosed: 'N/I' }[genderSel[0]] || genderSel[0];
