@@ -613,6 +613,14 @@
                 <label for="ccStartTime">Hora de início — fuso PDT</label>
                 <input type="time" id="ccStartTime" value="05:00">
               </div>
+              <div class="form-field span2">
+                <label>Dia de término</label>
+                <div class="pill-row" id="ccEndDay"></div>
+              </div>
+              <div class="form-field">
+                <label for="ccEndTime">Hora de término — fuso PDT</label>
+                <input type="time" id="ccEndTime" value="23:59" disabled>
+              </div>
             </div>
           </section>
 
@@ -714,6 +722,7 @@
             <div class="cc-summary-row"><span class="cc-label">Nome</span><span class="cc-value" id="ccSumName">—</span></div>
             <div class="cc-summary-row"><span class="cc-label">Orçamento/dia</span><span class="cc-value" id="ccSumBudget">$200</span></div>
             <div class="cc-summary-row"><span class="cc-label">Início</span><span class="cc-value" id="ccSumStart">—</span></div>
+            <div class="cc-summary-row"><span class="cc-label">Fim</span><span class="cc-value" id="ccSumEnd">sem término</span></div>
             <div class="cc-summary-row"><span class="cc-label">Segmentação</span><span class="cc-value" id="ccSumTargeting">—</span></div>
             <div class="cc-summary-row"><span class="cc-label">Criativos</span><span class="cc-value" id="ccSumCreative">nenhum</span></div>
             <div id="ccSumStatus"></div>
@@ -1709,6 +1718,7 @@
   let languageSel = ['en_us'];
   let networkSel = ['all'];
   let startDaySel = 0;
+  let endDaySel = null;
 
   let mediaSearchQuery = '';
   let galleryOpenFolder = (function(){ const v = loadPref('galleryOpenFolder', '__root__'); return v === '__root__' ? null : v; })();
@@ -2481,6 +2491,28 @@
     }));
   }
 
+  function renderEndDayPills(){
+    const el = document.getElementById('ccEndDay');
+    const todayLA = todayKeyLA();
+    const labels = ['Hoje', 'Amanhã'];
+    const opts = [{ offset: null, label: 'Sem término' }].concat(
+      Array.from({ length: 7 }).map((_, i) => {
+        const dk = shiftDateKey(todayLA, i);
+        const { wd, short } = fmtDate(dk);
+        return { offset: i, label: i < labels.length ? labels[i] : (wd + ' ' + short) };
+      })
+    );
+    el.innerHTML = opts.map(o =>
+      '<button type="button" class="pill' + (endDaySel === o.offset ? ' active' : '') + '" data-day-offset="' + (o.offset === null ? '' : o.offset) + '">' + o.label + '</button>'
+    ).join('');
+    el.querySelectorAll('button').forEach(btn => btn.addEventListener('click', () => {
+      endDaySel = btn.dataset.dayOffset === '' ? null : parseInt(btn.dataset.dayOffset, 10);
+      document.getElementById('ccEndTime').disabled = endDaySel === null;
+      renderEndDayPills();
+      renderCcSummary();
+    }));
+  }
+
   function renderCcSummary(){
     const accounts = allSubAccounts.filter(a => selectedSubAccountIds.indexOf(a.id) !== -1);
     document.getElementById('ccSumAccounts').textContent = accounts.length
@@ -2500,6 +2532,17 @@
     const timeStr = document.getElementById('ccStartTime').value || '05:00';
     const dayLabel = startDaySel === 0 ? 'Hoje' : (startDaySel === 1 ? 'Amanhã' : wd + ' ' + short);
     document.getElementById('ccSumStart').textContent = dayLabel + ' ' + timeStr + ' PDT';
+
+    const sumEnd = document.getElementById('ccSumEnd');
+    if (endDaySel === null) {
+      sumEnd.textContent = 'sem término';
+    } else {
+      const endDayKey = shiftDateKey(todayKeyLA(), endDaySel);
+      const { wd: ewd, short: eshort } = fmtDate(endDayKey);
+      const endTimeStr = document.getElementById('ccEndTime').value || '23:59';
+      const endDayLabel = endDaySel === 0 ? 'Hoje' : (endDaySel === 1 ? 'Amanhã' : ewd + ' ' + eshort);
+      sumEnd.textContent = endDayLabel + ' ' + endTimeStr + ' PDT';
+    }
 
     const genderLabel = { all: 'Todos', male: 'Masc', female: 'Fem', notdisclosed: 'N/I' }[genderSel[0]] || genderSel[0];
     const ageLabel = ageSel.indexOf('all') !== -1 ? 'todas idades' : ageSel.join('/');
@@ -2569,6 +2612,7 @@
 
   function initCriarView(){
     renderStartDayPills();
+    renderEndDayPills();
     initTargetingPills();
     document.getElementById('accountSelectTrigger').addEventListener('click', () => toggleAccountSelect());
     document.addEventListener('click', (e) => {
@@ -2586,7 +2630,7 @@
     loadCopyPresets();
     loadCcSettings().then(renderCcSummary);
     loadAllSubAccounts().then(() => loadCcLinks().then(renderCcSummary));
-    ['ccName', 'ccBudget', 'ccStartTime', 'ccHeadline', 'ccBrandDefault', 'ccDescription'].forEach(id => {
+    ['ccName', 'ccBudget', 'ccStartTime', 'ccEndTime', 'ccHeadline', 'ccBrandDefault', 'ccDescription'].forEach(id => {
       document.getElementById(id).addEventListener('input', renderCcSummary);
     });
     document.querySelectorAll('.criar-subtab').forEach(btn => btn.addEventListener('click', () => {
@@ -2678,7 +2722,7 @@
           const adSetBody = {
             accountKey: acc.accountKey, campaignId, name: shared.name + ' - ' + creative.name,
             budgetType: 'DAILY', budget: shared.budgetCents,
-            startTime: shared.startTime, endTime: 2146878847,
+            startTime: shared.startTime, endTime: shared.endTime,
             bidType: 'MAX_CONVERSION', trackingId, status: 'ON',
             targeting: {
               gender: { positive: genderSel },
@@ -2745,6 +2789,9 @@
     const dayKey = shiftDateKey(todayKeyLA(), startDaySel);
     const timeStr = document.getElementById('ccStartTime').value || '05:00';
     const startTime = laWallTimeToEpoch(dayKey, timeStr);
+    const endTime = endDaySel === null
+      ? 2146878847
+      : laWallTimeToEpoch(shiftDateKey(todayKeyLA(), endDaySel), document.getElementById('ccEndTime').value || '23:59');
     const headline = document.getElementById('ccHeadline').value.trim();
     const brandName = document.getElementById('ccBrandDefault').value.trim();
     const description = document.getElementById('ccDescription').value.trim();
@@ -2753,6 +2800,7 @@
     if (!selectedSubAccountIds.length) { ccLog('Marca pelo menos uma sub-conta.', 'err'); btn.disabled = false; return; }
     if (!selectedCreativeIds.length) { ccLog('Escolha pelo menos um criativo.', 'err'); btn.disabled = false; return; }
     if (!headline || !brandName || !description) { ccLog('Preenche título, marca padrão e descrição.', 'err'); btn.disabled = false; return; }
+    if (endTime <= startTime) { ccLog('A hora de término precisa ser depois da hora de início.', 'err'); btn.disabled = false; return; }
 
     const creatives = selectedCreativeIds.map(id => libraryItems.find(i => i.id === id)).filter(Boolean).map(item => {
       const isVideo = (item.contentType || '').indexOf('video') === 0;
@@ -2761,7 +2809,7 @@
     });
     if (!creatives.length) { ccLog('Os criativos selecionados não existem mais — escolha de novo.', 'err'); btn.disabled = false; return; }
 
-    const shared = { logoLibraryId: selectedLogoLibraryId, name, creatives, budgetCents, startTime, headline, brandName, description };
+    const shared = { logoLibraryId: selectedLogoLibraryId, name, creatives, budgetCents, startTime, endTime, headline, brandName, description };
     const accountsToRun = allSubAccounts.filter(a => selectedSubAccountIds.indexOf(a.id) !== -1);
 
     const total = (shared.logoLibraryId ? 1 : 0) + 1 + 1 + creatives.length * 3;
