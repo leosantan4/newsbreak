@@ -615,7 +615,7 @@
               <div class="form-field">
                 <label for="ccStartTime">Hora de início — fuso PDT</label>
                 <div class="time-with-brt">
-                  <input type="time" id="ccStartTime" value="05:00">
+                  <input type="time" id="ccStartTime" value="04:00">
                   <span class="cell-muted" id="ccStartTimeBrt"></span>
                 </div>
               </div>
@@ -626,7 +626,7 @@
               <div class="form-field">
                 <label for="ccEndTime">Hora de término — fuso PDT</label>
                 <div class="time-with-brt">
-                  <input type="time" id="ccEndTime" value="23:59" disabled>
+                  <input type="time" id="ccEndTime" value="20:00">
                   <span class="cell-muted" id="ccEndTimeBrt"></span>
                 </div>
               </div>
@@ -731,7 +731,7 @@
             <div class="cc-summary-row"><span class="cc-label">Nome</span><span class="cc-value" id="ccSumName">—</span></div>
             <div class="cc-summary-row"><span class="cc-label">Orçamento/dia</span><span class="cc-value" id="ccSumBudget">$200</span></div>
             <div class="cc-summary-row"><span class="cc-label">Início</span><span class="cc-value" id="ccSumStart">—</span></div>
-            <div class="cc-summary-row"><span class="cc-label">Fim</span><span class="cc-value" id="ccSumEnd">sem término</span></div>
+            <div class="cc-summary-row"><span class="cc-label">Fim</span><span class="cc-value" id="ccSumEnd">Hoje 20:00 PDT</span></div>
             <div class="cc-summary-row"><span class="cc-label">Segmentação</span><span class="cc-value" id="ccSumTargeting">—</span></div>
             <div class="cc-summary-row"><span class="cc-label">Criativos</span><span class="cc-value" id="ccSumCreative">nenhum</span></div>
             <div id="ccSumStatus"></div>
@@ -1727,7 +1727,7 @@
   let languageSel = ['en_us'];
   let networkSel = ['all'];
   let startDaySel = 0;
-  let endDaySel = null;
+  let endDaySel = 0;
 
   let mediaSearchQuery = '';
   let galleryOpenFolder = (function(){ const v = loadPref('galleryOpenFolder', '__root__'); return v === '__root__' ? null : v; })();
