@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-01T00:42:40.570944+00:00",
+  "generatedAt": "2026-10-01T03:01:55.819501+00:00",
   "accounts": {
     "vini": {
       "2026-08-20": {
@@ -881,16 +881,15 @@
       },
       "2026-09-30": {
         "date": "2026-09-30",
-        "cost": 721.05,
-        "click": 8169,
-        "cpc": 0.0883,
-        "ic": 32,
-        "custoIc": 22.53,
+        "cost": 871.62,
+        "click": 9859,
+        "cpc": 0.0884,
+        "ic": 34,
+        "custoIc": 25.64,
         "venda": 2,
         "faturamento": 530,
-        "cpa": 360.52,
-        "roas": 0.735,
-        "partial": true,
+        "cpa": 435.81,
+        "roas": 0.6081,
         "vendaSource": "redtrack"
       }
     },
@@ -948,16 +947,15 @@
       },
       "2026-09-30": {
         "date": "2026-09-30",
-        "cost": 1093.4,
-        "click": 9519,
-        "cpc": 0.1149,
-        "ic": 41,
-        "custoIc": 26.67,
-        "venda": 9,
-        "faturamento": 2385,
-        "cpa": 121.49,
-        "roas": 2.1813,
-        "partial": true,
+        "cost": 1523.05,
+        "click": 12802,
+        "cpc": 0.119,
+        "ic": 47,
+        "custoIc": 32.41,
+        "venda": 10,
+        "faturamento": 2650,
+        "cpa": 152.31,
+        "roas": 1.7399,
         "vendaSource": "redtrack"
       }
     }
@@ -4642,7 +4640,7 @@
           "id": "2105250810635599873",
           "name": "C6-177 - 30/09 - 1-3-1 - 0013",
           "status": "ON",
-          "onlineStatus": "ACTIVE",
+          "onlineStatus": "COMPLETED",
           "budget": 1000.0,
           "budgetType": "DAILY",
           "adsOn": 1,
@@ -4653,7 +4651,7 @@
           "id": "2105250798157545474",
           "name": "C6-177 - 30/09 - 1-3-1 - 0071",
           "status": "OFF",
-          "onlineStatus": "INACTIVE",
+          "onlineStatus": "COMPLETED",
           "budget": 200.0,
           "budgetType": "DAILY",
           "adsOn": 0,
@@ -4664,7 +4662,7 @@
           "id": "2105250782571511809",
           "name": "C6-177 - 30/09 - 1-3-1 - 0070",
           "status": "OFF",
-          "onlineStatus": "INACTIVE",
+          "onlineStatus": "COMPLETED",
           "budget": 200.0,
           "budgetType": "DAILY",
           "adsOn": 0,
@@ -4990,7 +4988,7 @@
           "id": "2105251140689575938",
           "name": "C6-426 - 30/09 - 1-3-1 - 0064",
           "status": "OFF",
-          "onlineStatus": "INACTIVE",
+          "onlineStatus": "COMPLETED",
           "budget": 200.0,
           "budgetType": "DAILY",
           "adsOn": 0,
@@ -5001,7 +4999,7 @@
           "id": "2105251132607152129",
           "name": "C6-426 - 30/09 - 1-3-1 - 0073",
           "status": "OFF",
-          "onlineStatus": "INACTIVE",
+          "onlineStatus": "COMPLETED",
           "budget": 200.0,
           "budgetType": "DAILY",
           "adsOn": 0,
@@ -5012,7 +5010,7 @@
           "id": "2105251124449230849",
           "name": "C6-426 - 30/09 - 1-3-1 - 0072",
           "status": "OFF",
-          "onlineStatus": "INACTIVE",
+          "onlineStatus": "COMPLETED",
           "budget": 1000.0,
           "budgetType": "DAILY",
           "adsOn": 0,
@@ -5311,7 +5309,7 @@
           "id": "2105251404132298754",
           "name": "C4-993 - 30/09 - 1-3-1 - 0063",
           "status": "ON",
-          "onlineStatus": "ACTIVE",
+          "onlineStatus": "COMPLETED",
           "budget": 1000.0,
           "budgetType": "DAILY",
           "adsOn": 1,
@@ -5322,7 +5320,7 @@
           "id": "2105251395999543298",
           "name": "C4-993 - 30/09 - 1-3-1 - 0075",
           "status": "OFF",
-          "onlineStatus": "INACTIVE",
+          "onlineStatus": "COMPLETED",
           "budget": 500.0,
           "budgetType": "DAILY",
           "adsOn": 0,
@@ -5333,7 +5331,7 @@
           "id": "2105251387170533377",
           "name": "C4-993 - 30/09 - 1-3-1 - 0074",
           "status": "ON",
-          "onlineStatus": "ACTIVE",
+          "onlineStatus": "COMPLETED",
           "budget": 1000.0,
           "budgetType": "DAILY",
           "adsOn": 1,
@@ -5507,7 +5505,7 @@
           "id": "2105252225637068801",
           "name": "C4-018 - 30/09 - 1-3-1 - 0077",
           "status": "OFF",
-          "onlineStatus": "INACTIVE",
+          "onlineStatus": "COMPLETED",
           "budget": 200.0,
           "budgetType": "DAILY",
           "adsOn": 0,
@@ -5518,7 +5516,7 @@
           "id": "2105252213624582146",
           "name": "C4-018 - 30/09 - 1-3-1 - 0076",
           "status": "OFF",
-          "onlineStatus": "INACTIVE",
+          "onlineStatus": "COMPLETED",
           "budget": 200.0,
           "budgetType": "DAILY",
           "adsOn": 0,
@@ -5529,7 +5527,7 @@
           "id": "2105252199921790978",
           "name": "C4-018 - 30/09 - 1-3-1 - 0069",
           "status": "ON",
-          "onlineStatus": "ACTIVE",
+          "onlineStatus": "COMPLETED",
           "budget": 1000.0,
           "budgetType": "DAILY",
           "adsOn": 1,
@@ -6043,7 +6041,7 @@
         "2026-09-27": 239.66,
         "2026-09-28": 304.06,
         "2026-09-29": 615.75,
-        "2026-09-30": 331.9
+        "2026-09-30": 445.57
       },
       "accountKey": "alan",
       "displayName": "[Agency Aurora] Alan 1"
@@ -6056,7 +6054,7 @@
         "2026-09-27": 71.25,
         "2026-09-28": 1055.85,
         "2026-09-29": 254.64,
-        "2026-09-30": 389.14
+        "2026-09-30": 426.05
       },
       "accountKey": "alan",
       "displayName": "[Agency Aurora] Alan 2"
@@ -6068,7 +6066,7 @@
         "2026-09-27": 783.51,
         "2026-09-28": 3.57,
         "2026-09-29": 466.01,
-        "2026-09-30": 555.19
+        "2026-09-30": 801.71
       },
       "accountKey": "troya",
       "displayName": "[Agency Aurora] Troya"
@@ -6079,7 +6077,7 @@
         "2026-09-27": 296.8,
         "2026-09-28": 556.07,
         "2026-09-29": 699.64,
-        "2026-09-30": 538.22
+        "2026-09-30": 721.34
       },
       "accountKey": "troya",
       "displayName": "[Agency Aurora] Troya 2"
