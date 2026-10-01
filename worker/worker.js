@@ -323,6 +323,30 @@ async function rtFetchReport(env, dateFrom, dateTo) {
   return resp.json();
 }
 
+async function rtFetchRegionReport(env, dateFrom, dateTo) {
+  const qs = new URLSearchParams({
+    api_key: env.REDTRACK_API_KEY,
+    group: "region",
+    date_from: dateFrom,
+    date_to: dateTo,
+    timezone: "America/Sao_Paulo",
+  });
+  const resp = await fetch(`https://api.redtrack.io/report?${qs}`);
+  if (!resp.ok) throw new Error(`redtrack region report -> ${resp.status}`);
+  return resp.json();
+}
+
+async function computeVendasPorEstado(env, dateFrom, dateTo) {
+  const rows = await rtFetchRegionReport(env, dateFrom, dateTo);
+  const states = rows
+    .map((r) => ({ region: r.region, vendas: r.convtype1 || 0, faturamento: round2(r.revenuetype1 || 0) }))
+    .filter((s) => s.vendas > 0)
+    .sort((a, b) => b.vendas - a.vendas);
+  const totalVendas = states.reduce((a, s) => a + s.vendas, 0);
+  const totalFaturamento = round2(states.reduce((a, s) => a + s.faturamento, 0));
+  return { dateFrom, dateTo, states, totalVendas, totalFaturamento, generatedAt: new Date().toISOString() };
+}
+
 async function computeLivePainel(env) {
   const today = todayKeySaoPaulo();
   let rtByAccount = {};
@@ -767,6 +791,18 @@ export default {
         return json(stats, 200, origin);
       } catch (e) {
         return json({ error: "vturb_fetch_failed" }, 502, origin);
+      }
+    }
+
+    if (url.pathname === "/live/vendas-estado" && request.method === "GET") {
+      try {
+        const today = todayKeySaoPaulo();
+        const dateFrom = url.searchParams.get("date_from") || today;
+        const dateTo = url.searchParams.get("date_to") || today;
+        const data = await getCached(env, `vendas_estado:${dateFrom}:${dateTo}`, 600, () => computeVendasPorEstado(env, dateFrom, dateTo));
+        return json(data, 200, origin);
+      } catch (e) {
+        return json({ error: "vendas_estado_failed", detail: String(e.message || e) }, 502, origin);
       }
     }
 
