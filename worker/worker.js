@@ -514,6 +514,111 @@ async function nbSetAdSetBudget(token, adSetId, budgetCents, budgetType) {
   return nbApi(token, `ad-set/update/${adSetId}`, { method: "PUT", body: JSON.stringify(body) });
 }
 
+function concatUint8(chunks) {
+  let total = 0;
+  for (const c of chunks) total += c.length;
+  const out = new Uint8Array(total);
+  let offset = 0;
+  for (const c of chunks) { out.set(c, offset); offset += c.length; }
+  return out;
+}
+
+// Strips EXIF/IPTC/comment metadata from a JPEG by dropping APP1 (EXIF/XMP),
+// APP13 (Photoshop IPTC) and COM segments. Pure marker-level surgery — the
+// entropy-coded image data after SOS is copied verbatim, so pixels never
+// get re-encoded.
+function stripJpegMetadata(buf) {
+  if (buf.length < 4 || buf[0] !== 0xff || buf[1] !== 0xd8) return buf;
+  const chunks = [buf.subarray(0, 2)];
+  let i = 2;
+  const standalone = (m) => m === 0x01 || (m >= 0xd0 && m <= 0xd7);
+  const dropMarkers = new Set([0xe1, 0xed, 0xfe]); // APP1 (EXIF/XMP), APP13 (Photoshop/IPTC), COM
+  while (i + 1 < buf.length) {
+    if (buf[i] !== 0xff) { i++; continue; }
+    const marker = buf[i + 1];
+    if (marker === 0xff) { i++; continue; } // fill byte before real marker
+    if (marker === 0xd9) { chunks.push(buf.subarray(i, i + 2)); return concatUint8(chunks); }
+    if (standalone(marker)) { chunks.push(buf.subarray(i, i + 2)); i += 2; continue; }
+    if (i + 3 >= buf.length) break;
+    const len = (buf[i + 2] << 8) | buf[i + 3];
+    const segEnd = i + 2 + len;
+    if (segEnd > buf.length) break;
+    if (marker === 0xda) { // start of scan — header plus everything after is image data, copy as-is
+      chunks.push(buf.subarray(i, segEnd));
+      chunks.push(buf.subarray(segEnd));
+      return concatUint8(chunks);
+    }
+    if (!dropMarkers.has(marker)) chunks.push(buf.subarray(i, segEnd));
+    i = segEnd;
+  }
+  return buf; // unexpected structure — return original rather than risk a corrupt file
+}
+
+// Strips text/metadata chunks (tEXt, zTXt, iTXt, eXIf, tIME) from a PNG.
+// Critical chunks (IHDR/PLTE/IDAT/IEND) and color-affecting ancillary ones
+// (gAMA/iCCP/sRGB/etc.) are left untouched.
+function stripPngMetadata(buf) {
+  const sig = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+  if (buf.length < 8 || !sig.every((b, idx) => buf[idx] === b)) return buf;
+  const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+  const td = (o) => String.fromCharCode(buf[o], buf[o + 1], buf[o + 2], buf[o + 3]);
+  const chunks = [buf.subarray(0, 8)];
+  let i = 8;
+  const drop = new Set(["tEXt", "zTXt", "iTXt", "eXIf", "tIME"]);
+  while (i + 8 <= buf.length) {
+    const len = dv.getUint32(i);
+    const type = td(i + 4);
+    const chunkEnd = i + 12 + len;
+    if (chunkEnd > buf.length) break;
+    if (!drop.has(type)) chunks.push(buf.subarray(i, chunkEnd));
+    i = chunkEnd;
+    if (type === "IEND") break;
+  }
+  return concatUint8(chunks);
+}
+
+// Strips EXIF/XMP RIFF chunks from a WebP, rewriting the outer RIFF size.
+function stripWebpMetadata(buf) {
+  if (buf.length < 12) return buf;
+  const td = (o) => String.fromCharCode(buf[o], buf[o + 1], buf[o + 2], buf[o + 3]);
+  if (td(0) !== "RIFF" || td(8) !== "WEBP") return buf;
+  const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+  const chunks = [];
+  let i = 12;
+  const drop = new Set(["EXIF", "XMP "]);
+  while (i + 8 <= buf.length) {
+    const fourcc = td(i);
+    const size = dv.getUint32(i + 4, true);
+    const padded = size + (size % 2);
+    const chunkEnd = i + 8 + padded;
+    if (chunkEnd > buf.length) break;
+    if (!drop.has(fourcc)) chunks.push(buf.subarray(i, chunkEnd));
+    i = chunkEnd;
+  }
+  const body = concatUint8(chunks);
+  const out = new Uint8Array(12 + body.length);
+  out.set(buf.subarray(0, 4), 0);
+  new DataView(out.buffer).setUint32(4, 4 + body.length, true);
+  out.set(buf.subarray(8, 12), 8);
+  out.set(body, 12);
+  return out;
+}
+
+// Strips any metadata we know how to parse safely for the given content
+// type. Falls back to the original bytes untouched (video, GIF, or any
+// parse failure) rather than risk sending NewsBreak a corrupt asset.
+function stripMetadataBytes(bytes, contentType) {
+  const buf = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  try {
+    if (contentType === "image/jpeg" || contentType === "image/jpg") return stripJpegMetadata(buf);
+    if (contentType === "image/png") return stripPngMetadata(buf);
+    if (contentType === "image/webp") return stripWebpMetadata(buf);
+  } catch (e) {
+    return buf;
+  }
+  return buf;
+}
+
 async function nbUploadAsset(token, { adAccountId, bytes, filename, contentType, mediaName }) {
   const form = new FormData();
   form.append("asset", new Blob([bytes], { type: contentType }), filename);
@@ -966,8 +1071,9 @@ export default {
         const items = await loadLibrary(env);
         const meta = items.find((i) => i.id === body.libraryId);
         if (!meta) return json({ error: "library_item_not_found" }, 404, origin);
-        const bytes = await env.COSTS_KV.get(`library-blob:${body.libraryId}`, { type: "arrayBuffer" });
-        if (!bytes) return json({ error: "library_item_not_found" }, 404, origin);
+        const rawBytes = await env.COSTS_KV.get(`library-blob:${body.libraryId}`, { type: "arrayBuffer" });
+        if (!rawBytes) return json({ error: "library_item_not_found" }, 404, origin);
+        const bytes = stripMetadataBytes(rawBytes, meta.contentType);
         const uploaded = await nbUploadAsset(token, {
           adAccountId: body.adAccountId,
           bytes,
