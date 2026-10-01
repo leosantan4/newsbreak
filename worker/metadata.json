@@ -1,0 +1,8 @@
+{
+  "main_module": "worker.js",
+  "compatibility_date": "2024-09-01",
+  "bindings": [
+    {"type": "kv_namespace", "name": "COSTS_KV", "namespace_id": "930b5902783b4f82be59067eb98447ee"},
+    {"type": "plain_text", "name": "ALLOWED_ORIGIN", "text": "https://leosantan4.github.io"}
+  ]
+}
