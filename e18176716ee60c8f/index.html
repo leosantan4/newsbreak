@@ -167,8 +167,9 @@
   .cc-selected-preview .media-item img, .cc-selected-preview .media-item video{width:100%; height:auto; max-height:200px; object-fit:contain; display:block;}
   .cc-selected-preview .media-name{display:none;}
   .use-btn{border:none; background:none; color:var(--accent); cursor:pointer; font-size:12px; font-weight:600; padding:2px 8px;}
-  .cc-multi-preview-group{margin-bottom:12px;}
+  .cc-multi-preview-group{margin-bottom:12px; border:2px dashed var(--line); border-radius:var(--radius-sm); padding:10px; transition:border-color .12s, background-color .12s;}
   .cc-multi-preview-group:last-child{margin-bottom:0;}
+  .cc-multi-preview-group.drag-over{border-color:var(--accent); background:color-mix(in srgb, var(--accent) 8%, transparent);}
   .cc-multi-preview-group .cc-multi-preview-label{font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin-bottom:6px;}
   .cc-multi-preview-group .cc-multi-preview-empty{font-size:12px; color:var(--muted);}
 
@@ -2526,8 +2527,6 @@
     const el = document.getElementById('ccMultiPreview');
     const multi = selectedSubAccountIds.length > 1;
     if (!multi) { wrap.hidden = true; return; }
-    const anyCreatives = selectedSubAccountIds.some(id => (accountCampaigns[id] || {}).creativeIds && accountCampaigns[id].creativeIds.length);
-    if (!anyCreatives) { wrap.hidden = true; return; }
     wrap.hidden = false;
     el.innerHTML = selectedSubAccountIds.map(id => {
       const acc = allSubAccounts.find(a => a.id === id);
@@ -2535,12 +2534,27 @@
       const items = camp.creativeIds.map(cid => libraryItems.find(i => i.id === cid)).filter(Boolean);
       const body = items.length
         ? '<div class="cc-selected-preview">' + items.map(it => mediaItemHtml(it)).join('') + '</div>'
-        : '<div class="cc-multi-preview-empty">nenhum ainda</div>';
-      return '<div class="cc-multi-preview-group" data-account-id="' + id + '">' +
+        : '<div class="cc-multi-preview-empty">arraste criativos aqui</div>';
+      return '<div class="cc-multi-preview-group" data-account-id="' + id + '" data-drop-account="' + id + '">' +
         '<div class="cc-multi-preview-label">' + (acc ? subAccountLabel(acc) : id) + '</div>' +
         body +
       '</div>';
     }).join('');
+    el.querySelectorAll('[data-drop-account]').forEach(zone => {
+      zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('drag-over'); });
+      zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+      zone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        zone.classList.remove('drag-over');
+        const cid = e.dataTransfer.getData('text/plain');
+        const accId = zone.dataset.dropAccount;
+        const camp = accountCampaigns[accId];
+        if (camp && cid && camp.creativeIds.indexOf(cid) === -1) camp.creativeIds.push(cid);
+        renderAccountCampaignBlocks();
+        renderMediaGrid();
+        renderCcSummary();
+      });
+    });
     el.querySelectorAll('.media-item').forEach(node => node.addEventListener('click', () => {
       const cid = node.dataset.id;
       const accId = node.closest('.cc-multi-preview-group').dataset.accountId;
