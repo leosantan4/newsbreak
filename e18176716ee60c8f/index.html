@@ -163,10 +163,6 @@
   .select-all-btn{border:1px solid var(--line); background:var(--surface-raised); color:var(--ink); font:inherit; font-weight:600; font-size:11.5px; padding:6px 13px; border-radius:var(--radius-xs); cursor:pointer; flex:none; white-space:nowrap;}
   .select-all-btn:hover{border-color:var(--accent);}
   .cc-selected-preview{display:grid; grid-template-columns:repeat(auto-fill,minmax(70px,1fr)); gap:7px; align-items:start;}
-  #ccMediaPoolCard .creative-search{padding:0 0 10px;}
-  #ccMediaPoolCard .media-grid-note-row{padding-right:0;}
-  #ccMediaPoolCard .media-grid-note{font-size:11px;}
-  .cc-pool-grid{grid-template-columns:repeat(auto-fill,minmax(90px,1fr)); padding:10px 0 0; max-height:380px; overflow-y:auto;}
   .cc-selected-preview .media-item{border-width:1px; aspect-ratio:auto; height:auto; display:block;}
   .cc-selected-preview .media-item img, .cc-selected-preview .media-item video{width:100%; height:auto; max-height:200px; object-fit:contain; display:block;}
   .cc-selected-preview .media-name{display:none;}
@@ -193,7 +189,9 @@
   .account-select-chevron{color:var(--muted); font-size:12px; transition:transform .15s ease; flex:none;}
   .account-select.open .account-select-chevron{transform:rotate(180deg);}
   .account-select.open .account-select-trigger{border-color:var(--accent);}
-  .account-select-dropdown{background:var(--bg); border:1px solid var(--line); border-radius:var(--radius-md); max-height:320px; overflow-y:auto; margin:8px 0 0; padding:10px;}
+  .account-select-dropdown{background:var(--bg); border:1px solid var(--line); border-radius:var(--radius-md) var(--radius-md) 0 0; max-height:320px; overflow-y:auto; margin:8px 0 0; padding:10px;}
+  .account-select-footer{background:var(--bg); border:1px solid var(--line); border-top:none; border-radius:0 0 var(--radius-md) var(--radius-md); padding:8px 10px; display:flex; justify-content:flex-end;}
+  .account-select-footer button{border:none; background:var(--accent); color:var(--accent-ink); font:inherit; font-weight:700; font-size:12.5px; padding:7px 18px; border-radius:var(--radius-sm); cursor:pointer;}
   .cc-account-blocks{display:flex; flex-direction:column; gap:10px;}
   .cc-account-block{border:1px solid var(--line); border-radius:var(--radius-md); background:var(--bg); padding:12px 14px;}
   .cc-block-head{font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin-bottom:6px;}
@@ -604,6 +602,9 @@
                 <span class="account-select-chevron">▾</span>
               </button>
               <div class="account-picker account-select-dropdown" id="ccSubAccounts" hidden></div>
+              <div class="account-select-footer" id="accountSelectFooter" hidden>
+                <button type="button" id="accountSelectOkBtn">OK</button>
+              </div>
             </div>
             <div class="form-grid">
               <div class="form-field span2" id="ccNameFieldWrap">
@@ -690,10 +691,12 @@
             </div>
             <div class="media-grid-note" id="logoGridNote"></div>
             <div class="media-grid logo-preview-grid" id="logoGrid"></div>
-            <div style="padding:0 18px 16px; display:flex; gap:10px; align-items:center;">
-              <button type="button" id="ccBrandSaveBtn" style="border:none; background:var(--accent); color:var(--accent-ink); font:inherit; font-weight:600; font-size:13px; padding:9px 16px; border-radius:var(--radius-sm); cursor:pointer;">Salvar</button>
+            <div style="padding:0 18px 16px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+              <button type="button" id="ccBrandSaveBtn" style="border:none; background:var(--accent); color:var(--accent-ink); font:inherit; font-weight:600; font-size:13px; padding:9px 16px; border-radius:var(--radius-sm); cursor:pointer;">Salvar como padrão</button>
+              <button type="button" id="brandPresetSaveBtn" style="border:none; background:var(--surface-raised); color:var(--ink); border:1px solid var(--line); font:inherit; font-weight:600; font-size:12.5px; padding:8px 14px; border-radius:var(--radius-sm); cursor:pointer;">+ salvar marca/logo como preset</button>
               <span class="cell-muted" id="ccBrandSaveNote"></span>
             </div>
+            <div class="table-scroll" id="brandPresetsTableWrap"></div>
           </section>
 
           <section class="panel">
@@ -726,6 +729,20 @@
               <span class="cell-muted" id="presetSaveNote"></span>
             </div>
             <div class="table-scroll" id="presetsTableWrap"></div>
+
+            <div class="step-head" style="margin-top:8px;">
+              <div class="step-head-left"><span class="step-title" style="font-size:13px;">Imagem do anúncio</span></div>
+              <span class="step-desc">digite o nome do anúncio pra achar na galeria — nada é exibido até você digitar. Suba criativos novos na aba "Galeria de anúncios"</span>
+            </div>
+            <div class="creative-search">
+              <input type="text" id="mediaSearchInput" list="mediaNamesList" placeholder="Digite o nome/número do anúncio…">
+              <datalist id="mediaNamesList"></datalist>
+            </div>
+            <div class="media-grid-note-row">
+              <div class="media-grid-note" id="mediaGridNote"></div>
+              <button type="button" id="mediaSelectAllBtn" class="select-all-btn" hidden></button>
+            </div>
+            <div class="media-grid" id="mediaGrid"></div>
           </section>
         </div>
 
@@ -755,19 +772,6 @@
           <div class="cc-card" id="ccSelectedPreviewWrap" hidden>
             <h3>Anúncios selecionados</h3>
             <div class="cc-selected-preview" id="ccSelectedPreview"></div>
-          </div>
-          <div class="cc-card" id="ccMediaPoolCard">
-            <h3>Imagem do anúncio</h3>
-            <span class="cell-muted" style="font-size:11.5px; display:block; margin-bottom:10px;">digite o nome do anúncio pra achar na galeria — nada é exibido até você digitar. Suba criativos novos na aba "Galeria de anúncios"</span>
-            <div class="creative-search">
-              <input type="text" id="mediaSearchInput" list="mediaNamesList" placeholder="Digite o nome/número do anúncio…">
-              <datalist id="mediaNamesList"></datalist>
-            </div>
-            <div class="media-grid-note-row">
-              <div class="media-grid-note" id="mediaGridNote"></div>
-              <button type="button" id="mediaSelectAllBtn" class="select-all-btn" hidden></button>
-            </div>
-            <div class="media-grid cc-pool-grid" id="mediaGrid"></div>
           </div>
         </div>
         </aside>
@@ -901,6 +905,7 @@
   const NICHES_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/niches';
   const NB_TRACKING_ID_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/nb/tracking-id';
   const CC_SETTINGS_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/cc-settings';
+  const BRAND_PRESETS_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/brand-presets';
   const ACCOUNT_SETTINGS_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/account-settings';
   const ACCOUNTS_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/accounts';
   const NB_ENTITY_STATUS_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/nb/entity-status';
@@ -1737,6 +1742,7 @@
   let selectedCreativeIds = [];
   let selectedLogoLibraryId = null;
   let copyPresets = [];
+  let brandPresets = [];
   let ccLinks = {};
   let allSubAccounts = [];
   let subAccountsLoaded = false;
@@ -2254,6 +2260,58 @@
       .catch(() => { note.textContent = 'Falhou — tenta de novo.'; });
   });
 
+  function loadBrandPresets(){
+    return fetch(BRAND_PRESETS_API, { cache: 'no-store' }).then(r => r.json()).then(json => {
+      brandPresets = json.items || [];
+      renderBrandPresetsTable();
+    }).catch(() => {});
+  }
+
+  function useBrandPreset(id){
+    const p = brandPresets.find(x => x.id === id);
+    if (!p) return;
+    document.getElementById('ccBrandDefault').value = p.brandName;
+    selectedLogoLibraryId = p.logoLibraryId;
+    updateSelectedLogoLabel();
+    renderLogoGrid();
+  }
+
+  function renderBrandPresetsTable(){
+    const wrap = document.getElementById('brandPresetsTableWrap');
+    if (!brandPresets.length){ wrap.innerHTML = '<div class="empty-state">Nenhum preset de marca/logo salvo ainda.</div>'; return; }
+    const rows = brandPresets.map(p =>
+      '<tr><td>' + p.brandName + '</td><td>' + (p.logoLabel || '—') + '</td>' +
+      '<td class="num"><button type="button" class="use-btn" data-use-brand-preset="' + p.id + '">usar</button> <button class="remove-btn" data-brand-preset-id="' + p.id + '">remover</button></td></tr>'
+    ).join('');
+    wrap.innerHTML = '<table><thead><tr><th style="text-align:left;">Marca</th><th style="text-align:left;">Logo</th><th></th></tr></thead><tbody>' + rows + '</tbody></table>';
+    wrap.querySelectorAll('[data-brand-preset-id]').forEach(btn => btn.addEventListener('click', () => deleteBrandPreset(btn.dataset.brandPresetId)));
+    wrap.querySelectorAll('[data-use-brand-preset]').forEach(btn => btn.addEventListener('click', () => useBrandPreset(btn.dataset.useBrandPreset)));
+  }
+
+  function deleteBrandPreset(id){
+    fetch(BRAND_PRESETS_API + '/' + id, { method: 'DELETE', headers: { 'X-Access-Key': COSTS_API_KEY } })
+      .then(r => r.json())
+      .then(json => { brandPresets = json.items || []; renderBrandPresetsTable(); })
+      .catch(() => {});
+  }
+
+  document.getElementById('brandPresetSaveBtn').addEventListener('click', () => {
+    const brandName = document.getElementById('ccBrandDefault').value.trim();
+    const note = document.getElementById('ccBrandSaveNote');
+    if (!brandName){ note.textContent = 'Preenche a marca primeiro.'; return; }
+    if (!selectedLogoLibraryId){ note.textContent = 'Seleciona um logo primeiro.'; return; }
+    const logoItem = libraryItems.find(i => i.id === selectedLogoLibraryId);
+    note.textContent = 'Salvando…';
+    fetch(BRAND_PRESETS_API, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY },
+      body: JSON.stringify({ brandName, logoLibraryId: selectedLogoLibraryId, logoLabel: logoItem ? logoItem.name : '' }),
+    }).then(r => r.json()).then(json => {
+      brandPresets = json.items || [];
+      renderBrandPresetsTable();
+      note.textContent = '';
+    }).catch(() => { note.textContent = 'Falhou — tenta de novo.'; });
+  });
+
   // ---- Presets de título/descrição (usados no Anúncio) ----
   function loadCopyPresets(){
     return fetch(COPY_PRESETS_API, { cache: 'no-store' }).then(r => r.json()).then(json => {
@@ -2368,6 +2426,7 @@
     else label.textContent = accs.length + ' contas selecionadas';
     document.getElementById('accountSelectWrap').classList.toggle('open', accountSelectOpen);
     document.getElementById('ccSubAccounts').hidden = !accountSelectOpen;
+    document.getElementById('accountSelectFooter').hidden = !accountSelectOpen;
   }
 
   function toggleAccountSelect(open){
@@ -2778,11 +2837,7 @@
     renderEndDayPills();
     initTargetingPills();
     document.getElementById('accountSelectTrigger').addEventListener('click', () => toggleAccountSelect());
-    document.addEventListener('click', (e) => {
-      if (!accountSelectOpen) return;
-      const wrap = document.getElementById('accountSelectWrap');
-      if (wrap && !wrap.contains(e.target)) toggleAccountSelect(false);
-    });
+    document.getElementById('accountSelectOkBtn').addEventListener('click', () => toggleAccountSelect(false));
     loadNiches().then(() => {
       renderNicheSelect();
       renderMediaGrid();
@@ -2791,6 +2846,7 @@
     });
     loadLibraryItems();
     loadCopyPresets();
+    loadBrandPresets();
     loadCcSettings().then(renderCcSummary);
     loadAllSubAccounts().then(() => loadCcLinks().then(renderCcSummary));
     ['ccName', 'ccBudget', 'ccStartTime', 'ccEndTime', 'ccHeadline', 'ccBrandDefault', 'ccDescription'].forEach(id => {

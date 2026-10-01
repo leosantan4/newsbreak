@@ -146,6 +146,14 @@ async function saveCcSettings(env, settings) {
   await env.COSTS_KV.put("cc_settings", JSON.stringify(settings));
 }
 
+async function loadBrandPresets(env) {
+  const raw = await env.COSTS_KV.get("brand_presets");
+  return raw ? JSON.parse(raw) : [];
+}
+async function saveBrandPresets(env, items) {
+  await env.COSTS_KV.put("brand_presets", JSON.stringify(items));
+}
+
 async function loadAccountSettings(env) {
   const raw = await env.COSTS_KV.get("account_settings");
   return raw ? JSON.parse(raw) : {};
@@ -988,6 +996,42 @@ export default {
       };
       await saveCcSettings(env, settings);
       return json({ settings }, 200, origin);
+    }
+
+    if (url.pathname === "/brand-presets" && request.method === "GET") {
+      const items = await loadBrandPresets(env);
+      return json({ items }, 200, origin);
+    }
+
+    if (url.pathname === "/brand-presets" && request.method === "POST") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      let body;
+      try { body = await request.json(); } catch { return json({ error: "invalid_json" }, 400, origin); }
+      const { brandName, logoLibraryId, logoLabel } = body || {};
+      if (!brandName || !logoLibraryId) return json({ error: "invalid_fields" }, 400, origin);
+      const items = await loadBrandPresets(env);
+      const entry = {
+        id: crypto.randomUUID(),
+        brandName: String(brandName).slice(0, 100),
+        logoLibraryId: String(logoLibraryId),
+        logoLabel: String(logoLabel || "").slice(0, 100),
+        createdAt: new Date().toISOString(),
+      };
+      items.push(entry);
+      await saveBrandPresets(env, items);
+      return json({ items }, 201, origin);
+    }
+
+    if (url.pathname.startsWith("/brand-presets/") && request.method === "DELETE") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      const id = url.pathname.split("/")[2];
+      if (!id) return json({ error: "missing_id" }, 400, origin);
+      const items = await loadBrandPresets(env);
+      const next = items.filter((i) => i.id !== id);
+      await saveBrandPresets(env, next);
+      return json({ items: next }, 200, origin);
     }
 
     if (url.pathname === "/account-settings" && request.method === "GET") {
