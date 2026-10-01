@@ -200,12 +200,7 @@
   .cc-account-blocks{display:flex; flex-direction:column; gap:10px;}
   .cc-account-block{border:1px solid var(--line); border-radius:var(--radius-md); background:var(--bg); padding:12px 14px;}
   .cc-block-head{font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin-bottom:6px;}
-  .cc-block-name{width:100%; border:1px solid var(--line); border-radius:var(--radius-sm); padding:8px 10px; font:inherit; font-size:13px; background:var(--surface-raised); color:var(--ink); margin-bottom:10px;}
-  .cc-block-drop{min-height:44px; border:2px dashed var(--line); border-radius:var(--radius-sm); padding:8px; display:flex; flex-wrap:wrap; align-items:center; gap:6px; transition:border-color .12s, background-color .12s;}
-  .cc-block-drop.drag-over{border-color:var(--accent); background:color-mix(in srgb, var(--accent) 8%, transparent);}
-  .cc-block-chip{display:inline-flex; align-items:center; gap:6px; background:var(--surface-raised); border:1px solid var(--line); border-radius:999px; padding:4px 6px 4px 11px; font-size:12px; font-weight:600;}
-  .cc-block-chip button{border:none; background:none; cursor:pointer; color:var(--muted); font-size:14px; line-height:1; padding:2px;}
-  .cc-block-chip button:hover{color:var(--bad);}
+  .cc-block-name{width:100%; border:1px solid var(--line); border-radius:var(--radius-sm); padding:8px 10px; font:inherit; font-size:13px; background:var(--surface-raised); color:var(--ink);}
   .media-item[draggable="true"]{cursor:grab;}
   .media-item[draggable="true"]:active{cursor:grabbing;}
   .accounts-list{display:flex; flex-direction:column; gap:10px; padding:16px 18px;}
@@ -714,7 +709,7 @@
                 <div class="pill-row" id="ccNichePills"></div>
               </div>
               <div class="form-field span2" id="ccAccountBlocksWrap" hidden>
-                <label>Campanhas por conta — arraste os criativos da pasta (mais abaixo) pra dentro da conta desejada</label>
+                <label>Campanhas por conta — edite o nome de cada uma (os criativos são arrastados pro card "Anúncios por conta", na lateral)</label>
                 <div id="ccAccountBlocks" class="cc-account-blocks"></div>
               </div>
               <div class="form-field span2" id="ccSingleCreativeNote">
@@ -2474,17 +2469,9 @@
     wrap.innerHTML = selectedSubAccountIds.map(id => {
       const acc = allSubAccounts.find(a => a.id === id);
       const camp = accountCampaigns[id] || { name: '', creativeIds: [] };
-      const chips = camp.creativeIds.map(cid => {
-        const item = libraryItems.find(i => i.id === cid);
-        const label = (item ? item.name : cid).replace(/"/g, '&quot;');
-        return '<span class="cc-block-chip">' + label + '<button type="button" data-remove-chip="' + cid + '" data-account-id="' + id + '">×</button></span>';
-      }).join('');
       return '<div class="cc-account-block">' +
         '<div class="cc-block-head">' + (acc ? subAccountLabel(acc) : id) + '</div>' +
         '<input type="text" class="cc-block-name" data-account-id="' + id + '" value="' + (camp.name || '').replace(/"/g, '&quot;') + '">' +
-        '<div class="cc-block-drop" data-drop-account="' + id + '">' +
-          (chips || '<span class="cell-muted">arraste criativos aqui</span>') +
-        '</div>' +
       '</div>';
     }).join('');
 
@@ -2493,33 +2480,6 @@
       if (accountCampaigns[id]) accountCampaigns[id].name = e.target.value;
       renderCcSummary();
     }));
-    wrap.querySelectorAll('[data-remove-chip]').forEach(btn => btn.addEventListener('click', () => {
-      const accId = btn.dataset.accountId;
-      const cid = btn.dataset.removeChip;
-      const camp = accountCampaigns[accId];
-      if (camp) {
-        const idx = camp.creativeIds.indexOf(cid);
-        if (idx !== -1) camp.creativeIds.splice(idx, 1);
-      }
-      renderAccountCampaignBlocks();
-      renderMediaGrid();
-      renderCcSummary();
-    }));
-    wrap.querySelectorAll('[data-drop-account]').forEach(zone => {
-      zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('drag-over'); });
-      zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
-      zone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        zone.classList.remove('drag-over');
-        const cid = e.dataTransfer.getData('text/plain');
-        const accId = zone.dataset.dropAccount;
-        const camp = accountCampaigns[accId];
-        if (camp && cid && camp.creativeIds.indexOf(cid) === -1) camp.creativeIds.push(cid);
-        renderAccountCampaignBlocks();
-        renderMediaGrid();
-        renderCcSummary();
-      });
-    });
   }
 
   function renderMultiPreview(){
