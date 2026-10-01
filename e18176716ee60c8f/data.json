@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-01T21:16:59.021309+00:00",
+  "generatedAt": "2026-10-01T23:19:35.570761+00:00",
   "accounts": {
     "vini": {
       "2026-08-20": {
@@ -974,15 +974,15 @@
       },
       "2026-10-01": {
         "date": "2026-10-01",
-        "cost": 356.66,
-        "click": 2361,
-        "cpc": 0.1511,
-        "ic": 6,
-        "custoIc": 59.44,
-        "venda": 2,
-        "faturamento": 515,
-        "cpa": 178.33,
-        "roas": 1.444,
+        "cost": 556.88,
+        "click": 3531,
+        "cpc": 0.1577,
+        "ic": 12,
+        "custoIc": 46.41,
+        "venda": 3,
+        "faturamento": 780,
+        "cpa": 185.63,
+        "roas": 1.4007,
         "partial": true,
         "vendaSource": "redtrack"
       }
@@ -6293,7 +6293,7 @@
         "2026-09-28": 3.57,
         "2026-09-29": 466.01,
         "2026-09-30": 1059.22,
-        "2026-10-01": 125.99
+        "2026-10-01": 244.53
       },
       "accountKey": "troya",
       "displayName": "[Agency Aurora] Troya"
@@ -6305,7 +6305,7 @@
         "2026-09-28": 556.07,
         "2026-09-29": 699.64,
         "2026-09-30": 842.58,
-        "2026-10-01": 230.67
+        "2026-10-01": 312.35
       },
       "accountKey": "troya",
       "displayName": "[Agency Aurora] Troya 2"
@@ -6314,6 +6314,7 @@
   "failedAccounts": [
     "vini",
     "pretorian",
-    "neia"
+    "neia",
+    "alan"
   ]
 }
