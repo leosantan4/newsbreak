@@ -163,6 +163,10 @@
   .select-all-btn{border:1px solid var(--line); background:var(--surface-raised); color:var(--ink); font:inherit; font-weight:600; font-size:11.5px; padding:6px 13px; border-radius:var(--radius-xs); cursor:pointer; flex:none; white-space:nowrap;}
   .select-all-btn:hover{border-color:var(--accent);}
   .cc-selected-preview{display:grid; grid-template-columns:repeat(auto-fill,minmax(70px,1fr)); gap:7px; align-items:start;}
+  #ccMediaPoolCard .creative-search{padding:0 0 10px;}
+  #ccMediaPoolCard .media-grid-note-row{padding-right:0;}
+  #ccMediaPoolCard .media-grid-note{font-size:11px;}
+  .cc-pool-grid{grid-template-columns:repeat(auto-fill,minmax(90px,1fr)); padding:10px 0 0; max-height:380px; overflow-y:auto;}
   .cc-selected-preview .media-item{border-width:1px; aspect-ratio:auto; height:auto; display:block;}
   .cc-selected-preview .media-item img, .cc-selected-preview .media-item video{width:100%; height:auto; max-height:200px; object-fit:contain; display:block;}
   .cc-selected-preview .media-name{display:none;}
@@ -722,20 +726,6 @@
               <span class="cell-muted" id="presetSaveNote"></span>
             </div>
             <div class="table-scroll" id="presetsTableWrap"></div>
-
-            <div class="step-head" style="margin-top:8px;">
-              <div class="step-head-left"><span class="step-title" style="font-size:13px;">Imagem do anúncio</span></div>
-              <span class="step-desc">digite o nome do anúncio pra achar na galeria — nada é exibido até você digitar. Suba criativos novos na aba "Galeria de anúncios"</span>
-            </div>
-            <div class="creative-search">
-              <input type="text" id="mediaSearchInput" list="mediaNamesList" placeholder="Digite o nome/número do anúncio…">
-              <datalist id="mediaNamesList"></datalist>
-            </div>
-            <div class="media-grid-note-row">
-              <div class="media-grid-note" id="mediaGridNote"></div>
-              <button type="button" id="mediaSelectAllBtn" class="select-all-btn" hidden></button>
-            </div>
-            <div class="media-grid" id="mediaGrid"></div>
           </section>
         </div>
 
@@ -765,6 +755,19 @@
           <div class="cc-card" id="ccSelectedPreviewWrap" hidden>
             <h3>Anúncios selecionados</h3>
             <div class="cc-selected-preview" id="ccSelectedPreview"></div>
+          </div>
+          <div class="cc-card" id="ccMediaPoolCard">
+            <h3>Imagem do anúncio</h3>
+            <span class="cell-muted" style="font-size:11.5px; display:block; margin-bottom:10px;">digite o nome do anúncio pra achar na galeria — nada é exibido até você digitar. Suba criativos novos na aba "Galeria de anúncios"</span>
+            <div class="creative-search">
+              <input type="text" id="mediaSearchInput" list="mediaNamesList" placeholder="Digite o nome/número do anúncio…">
+              <datalist id="mediaNamesList"></datalist>
+            </div>
+            <div class="media-grid-note-row">
+              <div class="media-grid-note" id="mediaGridNote"></div>
+              <button type="button" id="mediaSelectAllBtn" class="select-all-btn" hidden></button>
+            </div>
+            <div class="media-grid cc-pool-grid" id="mediaGrid"></div>
           </div>
         </div>
         </aside>
