@@ -593,7 +593,7 @@
             <div class="form-grid">
               <div class="form-field span2">
                 <label for="ccName">Nome da campanha</label>
-                <input type="text" id="ccName" placeholder="Ex: C1-177 - 28/09 - 1-3-1">
+                <input type="text" id="ccName" placeholder="Ex: TROYA-177 - 28/09 - 1-3-1">
               </div>
             </div>
           </section>
@@ -2311,9 +2311,13 @@
     return hpidMatch ? hpidMatch[1] + '…' : noScheme;
   }
 
-  function subAccountLabel(s){
+  function subAccountCleanName(s){
     const cleanName = (s.name || '').replace(/^\[.*?\]\s*/, '').trim();
-    return (cleanName || s.accountLabel) + ' ···' + s.id.slice(-3);
+    return cleanName || s.accountLabel || '';
+  }
+
+  function subAccountLabel(s){
+    return subAccountCleanName(s) + ' ···' + s.id.slice(-3);
   }
 
   let accountSelectOpen = false;
@@ -2337,11 +2341,13 @@
 
   function prefillCampaignName(account){
     const nameInput = document.getElementById('ccName');
+    const label = subAccountCleanName(account).toUpperCase().replace(/[^A-Z0-9]/g, '');
     const suffix = account.id.slice(-3);
     const dateStr = fmtDateShort(todayKeyLA());
-    nameInput.value = 'C-' + suffix + ' - ' + dateStr + ' - ';
+    const structure = '1-3-1';
+    nameInput.value = label + '-' + suffix + ' - ' + dateStr + ' - ' + structure;
     nameInput.focus();
-    nameInput.setSelectionRange(1, 1);
+    nameInput.setSelectionRange(nameInput.value.length - structure.length, nameInput.value.length);
   }
 
   function renderAccountCards(){
