@@ -593,7 +593,7 @@
             <div class="form-grid">
               <div class="form-field span2">
                 <label for="ccName">Nome da campanha</label>
-                <input type="text" id="ccName" placeholder="Ex: 177 - 28/09 - 1-3-1">
+                <input type="text" id="ccName" placeholder="Ex: C1-177 - 28/09 - 1-3-1">
               </div>
             </div>
           </section>
@@ -2339,10 +2339,9 @@
     const nameInput = document.getElementById('ccName');
     const suffix = account.id.slice(-3);
     const dateStr = fmtDateShort(todayKeyLA());
-    const structure = '1-3-1';
-    nameInput.value = suffix + ' - ' + dateStr + ' - ' + structure;
+    nameInput.value = 'C-' + suffix + ' - ' + dateStr + ' - ';
     nameInput.focus();
-    nameInput.setSelectionRange(nameInput.value.length - structure.length, nameInput.value.length);
+    nameInput.setSelectionRange(1, 1);
   }
 
   function renderAccountCards(){
