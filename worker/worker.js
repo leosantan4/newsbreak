@@ -604,6 +604,82 @@ function stripWebpMetadata(buf) {
   return out;
 }
 
+function gifSkipSubBlocks(buf, i) {
+  while (i < buf.length) {
+    const size = buf[i];
+    i += 1;
+    if (size === 0) return i; // terminator block
+    i += size;
+  }
+  return i;
+}
+
+// Strips Comment Extensions and the XMP-in-GIF Application Extension
+// ("XMP DataXMP") from a GIF. Frame data, the NETSCAPE2.0 loop extension
+// and everything else that affects rendering is copied through untouched —
+// we only ever drop whole extension blocks we've fully identified as pure
+// metadata, never image data sub-blocks.
+function stripGifMetadata(buf) {
+  if (buf.length < 13 || buf[0] !== 0x47 || buf[1] !== 0x49 || buf[2] !== 0x46) return buf; // "GIF"
+  const chunks = [buf.subarray(0, 13)];
+  let i = 13;
+  const packed = buf[10];
+  if (packed & 0x80) {
+    const gctSize = 3 * Math.pow(2, (packed & 0x07) + 1);
+    chunks.push(buf.subarray(i, i + gctSize));
+    i += gctSize;
+  }
+  while (i < buf.length) {
+    const b = buf[i];
+    if (b === 0x3b) { chunks.push(buf.subarray(i, i + 1)); return concatUint8(chunks); } // trailer
+    if (b === 0x21) { // extension introducer
+      const label = buf[i + 1];
+      if (label === 0xfe) { // comment extension — drop
+        i = gifSkipSubBlocks(buf, i + 2);
+        continue;
+      }
+      if (label === 0xf9) { // graphic control extension — fixed size, keep
+        const size = buf[i + 2];
+        const end = i + 3 + size + 1;
+        chunks.push(buf.subarray(i, end));
+        i = end;
+        continue;
+      }
+      if (label === 0x01) { // plain text extension — keep
+        const size = buf[i + 2];
+        const end = gifSkipSubBlocks(buf, i + 3 + size);
+        chunks.push(buf.subarray(i, end));
+        i = end;
+        continue;
+      }
+      if (label === 0xff) { // application extension — drop only the XMP metadata block
+        const size = buf[i + 2];
+        const idStart = i + 3;
+        const end = gifSkipSubBlocks(buf, idStart + size);
+        let appId = "";
+        for (let k = 0; k < size; k++) appId += String.fromCharCode(buf[idStart + k]);
+        if (appId !== "XMP DataXMP") chunks.push(buf.subarray(i, end));
+        i = end;
+        continue;
+      }
+      return buf; // unknown extension label — bail, don't risk corruption
+    }
+    if (b === 0x2c) { // image descriptor — always keep, frame data
+      const segStart = i;
+      const imgPacked = buf[i + 9];
+      let j = i + 10;
+      if (imgPacked & 0x80) j += 3 * Math.pow(2, (imgPacked & 0x07) + 1);
+      j += 1; // LZW minimum code size
+      j = gifSkipSubBlocks(buf, j);
+      chunks.push(buf.subarray(segStart, j));
+      i = j;
+      continue;
+    }
+    return buf; // unexpected byte — bail, don't risk corruption
+  }
+  return buf; // no trailer found — fallback to original
+}
+
 // Strips any metadata we know how to parse safely for the given content
 // type. Falls back to the original bytes untouched (video, GIF, or any
 // parse failure) rather than risk sending NewsBreak a corrupt asset.
@@ -613,6 +689,7 @@ function stripMetadataBytes(bytes, contentType) {
     if (contentType === "image/jpeg" || contentType === "image/jpg") return stripJpegMetadata(buf);
     if (contentType === "image/png") return stripPngMetadata(buf);
     if (contentType === "image/webp") return stripWebpMetadata(buf);
+    if (contentType === "image/gif") return stripGifMetadata(buf);
   } catch (e) {
     return buf;
   }
