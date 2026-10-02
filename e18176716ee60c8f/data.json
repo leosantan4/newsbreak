@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-02T02:12:17.825742+00:00",
+  "generatedAt": "2026-10-02T04:00:29.996571+00:00",
   "accounts": {
     "vini": {
       "2026-08-20": {
@@ -974,16 +974,15 @@
       },
       "2026-10-01": {
         "date": "2026-10-01",
-        "cost": 780.63,
-        "click": 5544,
-        "cpc": 0.1408,
-        "ic": 18,
-        "custoIc": 43.37,
-        "venda": 7,
-        "faturamento": 1825,
-        "cpa": 111.52,
-        "roas": 2.3379,
-        "partial": true,
+        "cost": 909.02,
+        "click": 7272,
+        "cpc": 0.125,
+        "ic": 29,
+        "custoIc": 31.35,
+        "venda": 8,
+        "faturamento": 2090,
+        "cpa": 113.63,
+        "roas": 2.2992,
         "vendaSource": "redtrack"
       }
     }
@@ -5426,7 +5425,7 @@
       "objective": "WEB_CONVERSION",
       "activeBudget": 1000.0,
       "status": "ON",
-      "onlineStatus": "ACTIVE",
+      "onlineStatus": "WARNING",
       "adSetsOn": 1,
       "adSetsTotal": 3,
       "reallyActive": true,
@@ -5435,7 +5434,7 @@
           "id": "2105629661237780481",
           "name": "C5-993 - 01/10 - 1-3-1 - 0075",
           "status": "ON",
-          "onlineStatus": "ACTIVE",
+          "onlineStatus": "COMPLETED",
           "budget": 1000.0,
           "budgetType": "DAILY",
           "adsOn": 1,
@@ -5446,7 +5445,7 @@
           "id": "2105629650533916673",
           "name": "C5-993 - 01/10 - 1-3-1 - 0074",
           "status": "OFF",
-          "onlineStatus": "INACTIVE",
+          "onlineStatus": "COMPLETED",
           "budget": 200.0,
           "budgetType": "DAILY",
           "adsOn": 0,
@@ -5457,7 +5456,7 @@
           "id": "2105629636617216001",
           "name": "C5-993 - 01/10 - 1-3-1 - 0069",
           "status": "OFF",
-          "onlineStatus": "INACTIVE",
+          "onlineStatus": "COMPLETED",
           "budget": 200.0,
           "budgetType": "DAILY",
           "adsOn": 0,
@@ -5680,7 +5679,7 @@
           "id": "2105629531977719809",
           "name": "C5-018 - 01/10 - 1-3-1 - 0075",
           "status": "OFF",
-          "onlineStatus": "INACTIVE",
+          "onlineStatus": "COMPLETED",
           "budget": 1000.0,
           "budgetType": "DAILY",
           "adsOn": 0,
@@ -5691,7 +5690,7 @@
           "id": "2105629519998787586",
           "name": "C5-018 - 01/10 - 1-3-1 - 0074",
           "status": "OFF",
-          "onlineStatus": "INACTIVE",
+          "onlineStatus": "COMPLETED",
           "budget": 200.0,
           "budgetType": "DAILY",
           "adsOn": 0,
@@ -5702,7 +5701,7 @@
           "id": "2105629507155828737",
           "name": "C5-018 - 01/10 - 1-3-1 - 0069",
           "status": "OFF",
-          "onlineStatus": "INACTIVE",
+          "onlineStatus": "COMPLETED",
           "budget": 200.0,
           "budgetType": "DAILY",
           "adsOn": 0,
@@ -6293,7 +6292,7 @@
         "2026-09-28": 3.57,
         "2026-09-29": 466.01,
         "2026-09-30": 1059.22,
-        "2026-10-01": 457.04
+        "2026-10-01": 585.1
       },
       "accountKey": "troya",
       "displayName": "[Agency Aurora] Troya"
@@ -6305,7 +6304,7 @@
         "2026-09-28": 556.07,
         "2026-09-29": 699.64,
         "2026-09-30": 842.58,
-        "2026-10-01": 323.59
+        "2026-10-01": 323.92
       },
       "accountKey": "troya",
       "displayName": "[Agency Aurora] Troya 2"
