@@ -254,6 +254,13 @@
   .adset-budget-wrap{display:flex; align-items:center; gap:4px; font-size:11.5px; color:var(--muted); flex:none;}
   .adset-budget-input{width:72px; border:1px solid var(--line); background:var(--bg); color:var(--ink); font:inherit; font-size:12px; padding:5px 7px; border-radius:var(--radius-xs); text-align:right;}
   .adset-budget-input:focus{outline:none; border-color:var(--accent);}
+  .budget-actions{display:inline-flex; align-items:center; gap:6px; margin-left:6px;}
+  .budget-actions[hidden]{display:none;}
+  .budget-delta{font-size:11px; color:var(--muted); white-space:nowrap;}
+  .budget-confirm{border:none; background:var(--accent); color:var(--accent-ink); font:inherit; font-size:11.5px; font-weight:700; padding:5px 10px; border-radius:var(--radius-xs); cursor:pointer;}
+  .budget-confirm:disabled{opacity:.6; cursor:wait;}
+  .budget-cancel{border:1px solid var(--line); background:none; color:var(--muted); font:inherit; font-size:11.5px; padding:4px 8px; border-radius:var(--radius-xs); cursor:pointer;}
+  .budget-cancel:hover{color:var(--ink);}
   .adset-body{padding:0 12px 9px 34px; display:flex; flex-direction:column; gap:5px;}
   .ad-row{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:6px 0; border-top:1px solid var(--line); font-size:12px;}
   .ad-row:first-child{border-top:none;}
@@ -1786,6 +1793,16 @@
     }).then(r => r.json().catch(() => ({})).then(json => { if (!r.ok) throw new Error(json.detail || 'falhou'); return json; }));
   }
 
+  let pendingBudgets = {};
+
+  function budgetDeltaText(orig, next){
+    if (next == null || !isFinite(next)) return '';
+    if (orig == null) return '$' + next;
+    const diff = next - orig;
+    const sign = diff > 0 ? '↑ +' : '↓ −';
+    return '$' + orig + ' → $' + next + ' (' + sign + '$' + Math.abs(diff).toLocaleString('pt-BR', {maximumFractionDigits: 2}) + ')';
+  }
+
   function setAdsetBudget(accountKey, id, budget){
     return fetch(NB_ADSET_BUDGET_API, {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY },
@@ -1815,7 +1832,12 @@
         '<span class="camp-chevron" style="font-size:9px;">▶</span>' +
         '<div class="adset-head-main">' + a.name + '<div class="adset-head-sub">' + a.adsOn + '/' + a.adsTotal + ' anúncios ativos' + (a.todayCost!=null ? ' · ' + fmtUSD(a.todayCost) + ' hoje' : '') + '</div></div>' +
         '<span class="roas-pill ' + st.cls + '" style="font-size:10.5px;">' + st.label + '</span>' +
-        '<div class="adset-budget-wrap" onclick="event.stopPropagation()">$<input type="number" class="adset-budget-input" data-adset-budget="' + a.id + '" data-account-key="' + c.accountKey + '" value="' + (a.budget!=null?a.budget:'') + '" min="10" step="1" placeholder="orç."> /dia</div>' +
+        '<div class="adset-budget-wrap" onclick="event.stopPropagation()">$<input type="number" class="adset-budget-input" data-adset-budget="' + a.id + '" data-account-key="' + c.accountKey + '" data-orig="' + (a.budget!=null?a.budget:'') + '" value="' + (pendingBudgets[a.id]!=null?pendingBudgets[a.id]:(a.budget!=null?a.budget:'')) + '" min="10" step="1" placeholder="orç."> /dia' +
+          '<span class="budget-actions" data-budget-actions="' + a.id + '"' + (pendingBudgets[a.id]!=null?'':' hidden') + '>' +
+            '<span class="budget-delta">' + budgetDeltaText(a.budget, pendingBudgets[a.id]) + '</span>' +
+            '<button type="button" class="budget-confirm" data-budget-confirm="' + a.id + '" data-account-key="' + c.accountKey + '">✓ Confirmar</button>' +
+            '<button type="button" class="budget-cancel" data-budget-cancel="' + a.id + '" title="Cancelar">✕</button>' +
+          '</span></div>' +
         '<label class="toggle-switch small" onclick="event.stopPropagation()"><input type="checkbox" data-adset-status="' + a.id + '" data-account-key="' + c.accountKey + '"' + (a.status==='ON'?' checked':'') + '><span class="toggle-track"></span></label>' +
       '</div>' +
       '<div class="adset-body">' + (expanded ? (ads.map(ad => renderAdRow(c, ad)).join('') || '<div class="cell-muted" style="font-size:11.5px;">Nenhum anúncio.</div>') : '') + '</div>' +
@@ -1885,18 +1907,42 @@
         .catch(() => { el.checked = prev; alert('Não consegui atualizar o status do anúncio.'); })
         .finally(() => { const t = el.closest('.toggle-switch'); if (t) t.removeAttribute('data-busy'); });
     }));
+    const refreshBudgetActions = (id) => {
+      const input = document.querySelector('[data-adset-budget="' + id + '"]');
+      const actions = document.querySelector('[data-budget-actions="' + id + '"]');
+      if (!input || !actions) return;
+      const orig = input.dataset.orig === '' ? null : parseFloat(input.dataset.orig);
+      const val = parseFloat(input.value);
+      const changed = isFinite(val) && val !== orig;
+      if (changed) pendingBudgets[id] = val; else delete pendingBudgets[id];
+      actions.hidden = !changed;
+      actions.querySelector('.budget-delta').textContent = changed ? budgetDeltaText(orig, val) : '';
+    };
+    const confirmBudget = (id) => {
+      const input = document.querySelector('[data-adset-budget="' + id + '"]');
+      const btn = document.querySelector('[data-budget-confirm="' + id + '"]');
+      const val = parseFloat(input.value);
+      if (!isFinite(val) || val < 10) { alert('Orçamento mínimo é $10/dia.'); return; }
+      input.disabled = true;
+      btn.disabled = true;
+      btn.textContent = 'Salvando…';
+      setAdsetBudget(btn.dataset.accountKey, id, val)
+        .then(() => { delete pendingBudgets[id]; return loadLiveCampanhas(); }).then(() => renderCampanhas())
+        .catch(() => { alert('Não consegui atualizar o orçamento (mínimo $10/dia).'); input.disabled = false; btn.disabled = false; btn.textContent = '✓ Confirmar'; });
+    };
     document.querySelectorAll('[data-adset-budget]').forEach(el => {
-      el.addEventListener('keydown', (e) => { if (e.key === 'Enter') el.blur(); });
-      el.addEventListener('blur', () => {
-        const val = parseFloat(el.value);
-        if (!isFinite(val) || val < 10) return;
-        el.disabled = true;
-        setAdsetBudget(el.dataset.accountKey, el.dataset.adsetBudget, val)
-          .then(() => loadLiveCampanhas())
-          .catch(() => alert('Não consegui atualizar o orçamento (mínimo $10/dia).'))
-          .finally(() => { el.disabled = false; });
+      const id = el.dataset.adsetBudget;
+      el.addEventListener('input', () => refreshBudgetActions(id));
+      el.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && pendingBudgets[id] != null) confirmBudget(id);
+        if (e.key === 'Escape') { delete pendingBudgets[id]; renderCampanhas(); }
       });
     });
+    document.querySelectorAll('[data-budget-confirm]').forEach(el => el.addEventListener('click', () => confirmBudget(el.dataset.budgetConfirm)));
+    document.querySelectorAll('[data-budget-cancel]').forEach(el => el.addEventListener('click', () => {
+      delete pendingBudgets[el.dataset.budgetCancel];
+      renderCampanhas();
+    }));
     const search = document.getElementById('campSearchInput');
     if (search && !search.dataset.wired) {
       search.dataset.wired = '1';
@@ -2181,7 +2227,7 @@
   }
 
   function loadLiveCampanhas(){
-    fetch(LIVE_CAMPANHAS_API, {cache:'no-store'}).then(r => r.json()).then(json => {
+    return fetch(LIVE_CAMPANHAS_API, {cache:'no-store'}).then(r => r.json()).then(json => {
       if (!json || json.error) return;
       const failedNB = new Set(json.failedAccounts || []);
       if (failedNB.size) {
