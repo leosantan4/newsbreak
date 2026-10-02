@@ -343,6 +343,26 @@
   .cc-progress-label{margin-top:6px; font-size:11.5px; color:var(--muted); text-align:center;}
   .cc-progress-status{margin-top:8px; font-size:12.5px; font-weight:600; text-align:center; min-height:17px;}
   .cc-progress-status.err{color:var(--bad);}
+  .cc-run-list{margin-top:10px; display:flex; flex-direction:column; gap:8px;}
+  .cc-run-row{border:1px solid var(--line); border-radius:var(--radius-sm); padding:9px 10px; background:var(--bg);}
+  .cc-run-row.error{border-color:color-mix(in srgb, var(--bad) 55%, var(--line));}
+  .cc-run-head{display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:6px; font-size:12.5px; font-weight:600;}
+  .cc-run-name{overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0;}
+  .cc-run-badge{font-size:10.5px; font-weight:700; padding:2px 7px; border-radius:999px; background:var(--neutral-bg); color:var(--muted); flex:none;}
+  .cc-run-row.ok .cc-run-badge{background:var(--good-bg); color:var(--good);}
+  .cc-run-row.error .cc-run-badge{background:var(--bad-bg); color:var(--bad);}
+  .cc-run-row.running .cc-run-badge{background:color-mix(in srgb, var(--accent) 18%, transparent); color:var(--accent);}
+  .cc-run-row.ok .cc-progress-fill{background:var(--good);}
+  .cc-run-row.error .cc-progress-fill{background:var(--bad);}
+  .cc-run-meta{margin-top:6px; font-size:11.5px; color:var(--muted); display:flex; flex-wrap:wrap; gap:4px 8px; align-items:center;}
+  .cc-run-meta .err-text{color:var(--bad); flex-basis:100%;}
+  .cc-cstate{font-family:"IBM Plex Mono",monospace; font-size:10.5px; padding:1px 6px; border-radius:4px; background:var(--neutral-bg); color:var(--muted);}
+  .cc-cstate.ok{background:var(--good-bg); color:var(--good);}
+  .cc-cstate.error{background:var(--bad-bg); color:var(--bad);}
+  .cc-cstate.running{color:var(--accent);}
+  .cc-run-retry, .cc-retry-all{border:1px solid var(--bad); background:none; color:var(--bad); font:inherit; font-size:11.5px; font-weight:600; padding:3px 9px; border-radius:var(--radius-xs); cursor:pointer; margin-left:auto;}
+  .cc-retry-all{display:block; width:100%; margin:10px 0 0; padding:9px; font-size:13px; background:var(--bad-bg);}
+  .cc-run-retry:disabled, .cc-retry-all:disabled{opacity:.5; cursor:not-allowed;}
   .cc-log-details{margin-top:8px;}
   .cc-log-details summary{font-size:11.5px; color:var(--muted); cursor:pointer; text-align:center; list-style:none;}
   .cc-log-details summary::-webkit-details-marker{display:none;}
@@ -1081,6 +1101,8 @@
               <div class="cc-progress-track"><div class="cc-progress-fill" id="ccProgressFill"></div></div>
               <div class="cc-progress-label" id="ccProgressLabel"></div>
               <div class="cc-progress-status" id="ccStatusLine"></div>
+              <div class="cc-run-list" id="ccRunList"></div>
+              <button type="button" class="cc-retry-all" id="ccRetryAllBtn" hidden></button>
               <details class="cc-log-details" id="ccLogDetails">
                 <summary id="ccLogSummary">ver detalhes</summary>
                 <div class="create-log" id="ccLog"></div>
@@ -3313,145 +3335,218 @@
     renderCcSummary();
   }
 
-  let ccProgressTotal = 0;
-  let ccProgressDone = 0;
+  let ccRuns = [];
+  let ccRunning = false;
 
-  function ccProgressStart(total){
-    ccProgressTotal = total;
-    ccProgressDone = 0;
+  function ccEsc(s){
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function ccMakeRun(acc, shared){
+    const run = {
+      acc, shared, status: 'pending', error: null, done: 0,
+      total: (shared.logoLibraryId ? 1 : 0) + 1 + 1 + shared.creatives.length * 3,
+      logoDone: false, logoUrl: null, trackingId: null, campaignId: null, cstate: {},
+    };
+    shared.creatives.forEach(c => { run.cstate[c.libraryId] = { status: 'pending', error: null, assetUrl: null, adSetId: null }; });
+    return run;
+  }
+
+  const CC_RUN_BADGE = { pending: 'Na fila', running: 'Enviando…', ok: 'Concluída', error: 'Falhou' };
+
+  function renderCcRuns(){
+    const total = ccRuns.reduce((s, r) => s + r.total, 0);
+    const done = ccRuns.reduce((s, r) => s + r.done, 0);
     document.getElementById('ccProgressWrap').hidden = false;
-    updateCcProgressBar();
+    document.getElementById('ccProgressFill').style.width = (total ? Math.round(done / total * 100) : 0) + '%';
+    document.getElementById('ccProgressLabel').textContent = done + '/' + total + ' passos';
+
+    const list = document.getElementById('ccRunList');
+    list.innerHTML = ccRuns.map((run, i) => {
+      const pct = run.total ? Math.round(run.done / run.total * 100) : 0;
+      const chips = run.shared.creatives.length > 1 || run.status === 'error'
+        ? run.shared.creatives.map(c => '<span class="cc-cstate ' + run.cstate[c.libraryId].status + '" title="' + ccEsc(run.cstate[c.libraryId].error || '') + '">' + ccEsc(c.name) + '</span>').join('')
+        : '';
+      const retry = run.status === 'error'
+        ? '<button type="button" class="cc-run-retry" data-run-retry="' + i + '"' + (ccRunning ? ' disabled' : '') + '>Reenviar</button>'
+        : '';
+      return '<div class="cc-run-row ' + run.status + '">' +
+        '<div class="cc-run-head"><span class="cc-run-name" title="' + ccEsc(run.shared.name) + '">' + ccEsc(subAccountLabel(run.acc)) + ' · ' + ccEsc(run.shared.name) + '</span>' +
+          '<span class="cc-run-badge">' + CC_RUN_BADGE[run.status] + '</span></div>' +
+        '<div class="cc-progress-track"><div class="cc-progress-fill" style="width:' + pct + '%"></div></div>' +
+        '<div class="cc-run-meta"><span>' + run.done + '/' + run.total + ' passos</span>' + chips +
+          (run.error ? '<span class="err-text">' + ccEsc(run.error) + '</span>' : '') + retry + '</div>' +
+      '</div>';
+    }).join('');
+    list.querySelectorAll('[data-run-retry]').forEach(b => b.addEventListener('click', () => ccRunAll([ccRuns[Number(b.dataset.runRetry)]])));
+
+    const failed = ccRuns.filter(r => r.status === 'error');
+    const retryAll = document.getElementById('ccRetryAllBtn');
+    retryAll.hidden = !failed.length || ccRunning;
+    retryAll.textContent = 'Reenviar só ' + (failed.length === 1 ? 'a que falhou' : 'as ' + failed.length + ' que falharam');
   }
 
-  function ccProgressStep(){
-    ccProgressDone = Math.min(ccProgressTotal, ccProgressDone + 1);
-    updateCcProgressBar();
-  }
-
-  function ccProgressFinish(){
-    ccProgressDone = ccProgressTotal;
-    updateCcProgressBar();
-  }
-
-  function updateCcProgressBar(){
-    const pct = ccProgressTotal ? Math.round(ccProgressDone / ccProgressTotal * 100) : 0;
-    document.getElementById('ccProgressFill').style.width = pct + '%';
-    document.getElementById('ccProgressLabel').textContent = ccProgressDone + '/' + ccProgressTotal + ' passos';
-  }
-
-  async function createCampaignForAccount(acc, shared){
+  async function ccExecuteRun(run){
+    const { acc, shared } = run;
     const prefix = '[' + subAccountLabel(acc) + '] ';
+    run.status = 'running';
+    run.error = null;
+    renderCcRuns();
+    const step = () => { run.done = Math.min(run.total, run.done + 1); renderCcRuns(); };
+    const post = (url, body) => fetch(url, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY },
+      body: JSON.stringify(body),
+    }).then(r => r.json());
+
     const link = ccLinks[acc.id];
-    if (!link || !link.url) { ccLog(prefix + 'sem link cadastrado — pulando. Cadastra o link na tabela acima primeiro.', 'err'); ccProgressFinish(); return; }
+    if (!link || !link.url) {
+      run.status = 'error';
+      run.error = 'sem link cadastrado — cadastra na aba Links';
+      ccLog(prefix + run.error, 'err');
+      renderCcRuns();
+      return;
+    }
 
     try {
-      let logoUrl = null;
-      if (shared.logoLibraryId) {
+      if (shared.logoLibraryId && !run.logoDone) {
         ccLog(prefix + 'Enviando logo…');
-        const logoResp = await fetch(NB_UPLOAD_ASSET_API, {
-          method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY },
-          body: JSON.stringify({ accountKey: acc.accountKey, adAccountId: acc.id, libraryId: shared.logoLibraryId, mediaName: shared.name + ' - logo' }),
-        }).then(r => r.json());
-        if (!logoResp.error) logoUrl = logoResp.asset.assetUrl;
-        ccProgressStep();
+        const logoResp = await post(NB_UPLOAD_ASSET_API, { accountKey: acc.accountKey, adAccountId: acc.id, libraryId: shared.logoLibraryId, mediaName: shared.name + ' - logo' });
+        if (!logoResp.error) run.logoUrl = logoResp.asset.assetUrl;
+        run.logoDone = true;
+        step();
       }
 
-      ccLog(prefix + 'Buscando tracking id…');
-      const trackResp = await fetch(NB_TRACKING_ID_API + '?accountKey=' + acc.accountKey + '&adAccountId=' + acc.id, {
-        headers: { 'X-Access-Key': COSTS_API_KEY },
-      }).then(r => r.json());
-      if (trackResp.error || !trackResp.trackingId) throw new Error('não achei tracking id — essa sub-conta precisa ter pelo menos um conjunto de anúncios já criado antes (mesmo manualmente na NewsBreak).');
-      const trackingId = trackResp.trackingId;
-      ccProgressStep();
+      if (!run.trackingId) {
+        ccLog(prefix + 'Buscando tracking id…');
+        const trackResp = await fetch(NB_TRACKING_ID_API + '?accountKey=' + acc.accountKey + '&adAccountId=' + acc.id, {
+          headers: { 'X-Access-Key': COSTS_API_KEY },
+        }).then(r => r.json());
+        if (trackResp.error || !trackResp.trackingId) throw new Error('não achei tracking id — essa sub-conta precisa ter pelo menos um conjunto de anúncios já criado antes (mesmo manualmente na NewsBreak).');
+        run.trackingId = trackResp.trackingId;
+        step();
+      }
 
-      ccLog(prefix + 'Criando campanha…');
-      const campResp = await fetch(NB_CAMPAIGN_API, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY },
-        body: JSON.stringify({ accountKey: acc.accountKey, adAccountId: acc.id, name: shared.name, objective: 'WEB_CONVERSION', status: 'ON' }),
-      }).then(r => r.json());
-      if (campResp.error) throw new Error(campResp.detail || campResp.error);
-      const campaignId = campResp.campaign.id;
-      ccLog(prefix + 'Campanha criada (id ' + campaignId + ').', 'ok');
-      ccProgressStep();
+      if (!run.campaignId) {
+        ccLog(prefix + 'Criando campanha…');
+        const campResp = await post(NB_CAMPAIGN_API, { accountKey: acc.accountKey, adAccountId: acc.id, name: shared.name, objective: 'WEB_CONVERSION', status: 'ON' });
+        if (campResp.error) throw new Error(campResp.detail || campResp.error);
+        run.campaignId = campResp.campaign.id;
+        ccLog(prefix + 'Campanha criada (id ' + run.campaignId + ').', 'ok');
+        step();
+      } else {
+        ccLog(prefix + 'Campanha já criada (id ' + run.campaignId + ') — continuando de onde parou.');
+      }
 
       for (const creative of shared.creatives) {
+        const cs = run.cstate[creative.libraryId];
+        if (cs.status === 'ok') continue;
+        cs.status = 'running';
+        cs.error = null;
+        renderCcRuns();
         const cPrefix = prefix + '[' + creative.name + '] ';
-        let ticks = 0;
-        const tick = () => { ticks++; ccProgressStep(); };
         try {
-          ccLog(cPrefix + 'Enviando criativo…');
-          const uploadResp = await fetch(NB_UPLOAD_ASSET_API, {
-            method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY },
-            body: JSON.stringify({ accountKey: acc.accountKey, adAccountId: acc.id, libraryId: creative.libraryId, mediaName: creative.name }),
-          }).then(r => r.json());
-          if (uploadResp.error) throw new Error(uploadResp.detail || uploadResp.error);
-          const assetUrl = uploadResp.asset.assetUrl;
-          ccLog(cPrefix + 'Criativo enviado.', 'ok');
-          tick();
+          if (!cs.assetUrl) {
+            ccLog(cPrefix + 'Enviando criativo…');
+            const uploadResp = await post(NB_UPLOAD_ASSET_API, { accountKey: acc.accountKey, adAccountId: acc.id, libraryId: creative.libraryId, mediaName: creative.name });
+            if (uploadResp.error) throw new Error(uploadResp.detail || uploadResp.error);
+            cs.assetUrl = uploadResp.asset.assetUrl;
+            ccLog(cPrefix + 'Criativo enviado.', 'ok');
+            step();
+          }
 
-          const adSetBody = {
-            accountKey: acc.accountKey, campaignId, name: shared.name + ' - ' + creative.name,
-            budgetType: 'DAILY', budget: shared.budgetCents,
-            startTime: shared.startTime, endTime: shared.endTime,
-            bidType: 'MAX_CONVERSION', trackingId, status: 'ON',
-            targeting: {
-              gender: { positive: genderSel },
-              ageGroup: { positive: ageSel },
-              interest: { positive: ['all'] },
-              location: { positive: ['all'] },
-              deviceLocation: { positive: ['all'] },
-              language: { positive: languageSel },
-              os: { positive: ['all'] },
-              manufacturer: { positive: ['all'] },
-              carrier: { positive: ['all'] },
-              network: { positive: networkSel },
-            },
-          };
-          ccLog(cPrefix + 'Criando conjunto de anúncios…');
-          const adSetResp = await fetch(NB_ADSET_API, {
-            method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY },
-            body: JSON.stringify(adSetBody),
-          }).then(r => r.json());
-          if (adSetResp.error) throw new Error(adSetResp.detail || adSetResp.error);
-          const adSetId = adSetResp.adSet.id;
-          ccLog(cPrefix + 'Conjunto criado (id ' + adSetId + ').', 'ok');
-          tick();
+          if (!cs.adSetId) {
+            const adSetBody = {
+              accountKey: acc.accountKey, campaignId: run.campaignId, name: shared.name + ' - ' + creative.name,
+              budgetType: 'DAILY', budget: shared.budgetCents,
+              startTime: shared.startTime, endTime: shared.endTime,
+              bidType: 'MAX_CONVERSION', trackingId: run.trackingId, status: 'ON',
+              targeting: {
+                gender: { positive: genderSel },
+                ageGroup: { positive: ageSel },
+                interest: { positive: ['all'] },
+                location: { positive: ['all'] },
+                deviceLocation: { positive: ['all'] },
+                language: { positive: languageSel },
+                os: { positive: ['all'] },
+                manufacturer: { positive: ['all'] },
+                carrier: { positive: ['all'] },
+                network: { positive: networkSel },
+              },
+            };
+            ccLog(cPrefix + 'Criando conjunto de anúncios…');
+            const adSetResp = await post(NB_ADSET_API, adSetBody);
+            if (adSetResp.error) throw new Error(adSetResp.detail || adSetResp.error);
+            cs.adSetId = adSetResp.adSet.id;
+            ccLog(cPrefix + 'Conjunto criado (id ' + cs.adSetId + ').', 'ok');
+            step();
+          }
 
           const adBody = {
-            accountKey: acc.accountKey, adSetId, name: creative.name, status: 'ON',
+            accountKey: acc.accountKey, adSetId: cs.adSetId, name: creative.name, status: 'ON',
             creative: {
-              type: creative.creativeType, headline: shared.headline, assetUrl,
+              type: creative.creativeType, headline: shared.headline, assetUrl: cs.assetUrl,
               description: shared.description, callToAction: 'Learn More',
               brandName: shared.brandName, clickThroughUrl: link.url,
-              ...(logoUrl ? { logoUrl } : {}),
+              ...(run.logoUrl ? { logoUrl: run.logoUrl } : {}),
             },
           };
           ccLog(cPrefix + 'Criando anúncio…');
-          const adResp = await fetch(NB_AD_API, {
-            method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY },
-            body: JSON.stringify(adBody),
-          }).then(r => r.json());
+          const adResp = await post(NB_AD_API, adBody);
           if (adResp.error) throw new Error(adResp.detail || adResp.error);
           ccLog(cPrefix + 'Anúncio criado (id ' + adResp.ad.id + '). Pronto.', 'ok');
-          tick();
+          cs.status = 'ok';
+          step();
         } catch (err) {
+          cs.status = 'error';
+          cs.error = err.message;
           ccLog(cPrefix + 'Erro: ' + err.message, 'err');
-        } finally {
-          while (ticks < 3) tick();
         }
       }
+
+      const failedCreatives = shared.creatives.filter(c => run.cstate[c.libraryId].status !== 'ok');
+      if (failedCreatives.length) {
+        run.status = 'error';
+        run.error = failedCreatives.length + ' de ' + shared.creatives.length + ' criativo(s) falharam';
+      } else {
+        run.status = 'ok';
+      }
     } catch (err) {
+      run.status = 'error';
+      run.error = err.message;
       ccLog(prefix + 'Erro: ' + err.message, 'err');
-      ccProgressFinish();
     }
+    renderCcRuns();
   }
+
+  async function ccRunAll(runs){
+    const btn = document.getElementById('ccSubmitBtn');
+    ccRunning = true;
+    btn.disabled = true;
+    renderCcRuns();
+    for (const run of runs) await ccExecuteRun(run);
+    ccRunning = false;
+    btn.disabled = false;
+    const failed = ccRuns.filter(r => r.status === 'error').length;
+    ccLog(failed ? 'Concluído — ' + failed + ' conta(s) com falha. Use "Reenviar" pra tentar só ' + (failed === 1 ? 'ela' : 'elas') + '.' : 'Concluído — tudo certo.', failed ? 'err' : 'ok');
+    document.getElementById('ccLogSummary').textContent = failed ? failed + ' conta(s) com falha — ver detalhes' : 'ver detalhes';
+    renderCcRuns();
+  }
+
+  document.getElementById('ccRetryAllBtn').addEventListener('click', () => {
+    ccRunAll(ccRuns.filter(r => r.status === 'error'));
+  });
 
   document.getElementById('ccSubmitBtn').addEventListener('click', async () => {
     const btn = document.getElementById('ccSubmitBtn');
+    if (ccRuns.some(r => r.status === 'error') &&
+        !confirm('Tem conta com falha pendente. Criar tudo de novo vai DUPLICAR as campanhas que já deram certo.\n\nPra tentar só as que falharam, use o botão "Reenviar".\n\nCriar tudo de novo mesmo assim?')) return;
     document.getElementById('ccLog').innerHTML = '';
     document.getElementById('ccLogDetails').open = false;
     document.getElementById('ccLogSummary').textContent = 'ver detalhes';
+    document.getElementById('ccRunList').innerHTML = '';
+    document.getElementById('ccRetryAllBtn').hidden = true;
     ccErrorCount = 0;
+    ccRuns = [];
     btn.disabled = true;
 
     const multi = selectedSubAccountIds.length > 1;
@@ -3504,15 +3599,8 @@
       runs = [{ acc, shared: { logoLibraryId: selectedLogoLibraryId, name, creatives, budgetCents, startTime, endTime, headline, brandName, description } }];
     }
 
-    const total = runs.reduce((sum, r) => sum + (r.shared.logoLibraryId ? 1 : 0) + 1 + 1 + r.shared.creatives.length * 3, 0);
-    ccProgressStart(total);
-
-    for (const { acc, shared } of runs) {
-      await createCampaignForAccount(acc, shared);
-    }
-    ccProgressFinish();
-    ccLog(ccErrorCount ? 'Concluído com ' + ccErrorCount + ' erro(s) — confira os detalhes.' : 'Concluído — tudo certo.', ccErrorCount ? 'err' : 'ok');
-    btn.disabled = false;
+    ccRuns = runs.map(({ acc, shared }) => ccMakeRun(acc, shared));
+    await ccRunAll(ccRuns);
   });
 
   function loadAccountSettings(){
