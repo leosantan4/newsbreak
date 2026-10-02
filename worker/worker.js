@@ -178,7 +178,7 @@ async function getAllTokens(env) {
   return entries;
 }
 
-async function nbFetchReport(token, dateRange, dimensions) {
+async function nbFetchReport(token, dateRange, dimensions, extraMetrics) {
   const resp = await fetch(`${NB_BASE}/reports/getIntegratedReport`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "Access-Token": token },
@@ -187,7 +187,7 @@ async function nbFetchReport(token, dateRange, dimensions) {
       timezone: "America/Sao_Paulo",
       dateRange,
       dimensions: dimensions || ["DATE"],
-      metrics: ["COST", "CLICK", "CPC"],
+      metrics: ["COST", "CLICK", "CPC", ...(extraMetrics || [])],
       eventMetrics: [
         { eventType: "initiate_checkout", metrics: ["COUNT", "CPA"] },
         { eventType: "complete_payment", metrics: ["COUNT", "CPA", "VALUE"] },
@@ -215,6 +215,9 @@ function nbRowToDoc(r) {
     faturamento: round2(fat),
     cpa: venda ? round2(cost / venda) : null,
     roas: cost ? round4(fat / cost) : null,
+    impression: r.impression || 0,
+    cpm: r.impression ? round2((cost / r.impression) * 1000) : null,
+    ctr: r.impression ? round2((r.click / r.impression) * 100) : null,
     partial: true,
   };
 }
@@ -246,10 +249,14 @@ async function nbGetList(path, token, adAccountId) {
 function nbMetricsFor(map, id) {
   const m = map && map[id];
   if (!m) return { todayCost: null, todayClick: null, todayVenda: null, todayCpa: null };
-  return { todayCost: m.cost, todayClick: m.click, todayVenda: m.venda, todayCpa: m.cpa };
+  return {
+    todayCost: m.cost, todayClick: m.click, todayVenda: m.venda, todayCpa: m.cpa,
+    todayIc: m.ic, todayCustoIc: m.custoIc, todayFat: m.faturamento, todayImpr: m.impression,
+    todayCpm: m.cpm, todayCtr: m.ctr, todayCpc: m.cpc,
+  };
 }
 
-async function nbBuildCampaignsForAccount(token, accountKey, adAccountId, adAccountName, campaignMetrics, adsetMetrics) {
+async function nbBuildCampaignsForAccount(token, accountKey, adAccountId, adAccountName, campaignMetrics, adsetMetrics, adMetrics) {
   const [rawCampaigns, rawAdsets, rawAds] = await Promise.all([
     nbGetList("campaign", token, adAccountId),
     nbGetList("ad-set", token, adAccountId),
@@ -282,7 +289,14 @@ async function nbBuildCampaignsForAccount(token, accountKey, adAccountId, adAcco
         id: a.id, name: a.name, status: a.status, onlineStatus: a.onlineStatus,
         budget: a.budget != null ? a.budget / 100 : null,
         budgetType: a.budgetType, adsOn, adsTotal: myAds.length, reallyActive: adsetReallyOn,
-        ads: myAds.map((ad) => ({ id: ad.id, name: ad.name, status: ad.status, onlineStatus: ad.onlineStatus })),
+        ads: myAds.map((ad) => {
+          const content = (ad.creative && ad.creative.content) || {};
+          return {
+            id: ad.id, name: ad.name, status: ad.status, onlineStatus: ad.onlineStatus, auditStatus: ad.auditStatus,
+            creativeType: ad.creative && ad.creative.type, assetUrl: content.assetUrl, headline: content.headline,
+            ...nbMetricsFor(adMetrics, ad.id),
+          };
+        }),
         ...nbMetricsFor(adsetMetrics, a.id),
       });
     }
@@ -405,20 +419,24 @@ async function computeLiveCampanhas(env) {
     tokenEntries.map(async ([key, token]) => {
       try {
         const manual = custom[key] && custom[key].manualAccounts;
-        const [adAccounts, campaignRows, adsetRows] = await Promise.all([
+        const extra = ["IMPRESSION"];
+        const [adAccounts, campaignRows, adsetRows, adRows] = await Promise.all([
           manual && manual.length
             ? Object.fromEntries(manual.map((a) => [a.id, a.name]))
             : nbGetAdAccounts(token),
-          nbFetchReport(token, "TODAY", ["CAMPAIGN"]).catch(() => []),
-          nbFetchReport(token, "TODAY", ["AD_SET"]).catch(() => []),
+          nbFetchReport(token, "TODAY", ["CAMPAIGN"], extra).catch(() => []),
+          nbFetchReport(token, "TODAY", ["AD_SET"], extra).catch(() => []),
+          nbFetchReport(token, "TODAY", ["AD"], extra).catch(() => []),
         ]);
         const campaignMetrics = {};
         for (const r of campaignRows) campaignMetrics[r.campaignId] = nbRowToDoc(r);
         const adsetMetrics = {};
         for (const r of adsetRows) adsetMetrics[r.adSetId] = nbRowToDoc(r);
+        const adMetrics = {};
+        for (const r of adRows) adMetrics[r.adId] = nbRowToDoc(r);
         const perAdAccount = await Promise.all(
           Object.entries(adAccounts).map(([adAccountId, adAccountName]) =>
-            nbBuildCampaignsForAccount(token, key, adAccountId, adAccountName, campaignMetrics, adsetMetrics)
+            nbBuildCampaignsForAccount(token, key, adAccountId, adAccountName, campaignMetrics, adsetMetrics, adMetrics)
           )
         );
         return perAdAccount.flat();

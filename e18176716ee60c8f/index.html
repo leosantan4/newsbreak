@@ -254,6 +254,22 @@
   .adset-budget-wrap{display:flex; align-items:center; gap:4px; font-size:11.5px; color:var(--muted); flex:none;}
   .adset-budget-input{width:72px; border:1px solid var(--line); background:var(--bg); color:var(--ink); font:inherit; font-size:12px; padding:5px 7px; border-radius:var(--radius-xs); text-align:right;}
   .adset-budget-input:focus{outline:none; border-color:var(--accent);}
+  .camp-table-bar{display:flex; flex-wrap:wrap; gap:10px 14px; align-items:center; padding:4px 0 12px;}
+  .camp-table-bar .tabs{margin:0;}
+  .camp-table-bar select.camp-search{width:auto; max-width:240px;}
+  .ctable{min-width:1180px;}
+  .ctable th, .ctable td{padding:8px 10px;}
+  .ctable thead th{cursor:pointer; user-select:none;}
+  .ctable thead th.l, .ctable tbody td.l, .ctable tfoot td.l{text-align:left;}
+  .ctable thead th.r, .ctable tbody td.r, .ctable tfoot td.r{text-align:right;}
+  .ctable thead th.c, .ctable tbody td.c{text-align:center;}
+  .ctable tbody td{vertical-align:middle;}
+  .ctable tbody tr.is-off td{background:color-mix(in srgb, var(--bad) 6%, transparent);}
+  .ctable tfoot td{font-weight:700; border-top:1px solid var(--line); padding-top:10px;}
+  .ctable-ident{display:flex; align-items:center; gap:10px;}
+  .ctable-name{font-weight:600; font-size:13px; white-space:normal; max-width:260px;}
+  .ctable-sub{font-size:11px; color:var(--muted); font-weight:400; white-space:normal; max-width:260px;}
+  .ctable-thumb{width:44px; height:58px; object-fit:cover; border-radius:6px; background:var(--neutral-bg); display:block; flex:none;}
   .budget-actions{display:inline-flex; align-items:center; gap:6px; margin-left:6px;}
   .budget-actions[hidden]{display:none;}
   .budget-delta{font-size:11px; color:var(--muted); white-space:nowrap;}
@@ -488,11 +504,12 @@
         <div class="panel-head">
           <h2 id="campStatsHead">Campanhas</h2>
           <div class="panel-head-right">
+            <div class="tabs" id="campModeTabs" style="margin:0;"></div>
             <input type="text" id="campSearchInput" class="camp-search" placeholder="Buscar campanha…">
             <div class="tabs" id="campFilterTabs" style="margin:0;"></div>
           </div>
         </div>
-        <p class="dre-intro">Uma campanha só conta como <b>ativa de verdade</b> quando a campanha, pelo menos um conjunto e pelo menos um anúncio dentro dele estão todos ligados. "Liga mas não entrega" é quando o botão tá ON só na campanha, mas nada por dentro está rodando. Clique numa campanha pra ver os conjuntos de anúncios; clique num conjunto pra ver os anúncios. Dá pra pausar/ativar e mudar orçamento direto aqui.</p>
+        <p class="dre-intro" id="campIntro">Uma campanha só conta como <b>ativa de verdade</b> quando a campanha, pelo menos um conjunto e pelo menos um anúncio dentro dele estão todos ligados. "Liga mas não entrega" é quando o botão tá ON só na campanha, mas nada por dentro está rodando. Clique numa campanha pra ver os conjuntos de anúncios; clique num conjunto pra ver os anúncios. Dá pra pausar/ativar e mudar orçamento direto aqui.</p>
         <div class="camp-wrap" id="campWrap"></div>
       </section>
     </div>
@@ -1951,13 +1968,181 @@
     }
   }
 
+  let campMode = loadPref('campMode', 'tree');
+  let campTab = loadPref('campTab', 'ads');
+  let campStatusF = loadPref('campStatusF', 'all');
+  let campAccF = loadPref('campAccF', 'all');
+  let campSort = { key: 'cost', dir: -1 };
+
+  const AUDIT_LABEL = { REJECTED: 'Reprovado', DISAPPROVED: 'Reprovado', IN_REVIEW: 'Em revisão', PENDING: 'Em revisão', UNDER_REVIEW: 'Em revisão' };
+
+  function flattenCampData(){
+    const rows = { campaigns: [], adsets: [], ads: [] };
+    const metrics = (o) => ({ cost: o.todayCost, ic: o.todayIc, custoIc: o.todayCustoIc, venda: o.todayVenda, fat: o.todayFat, cpa: o.todayCpa, impr: o.todayImpr, cpm: o.todayCpm, click: o.todayClick, cpc: o.todayCpc, ctr: o.todayCtr });
+    campaigns.forEach(c => {
+      const sub = subAccounts[c.adAccountId] ? subDisplayName(c.adAccountId) : c.adAccountName;
+      const base = { accountKey: c.accountKey, adAccountId: c.adAccountId, sub, campName: c.name };
+      rows.campaigns.push({ ...base, type: 'campaign', id: c.id, name: c.name, on: c.status === 'ON', budget: c.activeBudget,
+        active: !!c.reallyActive, reason: c.status !== 'ON' ? 'Campanha desligada' : (!c.reallyActive ? 'Nenhum conjunto/anúncio ativo dentro' : ''), ...metrics(c) });
+      (c.adSets || []).forEach(a => {
+        const setActive = c.status === 'ON' && a.status === 'ON' && a.adsOn > 0;
+        rows.adsets.push({ ...base, type: 'adset', id: a.id, name: a.name, on: a.status === 'ON', budget: a.budget, active: setActive,
+          reason: a.status !== 'ON' ? 'Conjunto desligado' : (c.status !== 'ON' ? 'Campanha desligada' : (a.adsOn === 0 ? 'Nenhum anúncio ligado' : '')), ...metrics(a) });
+        (a.ads || []).forEach(ad => {
+          const audit = ad.auditStatus;
+          const auditBad = audit && audit !== 'APPROVED';
+          const adActive = ad.status === 'ON' && a.status === 'ON' && c.status === 'ON' && !auditBad;
+          let reason = '';
+          if (auditBad) reason = (AUDIT_LABEL[audit] || audit) + ' pela NewsBreak';
+          else if (ad.status !== 'ON') reason = 'Anúncio desligado';
+          else if (a.status !== 'ON') reason = 'Conjunto desligado';
+          else if (c.status !== 'ON') reason = 'Campanha desligada';
+          rows.ads.push({ ...base, type: 'ad', id: ad.id, name: ad.name, on: ad.status === 'ON', active: adActive, reason,
+            setName: a.name, thumb: ad.assetUrl, creativeType: ad.creativeType, ...metrics(ad) });
+        });
+      });
+    });
+    return rows;
+  }
+
+  function campTotals(list){
+    const s = (k) => list.reduce((a, r) => a + (r[k] || 0), 0);
+    const cost = s('cost'), ic = s('ic'), venda = s('venda'), click = s('click'), impr = s('impr');
+    return { cost, ic, venda, fat: s('fat'), click, impr,
+      custoIc: ic ? cost / ic : null, cpa: venda ? cost / venda : null, cpm: impr ? cost / impr * 1000 : null,
+      cpc: click ? cost / click : null, ctr: impr ? click / impr * 100 : null };
+  }
+
+  const CT_METRICS = [
+    { key: 'cost', label: 'Gasto', fmt: fmtUSD },
+    { key: 'ic', label: 'IC', fmt: v => String(v) },
+    { key: 'custoIc', label: 'Custo/IC', fmt: fmtUSD },
+    { key: 'venda', label: 'Vendas', fmt: v => String(v) },
+    { key: 'fat', label: 'Fatur.', fmt: fmtUSD },
+    { key: 'cpa', label: 'CPA', fmt: fmtUSD },
+    { key: 'cpm', label: 'CPM', fmt: fmtUSD },
+    { key: 'click', label: 'Cliques', fmt: v => String(v) },
+    { key: 'cpc', label: 'CPC', fmt: fmtUSD },
+    { key: 'ctr', label: 'CTR', fmt: v => v.toFixed(2) + '%' },
+  ];
+
+  function ctCell(r, m){
+    const v = r[m.key];
+    return '<td class="r num">' + (v == null ? '<span class="cell-muted">–</span>' : m.fmt(v)) + '</td>';
+  }
+
+  function renderCampTable(){
+    const wrap = document.getElementById('campWrap');
+    const all = flattenCampData();
+    const TABS = [{ key: 'campaigns', label: 'Campanhas' }, { key: 'adsets', label: 'Conjuntos' }, { key: 'ads', label: 'Anúncios' }];
+    if (!all[campTab]) campTab = 'ads';
+
+    const q = campSearch.trim().toLowerCase();
+    const scoped = (list) => list.filter(r =>
+      (campAccF === 'all' || r.adAccountId === campAccF) &&
+      (!q || (r.name + ' ' + r.id + ' ' + r.campName + ' ' + r.sub + ' ' + accountLabelFor(r.accountKey)).toLowerCase().includes(q)));
+    const scopedAll = { campaigns: scoped(all.campaigns), adsets: scoped(all.adsets), ads: scoped(all.ads) };
+    const inTab = scopedAll[campTab];
+    const nActive = inTab.filter(r => r.active).length;
+    const shown = inTab.filter(r => campStatusF === 'all' || (campStatusF === 'active' ? r.active : !r.active));
+
+    const dir = campSort.dir;
+    const val = (r) => {
+      const k = campSort.key;
+      if (k === 'name') return r.name.toLowerCase();
+      if (k === 'status') return r.active ? 1 : 0;
+      const v = r[k];
+      return v == null ? -Infinity : v;
+    };
+    shown.sort((a, b) => { const x = val(a), y = val(b); return (x < y ? -1 : x > y ? 1 : 0) * dir || a.name.localeCompare(b.name); });
+
+    const accOpts = [];
+    const seen = new Set();
+    campaigns.forEach(c => { if (!seen.has(c.adAccountId)) { seen.add(c.adAccountId); accOpts.push({ id: c.adAccountId, label: subAccounts[c.adAccountId] ? subDisplayName(c.adAccountId) : c.adAccountName }); } });
+    accOpts.sort((a, b) => a.label.localeCompare(b.label));
+
+    const bar =
+      '<div class="camp-table-bar">' +
+        '<div class="tabs">' + TABS.map(t => '<button class="tab' + (campTab === t.key ? ' active' : '') + '" data-ct-tab="' + t.key + '">' + t.label + ' <span class="cell-muted">' + scopedAll[t.key].length + '</span></button>').join('') + '</div>' +
+        '<div class="tabs">' + [['all', 'Todos (' + inTab.length + ')'], ['active', 'Ativos (' + nActive + ')'], ['inactive', 'Inativos (' + (inTab.length - nActive) + ')']]
+          .map(o => '<button class="tab small' + (campStatusF === o[0] ? ' active' : '') + '" data-ct-status="' + o[0] + '">' + o[1] + '</button>').join('') + '</div>' +
+        '<select class="camp-search" id="campAccSel"><option value="all">Todas as contas</option>' +
+          accOpts.map(o => '<option value="' + o.id + '"' + (campAccF === o.id ? ' selected' : '') + '>' + ccEsc(o.label) + '</option>').join('') + '</select>' +
+      '</div>';
+
+    const th = (key, label, cls) => '<th class="' + cls + '" data-ct-sort="' + key + '">' + label + (campSort.key === key ? (dir < 0 ? ' ↓' : ' ↑') : '') + '</th>';
+    const nameLabel = { campaigns: 'Campanha', adsets: 'Conjunto', ads: 'Anúncio' }[campTab];
+    const head = '<tr><th class="c">Liga</th>' + th('name', nameLabel, 'l') +
+      (campTab !== 'campaigns' ? '<th class="l">' + (campTab === 'ads' ? 'Conjunto · Campanha' : 'Campanha') + '</th>' : '') +
+      '<th class="l">Conta</th>' + th('status', 'Status', 'l') +
+      (campTab !== 'ads' ? th('budget', campTab === 'campaigns' ? 'Orç./dia' : 'Orçamento', 'r') : '') +
+      CT_METRICS.map(m => th(m.key, m.label, 'r')).join('') + '</tr>';
+
+    const body = shown.map(r => {
+      const thumb = campTab === 'ads' && r.thumb
+        ? (r.creativeType === 'VIDEO' ? '<video class="ctable-thumb" src="' + ccEsc(r.thumb) + '" muted preload="metadata"></video>' : '<img class="ctable-thumb" loading="lazy" src="' + ccEsc(r.thumb) + '" alt="">')
+        : '';
+      return '<tr class="' + (r.active ? '' : 'is-off') + '">' +
+        '<td class="c"><label class="toggle-switch small"><input type="checkbox" data-t-status="' + r.id + '" data-t-type="' + r.type + '" data-account-key="' + r.accountKey + '"' + (r.on ? ' checked' : '') + '><span class="toggle-track"></span></label></td>' +
+        '<td class="l"><div class="ctable-ident">' + thumb + '<div><div class="ctable-name">' + ccEsc(r.name) + '</div><div class="ctable-sub">ID ' + r.id + '</div></div></div></td>' +
+        (campTab === 'ads' ? '<td class="l"><div class="ctable-sub" style="color:var(--ink);">' + ccEsc(r.setName) + '</div><div class="ctable-sub">' + ccEsc(r.campName) + '</div></td>' : '') +
+        (campTab === 'adsets' ? '<td class="l"><div class="ctable-sub" style="color:var(--ink);">' + ccEsc(r.campName) + '</div></td>' : '') +
+        '<td class="l"><div class="ctable-sub" style="color:var(--ink);">' + ccEsc(r.sub) + '</div></td>' +
+        '<td class="l"><span class="roas-pill ' + (r.active ? 'good' : 'bad') + '">' + (r.active ? 'Ativo' : 'Inativo') + '</span>' + (r.reason ? '<div class="ctable-sub">' + ccEsc(r.reason) + '</div>' : '') + '</td>' +
+        (campTab !== 'ads' ? '<td class="r num">' + (r.budget != null ? fmtUSD(r.budget) : '<span class="cell-muted">–</span>') + '</td>' : '') +
+        CT_METRICS.map(m => ctCell(r, m)).join('') +
+      '</tr>';
+    }).join('');
+
+    const tot = campTotals(shown);
+    const fixedCols = 1 + 1 + (campTab !== 'campaigns' ? 1 : 0) + 1 + 1 + (campTab !== 'ads' ? 1 : 0);
+    const foot = '<tr><td class="l" colspan="' + fixedCols + '">Total (' + shown.length + ')</td>' + CT_METRICS.map(m => ctCell(tot, m)).join('') + '</tr>';
+
+    wrap.innerHTML = bar + '<div class="table-scroll"><table class="ctable"><thead>' + head + '</thead><tbody>' +
+      (body || '<tr><td class="l" colspan="' + (fixedCols + CT_METRICS.length) + '"><div class="empty-state">Nada encontrado com esses filtros.</div></td></tr>') +
+      '</tbody><tfoot>' + foot + '</tfoot></table></div>' +
+      '<p class="cell-muted" style="font-size:11.5px; padding:8px 18px 0;">Métricas de hoje (fuso de Brasília), do pixel da NewsBreak — vendas aqui podem diferir do RedTrack. “Inativo” = não está entregando (o próprio item, o conjunto, a campanha ou a revisão da NewsBreak).</p>';
+
+    wrap.querySelectorAll('[data-ct-tab]').forEach(b => b.addEventListener('click', () => { campTab = b.dataset.ctTab; savePref('campTab', campTab); renderCampanhas(); }));
+    wrap.querySelectorAll('[data-ct-status]').forEach(b => b.addEventListener('click', () => { campStatusF = b.dataset.ctStatus; savePref('campStatusF', campStatusF); renderCampanhas(); }));
+    wrap.querySelector('#campAccSel').addEventListener('change', (e) => { campAccF = e.target.value; savePref('campAccF', campAccF); renderCampanhas(); });
+    wrap.querySelectorAll('[data-ct-sort]').forEach(h => h.addEventListener('click', () => {
+      const k = h.dataset.ctSort;
+      campSort = campSort.key === k ? { key: k, dir: -campSort.dir } : { key: k, dir: k === 'name' ? 1 : -1 };
+      renderCampanhas();
+    }));
+    wrap.querySelectorAll('[data-t-status]').forEach(el => el.addEventListener('change', () => {
+      const prev = !el.checked;
+      el.closest('.toggle-switch').setAttribute('data-busy', '1');
+      setEntityStatus(el.dataset.accountKey, el.dataset.tType, el.dataset.tStatus, el.checked ? 'ON' : 'OFF')
+        .then(() => loadLiveCampanhas())
+        .catch(() => { el.checked = prev; alert('Não consegui atualizar o status.'); })
+        .finally(() => { const t = el.closest('.toggle-switch'); if (t) t.removeAttribute('data-busy'); });
+    }));
+  }
+
+  function renderCampModeTabs(){
+    const wrap = document.getElementById('campModeTabs');
+    wrap.innerHTML = [['tree', 'Árvore'], ['table', 'Tabela']].map(o => '<button class="tab small' + (campMode === o[0] ? ' active' : '') + '" data-camp-mode="' + o[0] + '">' + o[1] + '</button>').join('');
+    wrap.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => { campMode = b.dataset.campMode; savePref('campMode', campMode); renderCampanhas(); }));
+  }
+
   function renderCampanhas(){
+    renderCampModeTabs();
     renderCampFilterTabs();
+    document.getElementById('campFilterTabs').hidden = campMode === 'table';
+    document.getElementById('campIntro').hidden = campMode === 'table';
     const activeCount = campaigns.filter(c => c.reallyActive).length;
     const mismatchCount = campaigns.filter(c => c.status === 'ON' && !c.reallyActive).length;
     document.getElementById('campStatsHead').textContent =
       'Campanhas — ' + activeCount + ' ativa' + (activeCount===1?'':'s') + ' de ' + campaigns.length +
       (mismatchCount ? ' · ' + mismatchCount + ' ligada' + (mismatchCount===1?'':'s') + ' sem entregar' : '');
+
+    if (campMode === 'table'){
+      renderCampTable();
+      wireCampanhaEvents();
+      return;
+    }
 
     let list = campFilter === 'active'
       ? campaigns.filter(c => c.reallyActive || (c.status === 'ON' && !c.reallyActive))
@@ -2238,7 +2423,7 @@
         campaigns = json.campaigns;
       }
       const active = document.activeElement;
-      if (active && active.matches && active.matches('[data-adset-budget]')) return;
+      if (active && active.matches && active.matches('[data-adset-budget], #campAccSel')) return;
       renderCampanhas();
     }).catch(() => {});
   }
