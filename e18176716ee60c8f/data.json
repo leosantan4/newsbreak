@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-03T19:03:42.388970+00:00",
+  "generatedAt": "2026-10-03T22:19:51.541930+00:00",
   "accounts": {
     "vini": {
       "2026-08-20": {
@@ -1000,15 +1000,15 @@
       },
       "2026-10-03": {
         "date": "2026-10-03",
-        "cost": 273.16,
-        "click": 2793,
-        "cpc": 0.0978,
-        "ic": 9,
-        "custoIc": 30.35,
-        "venda": 0,
-        "faturamento": 0,
-        "cpa": null,
-        "roas": 0.0,
+        "cost": 392.54,
+        "click": 3605,
+        "cpc": 0.1089,
+        "ic": 19,
+        "custoIc": 20.66,
+        "venda": 2,
+        "faturamento": 530,
+        "cpa": 196.27,
+        "roas": 1.3502,
         "partial": true,
         "vendaSource": "redtrack"
       }
@@ -5450,7 +5450,7 @@
       "adAccountId": "2103532431571156993",
       "adAccountName": "[Agency Aurora] Troya",
       "objective": "WEB_CONVERSION",
-      "activeBudget": 200.0,
+      "activeBudget": 1000.0,
       "status": "ON",
       "onlineStatus": "ACTIVE",
       "adSetsOn": 1,
@@ -5473,7 +5473,7 @@
           "name": "TROYA-993 - 03/10 - 1-3-1 - 0063",
           "status": "ON",
           "onlineStatus": "ACTIVE",
-          "budget": 200.0,
+          "budget": 1000.0,
           "budgetType": "DAILY",
           "adsOn": 1,
           "adsTotal": 1,
@@ -5793,12 +5793,12 @@
       "adAccountId": "2103532696151638018",
       "adAccountName": "[Agency Aurora] Troya 2",
       "objective": "WEB_CONVERSION",
-      "activeBudget": 200.0,
+      "activeBudget": null,
       "status": "ON",
-      "onlineStatus": "ACTIVE",
-      "adSetsOn": 1,
+      "onlineStatus": "WARNING",
+      "adSetsOn": 0,
       "adSetsTotal": 3,
-      "reallyActive": true,
+      "reallyActive": false,
       "adSets": [
         {
           "id": "2106357736325947393",
@@ -5814,13 +5814,13 @@
         {
           "id": "2106357727928950786",
           "name": "TROYA2-018 - 03/10 - 1-3-1 - 0075",
-          "status": "ON",
-          "onlineStatus": "ACTIVE",
+          "status": "OFF",
+          "onlineStatus": "INACTIVE",
           "budget": 200.0,
           "budgetType": "DAILY",
-          "adsOn": 1,
+          "adsOn": 0,
           "adsTotal": 1,
-          "reallyActive": true
+          "reallyActive": false
         },
         {
           "id": "2106357716268785666",
@@ -6517,7 +6517,7 @@
         "2026-09-30": 1059.22,
         "2026-10-01": 644.63,
         "2026-10-02": 873.19,
-        "2026-10-03": 141.89
+        "2026-10-03": 201.47
       },
       "accountKey": "troya",
       "displayName": "[Agency Aurora] Troya"
@@ -6531,7 +6531,7 @@
         "2026-09-30": 842.58,
         "2026-10-01": 324.56,
         "2026-10-02": 564.45,
-        "2026-10-03": 131.28
+        "2026-10-03": 191.07
       },
       "accountKey": "troya",
       "displayName": "[Agency Aurora] Troya 2"
