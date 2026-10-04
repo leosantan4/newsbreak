@@ -180,6 +180,10 @@
   .cc-multi-preview-group.drag-over{border-color:var(--accent); background:color-mix(in srgb, var(--accent) 8%, transparent);}
   .cc-multi-preview-group .cc-multi-preview-label{font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin-bottom:6px;}
   .cc-multi-preview-group .cc-multi-preview-empty{font-size:12px; color:var(--muted);}
+  .cc-multi-thumb{cursor:grab;}
+  .cc-multi-thumb .cc-thumb-num{position:absolute; top:3px; left:3px; max-width:calc(100% - 30px); background:rgba(0,0,0,.7); color:#fff; font-size:11px; font-weight:700; padding:2px 6px; border-radius:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; pointer-events:none;}
+  .cc-multi-thumb .cc-thumb-x{position:absolute; top:3px; right:3px; width:20px; height:20px; border:none; border-radius:4px; background:rgba(0,0,0,.7); color:#fff; font-size:15px; line-height:20px; padding:0; cursor:pointer;}
+  .cc-multi-thumb .cc-thumb-x:hover{background:var(--bad);}
 
   .form-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px; padding:16px 18px;}
   .form-field{display:flex; flex-direction:column; gap:5px;}
@@ -3180,7 +3184,7 @@
       const camp = accountCampaigns[id] || { creativeIds: [] };
       const items = camp.creativeIds.map(cid => libraryItems.find(i => i.id === cid)).filter(Boolean);
       const body = items.length
-        ? '<div class="cc-selected-preview">' + items.map(it => mediaItemHtml(it)).join('') + '</div>'
+        ? '<div class="cc-selected-preview">' + items.map(it => multiThumbHtml(it)).join('') + '</div>'
         : '<div class="cc-multi-preview-empty">arraste criativos aqui</div>';
       return '<div class="cc-multi-preview-group" data-account-id="' + id + '" data-drop-account="' + id + '">' +
         '<div class="cc-multi-preview-label">' + (acc ? subAccountLabel(acc) : id) + '</div>' +
@@ -3202,9 +3206,14 @@
         renderCcSummary();
       });
     });
-    el.querySelectorAll('.media-item').forEach(node => node.addEventListener('click', () => {
-      const cid = node.dataset.id;
-      const accId = node.closest('.cc-multi-preview-group').dataset.accountId;
+    el.querySelectorAll('.media-item').forEach(node => node.addEventListener('dragstart', (e) => {
+      e.dataTransfer.setData('text/plain', node.dataset.id);
+      e.dataTransfer.effectAllowed = 'copy';
+    }));
+    el.querySelectorAll('.cc-thumb-x').forEach(btn => btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const cid = btn.dataset.id;
+      const accId = btn.closest('.cc-multi-preview-group').dataset.accountId;
       const camp = accountCampaigns[accId];
       if (camp && camp.creativeIds.indexOf(cid) !== -1) {
         camp.creativeIds.splice(camp.creativeIds.indexOf(cid), 1);
@@ -3213,6 +3222,17 @@
         renderCcSummary();
       }
     }));
+  }
+
+  function multiThumbHtml(it){
+    const isVideo = (it.contentType || '').indexOf('video') === 0;
+    const fileUrl = LIBRARY_API + '/' + it.id + '/file';
+    const media = isVideo ? '<video src="' + fileUrl + '" muted></video>' : '<img src="' + fileUrl + '" loading="lazy" draggable="false">';
+    return '<div class="media-item cc-multi-thumb" draggable="true" data-id="' + it.id + '">' +
+      media +
+      '<div class="cc-thumb-num">' + it.name + '</div>' +
+      '<button type="button" class="cc-thumb-x" data-id="' + it.id + '" title="Tirar desta conta">×</button>' +
+    '</div>';
   }
 
   function renderAccountCards(){
