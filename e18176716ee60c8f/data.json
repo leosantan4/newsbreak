@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-04T21:18:37.611156+00:00",
+  "generatedAt": "2026-10-04T21:22:12.053258+00:00",
   "accounts": {
     "vini": {
       "2026-08-20": {
@@ -1018,10 +1018,10 @@
         "cpc": 0.197,
         "ic": 12,
         "custoIc": 25.26,
-        "venda": 3,
-        "faturamento": 795,
-        "cpa": 101.04,
-        "roas": 2.6226,
+        "venda": 4,
+        "faturamento": 1060,
+        "cpa": 75.78,
+        "roas": 3.4968,
         "partial": true,
         "vendaSource": "redtrack"
       }
