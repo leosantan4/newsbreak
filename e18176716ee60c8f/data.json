@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-03T22:19:51.541930+00:00",
+  "generatedAt": "2026-10-04T01:51:38.180676+00:00",
   "accounts": {
     "vini": {
       "2026-08-20": {
@@ -1000,15 +1000,15 @@
       },
       "2026-10-03": {
         "date": "2026-10-03",
-        "cost": 392.54,
-        "click": 3605,
-        "cpc": 0.1089,
-        "ic": 19,
-        "custoIc": 20.66,
+        "cost": 652.69,
+        "click": 5126,
+        "cpc": 0.1273,
+        "ic": 26,
+        "custoIc": 25.1,
         "venda": 2,
         "faturamento": 530,
-        "cpa": 196.27,
-        "roas": 1.3502,
+        "cpa": 326.35,
+        "roas": 0.812,
         "partial": true,
         "vendaSource": "redtrack"
       }
@@ -5452,7 +5452,7 @@
       "objective": "WEB_CONVERSION",
       "activeBudget": 1000.0,
       "status": "ON",
-      "onlineStatus": "ACTIVE",
+      "onlineStatus": "WARNING",
       "adSetsOn": 1,
       "adSetsTotal": 3,
       "reallyActive": true,
@@ -5472,7 +5472,7 @@
           "id": "2106357690037608449",
           "name": "TROYA-993 - 03/10 - 1-3-1 - 0063",
           "status": "ON",
-          "onlineStatus": "ACTIVE",
+          "onlineStatus": "WARNING",
           "budget": 1000.0,
           "budgetType": "DAILY",
           "adsOn": 1,
@@ -6517,7 +6517,7 @@
         "2026-09-30": 1059.22,
         "2026-10-01": 644.63,
         "2026-10-02": 873.19,
-        "2026-10-03": 201.47
+        "2026-10-03": 438.61
       },
       "accountKey": "troya",
       "displayName": "[Agency Aurora] Troya"
@@ -6531,7 +6531,7 @@
         "2026-09-30": 842.58,
         "2026-10-01": 324.56,
         "2026-10-02": 564.45,
-        "2026-10-03": 191.07
+        "2026-10-03": 214.07
       },
       "accountKey": "troya",
       "displayName": "[Agency Aurora] Troya 2"
