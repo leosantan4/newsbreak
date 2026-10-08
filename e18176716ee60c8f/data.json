@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-08T00:19:58.379139+00:00",
+  "generatedAt": "2026-10-08T06:29:40.338598+00:00",
   "accounts": {
     "vini": {
       "2026-08-20": {
@@ -1052,15 +1052,28 @@
       },
       "2026-10-07": {
         "date": "2026-10-07",
-        "cost": 968.09,
-        "click": 14463,
-        "cpc": 0.0669,
-        "ic": 47,
-        "custoIc": 20.6,
+        "cost": 975.33,
+        "click": 14545,
+        "cpc": 0.0671,
+        "ic": 49,
+        "custoIc": 19.9,
         "venda": 8,
         "faturamento": 2030,
-        "cpa": 121.01,
-        "roas": 2.0969,
+        "cpa": 121.92,
+        "roas": 2.0813,
+        "vendaSource": "redtrack"
+      },
+      "2026-10-08": {
+        "date": "2026-10-08",
+        "cost": 0.69,
+        "click": 4,
+        "cpc": 0.1723,
+        "ic": 0,
+        "custoIc": null,
+        "venda": 0,
+        "faturamento": 0,
+        "cpa": null,
+        "roas": 0.0,
         "partial": true,
         "vendaSource": "redtrack"
       }
@@ -5513,7 +5526,7 @@
           "id": "2107789578247389185",
           "name": "TROYA-993 - 07/10 - 1-3-1 - 0062",
           "status": "OFF",
-          "onlineStatus": "INACTIVE",
+          "onlineStatus": "COMPLETED",
           "budget": 200.0,
           "budgetType": "DAILY",
           "adsOn": 1,
@@ -5524,7 +5537,7 @@
           "id": "2107789569309327362",
           "name": "TROYA-993 - 07/10 - 1-3-1 - 0064",
           "status": "OFF",
-          "onlineStatus": "INACTIVE",
+          "onlineStatus": "COMPLETED",
           "budget": 200.0,
           "budgetType": "DAILY",
           "adsOn": 1,
@@ -5535,7 +5548,7 @@
           "id": "2107789555291963394",
           "name": "TROYA-993 - 07/10 - 1-3-1 - 0013",
           "status": "ON",
-          "onlineStatus": "WARNING",
+          "onlineStatus": "COMPLETED",
           "budget": 1000.0,
           "budgetType": "DAILY",
           "adsOn": 1,
@@ -6052,7 +6065,7 @@
           "id": "2107789614494564353",
           "name": "TROYA2-018 - 07/10 - 1-3-1 - 0075",
           "status": "ON",
-          "onlineStatus": "WARNING",
+          "onlineStatus": "COMPLETED",
           "budget": 200.0,
           "budgetType": "DAILY",
           "adsOn": 1,
@@ -6063,7 +6076,7 @@
           "id": "2107789602905702402",
           "name": "TROYA2-018 - 07/10 - 1-3-1 - 0069",
           "status": "ON",
-          "onlineStatus": "WARNING",
+          "onlineStatus": "COMPLETED",
           "budget": 1000.0,
           "budgetType": "DAILY",
           "adsOn": 1,
@@ -6074,7 +6087,7 @@
           "id": "2107789595347566594",
           "name": "TROYA2-018 - 07/10 - 1-3-1 - 0063",
           "status": "ON",
-          "onlineStatus": "WARNING",
+          "onlineStatus": "COMPLETED",
           "budget": 1000.0,
           "budgetType": "DAILY",
           "adsOn": 1,
@@ -6965,7 +6978,8 @@
         "2026-10-04": 489.74,
         "2026-10-05": 758.59,
         "2026-10-06": 771.88,
-        "2026-10-07": 445.81
+        "2026-10-07": 449.61,
+        "2026-10-08": 0.45
       },
       "accountKey": "troya",
       "displayName": "[Agency Aurora] Troya"
@@ -6983,7 +6997,8 @@
         "2026-10-04": 542.08,
         "2026-10-05": 792.83,
         "2026-10-06": 607.65,
-        "2026-10-07": 522.28
+        "2026-10-07": 525.73,
+        "2026-10-08": 0.24
       },
       "accountKey": "troya",
       "displayName": "[Agency Aurora] Troya 2"
