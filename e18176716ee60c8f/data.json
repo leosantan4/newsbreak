@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-09T06:31:03.135357+00:00",
+  "generatedAt": "2026-10-09T14:11:19.951762+00:00",
   "accounts": {
     "vini": {
       "2026-08-20": {
@@ -1074,6 +1074,20 @@
         "faturamento": 0,
         "cpa": null,
         "roas": 0.0,
+        "vendaSource": "redtrack"
+      },
+      "2026-10-09": {
+        "date": "2026-10-09",
+        "cost": 0.06,
+        "click": 0,
+        "cpc": 0,
+        "ic": 0,
+        "custoIc": null,
+        "venda": 0,
+        "faturamento": 0,
+        "cpa": null,
+        "roas": 0.0,
+        "partial": true,
         "vendaSource": "redtrack"
       }
     }
@@ -6978,7 +6992,8 @@
         "2026-10-05": 758.59,
         "2026-10-06": 771.88,
         "2026-10-07": 449.61,
-        "2026-10-08": 2.63
+        "2026-10-08": 2.63,
+        "2026-10-09": 0.02
       },
       "accountKey": "troya",
       "displayName": "[Agency Aurora] Troya"
@@ -6997,7 +7012,8 @@
         "2026-10-05": 792.83,
         "2026-10-06": 607.65,
         "2026-10-07": 525.73,
-        "2026-10-08": 1.97
+        "2026-10-08": 1.97,
+        "2026-10-09": 0.04
       },
       "accountKey": "troya",
       "displayName": "[Agency Aurora] Troya 2"
