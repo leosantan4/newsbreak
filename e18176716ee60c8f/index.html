@@ -348,6 +348,15 @@
   .pill.active{background:var(--accent); border-color:var(--accent); color:var(--accent-ink);}
 
   .criar-subnav{display:flex; gap:22px; margin-bottom:18px; border-bottom:1px solid var(--line);}
+  .source-card-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px;}
+  .source-card{display:flex; flex-direction:column; gap:4px; text-align:left; border:1.5px solid var(--line); background:var(--surface-raised); color:var(--ink); font:inherit; border-radius:var(--radius-md); padding:16px 18px; cursor:pointer; transition:border-color .12s;}
+  .source-card:hover{border-color:var(--accent);}
+  .source-card .source-card-name{font-weight:700; font-size:15px;}
+  .source-card .source-card-status{font-size:12px; color:var(--muted);}
+  .source-card.connected .source-card-status{color:var(--good);}
+  .criar-source-bar{display:flex; align-items:center; gap:14px; margin-bottom:12px;}
+  .criar-source-back{border:1px solid var(--line); background:var(--surface-raised); color:var(--ink); font:inherit; font-weight:600; font-size:12.5px; padding:7px 14px; border-radius:var(--radius-sm); cursor:pointer;}
+  .criar-source-back:hover{border-color:var(--accent);}
   .criar-subtab{border:none; background:none; font:inherit; font-weight:600; font-size:13.5px; color:var(--muted); padding:10px 2px; cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px;}
   .criar-subtab.active{color:var(--ink); border-bottom-color:var(--accent);}
   .criar-subtab:hover{color:var(--ink);}
@@ -954,12 +963,19 @@
     </div>
 
     <div id="criarView" hidden>
-      <div class="pill-row source-pills" style="margin-bottom:14px;"></div>
+      <div id="criarSourceChooser" hidden>
+        <p class="dre-intro" style="padding:0 0 14px;">Escolha a fonte de tráfego. Depois você escolhe a estrutura da campanha.</p>
+        <div class="source-card-grid" id="criarSourceGrid"></div>
+      </div>
+      <div class="criar-source-bar" id="criarSourceBar" hidden>
+        <button type="button" id="criarSourceBack" class="criar-source-back">← Trocar fonte</button>
+        <span class="cell-muted">Fonte: <b id="criarSourceName"></b></span>
+      </div>
       <section class="panel" id="criarOtherPanel" hidden>
         <div class="panel-head"><h2 id="criarOtherHead"></h2></div>
         <div class="empty-state" id="criarOtherBody"></div>
       </section>
-      <div class="criar-subnav">
+      <div class="criar-subnav" id="criarSubnav">
         <button type="button" class="criar-subtab active" data-criarsub="nova">Nova campanha</button>
         <button type="button" class="criar-subtab" data-criarsub="links">Links das contas</button>
         <button type="button" class="criar-subtab" data-criarsub="galeria">Galeria de anúncios</button>
@@ -2160,7 +2176,6 @@
         campSource = btn.dataset.source;
         savePref('campSource', campSource);
         renderCampanhas();
-        renderCriarSubNav();
       }));
     });
   }
@@ -3590,17 +3605,39 @@
 
   let criarSubView = loadPref('criarSubView', 'nova');
 
+  let criarSource = null;
+
   function renderCriarSubNav(){
-    renderCampSourcePills();
-    const src = TRAFFIC_SOURCES.find(x => x.key === campSource);
-    const nbOnly = src.connected;
+    const src = TRAFFIC_SOURCES.find(x => x.key === criarSource) || null;
+    const connected = !!(src && src.connected);
+    document.getElementById('criarSourceChooser').hidden = !!src;
+    document.getElementById('criarSourceBar').hidden = !src;
+    document.getElementById('criarSubnav').hidden = !src;
+    if (!src){
+      document.getElementById('criarSourceGrid').innerHTML = TRAFFIC_SOURCES.map(x =>
+        '<button type="button" class="source-card' + (x.connected ? ' connected' : '') + '" data-criar-source="' + x.key + '">' +
+          '<span class="source-card-name">' + x.label + '</span>' +
+          '<span class="source-card-status">' + (x.connected ? 'Conectada' : 'Em breve') + '</span>' +
+        '</button>'
+      ).join('');
+      document.querySelectorAll('[data-criar-source]').forEach(btn => btn.addEventListener('click', () => {
+        criarSource = btn.dataset.criarSource;
+        renderCriarSubNav();
+      }));
+      document.getElementById('criarSubNova').hidden = true;
+      document.getElementById('criarSubLinks').hidden = true;
+      document.getElementById('criarSubGaleria').hidden = true;
+      document.getElementById('criarOtherPanel').hidden = true;
+      return;
+    }
+    document.getElementById('criarSourceName').textContent = src.label;
     document.querySelectorAll('.criar-subtab').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.criarsub === criarSubView);
     });
-    document.getElementById('criarSubNova').hidden = !nbOnly || criarSubView !== 'nova';
-    document.getElementById('criarSubLinks').hidden = !nbOnly || criarSubView !== 'links';
+    document.getElementById('criarSubNova').hidden = !connected || criarSubView !== 'nova';
+    document.getElementById('criarSubLinks').hidden = !connected || criarSubView !== 'links';
     document.getElementById('criarSubGaleria').hidden = criarSubView !== 'galeria';
-    const showOther = !nbOnly && criarSubView !== 'galeria';
+    const showOther = !connected && criarSubView !== 'galeria';
     document.getElementById('criarOtherPanel').hidden = !showOther;
     if (showOther){
       document.getElementById('criarOtherHead').textContent = 'Criar campanha — ' + src.label;
@@ -3609,6 +3646,7 @@
   }
 
   function initCriarView(){
+    document.getElementById('criarSourceBack').addEventListener('click', () => { criarSource = null; renderCriarSubNav(); });
     renderStartDayPills();
     renderEndDayPills();
     initTargetingPills();
