@@ -504,7 +504,12 @@
     </div>
 
     <div id="campanhasView" hidden>
-      <section class="panel">
+      <div class="pill-row" id="campSourcePills" style="margin-bottom:14px;"></div>
+      <section class="panel" id="campOtherPanel" hidden>
+        <div class="panel-head"><h2 id="campOtherHead"></h2></div>
+        <div class="empty-state" id="campOtherBody"></div>
+      </section>
+      <section class="panel" id="campNbPanel">
         <div class="panel-head">
           <h2 id="campStatsHead">Campanhas</h2>
           <div class="panel-head-right">
@@ -1298,6 +1303,16 @@
   let period = loadPref('period', 'today');
   let metric = loadPref('metric', 'faturamento');
   let campFilter = loadPref('campFilter', 'active');
+  const TRAFFIC_SOURCES = [
+    { key: 'newsbreak', label: 'NewsBreak', connected: true },
+    { key: 'adskeeper', label: 'Adskeeper', connected: false },
+    { key: 'revcontent', label: 'RevContent', connected: false },
+    { key: 'taboola', label: 'Taboola', connected: false },
+    { key: 'outbrain', label: 'Outbrain', connected: false },
+  ];
+  let campSource = loadPref('campSource', 'newsbreak');
+  if (!TRAFFIC_SOURCES.some(x => x.key === campSource)) campSource = 'newsbreak';
+
   let mapaPeriod = loadPref('mapaPeriod', 'month');
   let mapaData = null;
   let mapaLoadedKey = null;
@@ -2131,7 +2146,28 @@
     wrap.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => { campMode = b.dataset.campMode; savePref('campMode', campMode); renderCampanhas(); }));
   }
 
+  function renderCampSourcePills(){
+    const el = document.getElementById('campSourcePills');
+    el.innerHTML = TRAFFIC_SOURCES.map(x =>
+      '<button type="button" class="pill' + (x.key === campSource ? ' active' : '') + '" data-source="' + x.key + '">' + x.label + '</button>'
+    ).join('');
+    el.querySelectorAll('[data-source]').forEach(btn => btn.addEventListener('click', () => {
+      campSource = btn.dataset.source;
+      savePref('campSource', campSource);
+      renderCampanhas();
+    }));
+  }
+
   function renderCampanhas(){
+    renderCampSourcePills();
+    const src = TRAFFIC_SOURCES.find(x => x.key === campSource);
+    document.getElementById('campNbPanel').hidden = !src.connected;
+    document.getElementById('campOtherPanel').hidden = src.connected;
+    if (!src.connected){
+      document.getElementById('campOtherHead').textContent = 'Campanhas — ' + src.label;
+      document.getElementById('campOtherBody').textContent = 'A integração com ' + src.label + ' ainda não está conectada. Quando for, as campanhas dessa fonte aparecem aqui.';
+      return;
+    }
     renderCampModeTabs();
     renderCampFilterTabs();
     document.getElementById('campFilterTabs').hidden = campMode === 'table';
