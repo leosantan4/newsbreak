@@ -504,7 +504,7 @@
     </div>
 
     <div id="campanhasView" hidden>
-      <div class="pill-row" id="campSourcePills" style="margin-bottom:14px;"></div>
+      <div class="pill-row source-pills" style="margin-bottom:14px;"></div>
       <section class="panel" id="campOtherPanel" hidden>
         <div class="panel-head"><h2 id="campOtherHead"></h2></div>
         <div class="empty-state" id="campOtherBody"></div>
@@ -954,6 +954,11 @@
     </div>
 
     <div id="criarView" hidden>
+      <div class="pill-row source-pills" style="margin-bottom:14px;"></div>
+      <section class="panel" id="criarOtherPanel" hidden>
+        <div class="panel-head"><h2 id="criarOtherHead"></h2></div>
+        <div class="empty-state" id="criarOtherBody"></div>
+      </section>
       <div class="criar-subnav">
         <button type="button" class="criar-subtab active" data-criarsub="nova">Nova campanha</button>
         <button type="button" class="criar-subtab" data-criarsub="links">Links das contas</button>
@@ -2147,15 +2152,17 @@
   }
 
   function renderCampSourcePills(){
-    const el = document.getElementById('campSourcePills');
-    el.innerHTML = TRAFFIC_SOURCES.map(x =>
-      '<button type="button" class="pill' + (x.key === campSource ? ' active' : '') + '" data-source="' + x.key + '">' + x.label + '</button>'
-    ).join('');
-    el.querySelectorAll('[data-source]').forEach(btn => btn.addEventListener('click', () => {
-      campSource = btn.dataset.source;
-      savePref('campSource', campSource);
-      renderCampanhas();
-    }));
+    document.querySelectorAll('.source-pills').forEach(el => {
+      el.innerHTML = TRAFFIC_SOURCES.map(x =>
+        '<button type="button" class="pill' + (x.key === campSource ? ' active' : '') + '" data-source="' + x.key + '">' + x.label + '</button>'
+      ).join('');
+      el.querySelectorAll('[data-source]').forEach(btn => btn.addEventListener('click', () => {
+        campSource = btn.dataset.source;
+        savePref('campSource', campSource);
+        renderCampanhas();
+        renderCriarSubNav();
+      }));
+    });
   }
 
   function renderCampanhas(){
@@ -3584,12 +3591,21 @@
   let criarSubView = loadPref('criarSubView', 'nova');
 
   function renderCriarSubNav(){
+    renderCampSourcePills();
+    const src = TRAFFIC_SOURCES.find(x => x.key === campSource);
+    const nbOnly = src.connected;
     document.querySelectorAll('.criar-subtab').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.criarsub === criarSubView);
     });
-    document.getElementById('criarSubNova').hidden = criarSubView !== 'nova';
-    document.getElementById('criarSubLinks').hidden = criarSubView !== 'links';
+    document.getElementById('criarSubNova').hidden = !nbOnly || criarSubView !== 'nova';
+    document.getElementById('criarSubLinks').hidden = !nbOnly || criarSubView !== 'links';
     document.getElementById('criarSubGaleria').hidden = criarSubView !== 'galeria';
+    const showOther = !nbOnly && criarSubView !== 'galeria';
+    document.getElementById('criarOtherPanel').hidden = !showOther;
+    if (showOther){
+      document.getElementById('criarOtherHead').textContent = 'Criar campanha — ' + src.label;
+      document.getElementById('criarOtherBody').textContent = 'A integração com ' + src.label + ' ainda não está conectada. Quando for, a criação de campanhas dessa fonte aparece aqui. A Galeria de anúncios continua disponível.';
+    }
   }
 
   function initCriarView(){
