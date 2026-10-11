@@ -5,15 +5,38 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <title>Native Ads Console</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<script>try{document.documentElement.dataset.theme=localStorage.getItem('nb_theme')||'light';}catch(e){document.documentElement.dataset.theme='light';}</script>
 <style>
   :root{
+    --bg:#f6f6f7;
+    --surface:#ffffff;
+    --surface-raised:#ffffff;
+    --ink:#18181b;
+    --muted:#6b6b76;
+    --line:#e4e4e8;
+    --accent:#18181b;
+    --accent-ink:#ffffff;
+    --good:#15803d;
+    --good-bg:rgba(21,128,61,.10);
+    --bad:#c8312d;
+    --bad-bg:rgba(200,49,45,.08);
+    --neutral-bg:#f0f0f2;
+    --input-bg:#ffffff;
+    --shadow: 0 1px 2px rgba(16,24,40,.05), 0 1px 1px rgba(16,24,40,.03);
+    --radius-xs:6px;
+    --radius-sm:9px;
+    --radius-md:12px;
+    --radius-lg:14px;
+  }
+  :root[data-theme="dark"]{
     --bg:#09090b;
     --surface:#111113;
     --surface-raised:#17181a;
     --ink:#fafafa;
-    --muted:#9a9ba3;
-    --line:#232327;
+    --muted:#a1a1aa;
+    --line:#26262b;
     --accent:#22c55e;
     --accent-ink:#04150b;
     --good:#34d399;
@@ -21,18 +44,16 @@
     --bad:#f87171;
     --bad-bg:rgba(248,113,113,.13);
     --neutral-bg:#1c1c1f;
+    --input-bg:#0e0e10;
     --shadow: 0 1px 2px rgba(0,0,0,.3);
-    --radius-xs:6px;
-    --radius-sm:9px;
-    --radius-md:12px;
-    --radius-lg:14px;
   }
 
   *{box-sizing:border-box;}
-  html{color-scheme:dark;}
+  html{color-scheme:light;}
+  html[data-theme="dark"]{color-scheme:dark;}
   html,body{background:var(--bg); height:100%;}
-  body{color:var(--ink); font-family:"IBM Plex Sans",system-ui,sans-serif; margin:0;}
-  .num, .tabular{font-family:"IBM Plex Mono","SFMono-Regular",monospace; font-variant-numeric:tabular-nums;}
+  body{color:var(--ink); font-family:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif; font-size:14px; line-height:1.45; margin:0; -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;}
+  .num, .tabular{font-variant-numeric:tabular-nums; font-feature-settings:"tnum" 1,"cv11" 1;}
   [hidden]{display:none !important;}
 
   button{cursor:pointer; transition:filter .15s ease, border-color .15s ease, box-shadow .15s ease, background-color .15s ease;}
@@ -99,7 +120,7 @@
   .chart-line{fill:none; stroke:var(--accent); stroke-width:2.25;}
   .chart-area{fill:url(#chartGradient);}
   .chart-grid{stroke:var(--line); stroke-width:1;}
-  .chart-label{fill:var(--muted); font-family:"IBM Plex Mono",monospace; font-size:9.5px;}
+  .chart-label{fill:var(--muted); font-family:"Inter",sans-serif; font-size:10px; font-variant-numeric:tabular-nums;}
   .chart-dot{fill:var(--accent); stroke:var(--surface-raised); stroke-width:1.5;}
   .metric-toggle{display:flex; gap:4px;}
   .chart-stats{display:grid; grid-template-columns:repeat(3,1fr); border-top:1px solid var(--line);}
@@ -446,6 +467,69 @@
     table{font-size:12px;}
     thead th, tbody td{padding:7px 9px;}
   }
+
+  /* ===== Visual refresh (Pareto-OS-inspired): clean cards, legible type, light/dark ===== */
+  header h1{font-size:24px; font-weight:700; letter-spacing:-.02em;}
+  header p{font-size:14px;}
+  .sidenav{flex-basis:236px; background:var(--surface); padding:20px 14px 16px; gap:2px;}
+  .sidenav-brand{display:flex; align-items:center; gap:10px; font-size:15px; font-weight:700; padding:4px 10px 20px; letter-spacing:-.015em;}
+  .sidenav-brand::before{content:""; width:22px; height:22px; flex:none; border-radius:7px; background:var(--ink); -webkit-mask:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M2 3h20L12 21z'/></svg>") center/contain no-repeat; mask:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M2 3h20L12 21z'/></svg>") center/contain no-repeat;}
+  .sidenav-group-label{font-size:10.5px; letter-spacing:.09em; font-weight:600; padding:18px 12px 6px;}
+  .nav-item{font-size:14px; font-weight:500; color:var(--muted); padding:9px 12px; border:1px solid transparent; gap:11px;}
+  .nav-item .ic{font-size:14px; opacity:.85;}
+  .nav-item:hover{background:var(--neutral-bg); color:var(--ink);}
+  .nav-item.active{background:var(--neutral-bg); color:var(--ink); border-color:var(--line); font-weight:600;}
+  .nav-item.active .ic{opacity:1;}
+  .theme-toggle{margin-top:auto; display:flex; gap:4px; padding:4px; background:var(--neutral-bg); border:1px solid var(--line); border-radius:var(--radius-sm);}
+  .theme-toggle button{flex:1; border:none; background:none; color:var(--muted); font:inherit; font-size:12.5px; font-weight:600; padding:7px 8px; border-radius:7px; cursor:pointer;}
+  .theme-toggle button.active{background:var(--surface-raised); color:var(--ink); box-shadow:var(--shadow);}
+  .theme-toggle button:hover:not(.active){filter:none; color:var(--ink);}
+
+  button:hover:not(:disabled){filter:none;}
+  .tab, .pill, .icon-btn, .select-all-btn, .use-btn{transition:background .12s, border-color .12s, color .12s;}
+  .tab:hover:not(.active), .pill:hover:not(.active), .icon-btn:hover{border-color:color-mix(in srgb, var(--ink) 30%, var(--line)); color:var(--ink);}
+  .tab{font-size:13px; padding:7px 14px; border-radius:var(--radius-sm); background:var(--surface-raised);}
+  .tab.active, .pill.active{background:var(--accent); border-color:var(--accent); color:var(--accent-ink);}
+  button:focus-visible, .pill:focus-visible, .tab:focus-visible{outline:2px solid color-mix(in srgb, var(--ink) 55%, transparent); outline-offset:2px;}
+  input:focus, select:focus, textarea:focus{border-color:var(--ink); box-shadow:0 0 0 3px color-mix(in srgb, var(--ink) 12%, transparent);}
+
+  input[type=text], input[type=number], input[type=date], input[type=time], input[type=url], input[type=password], input[type=search], select, textarea{background:var(--input-bg); color:var(--ink); border:1px solid var(--line); border-radius:10px; font-family:inherit;}
+  .cost-form-grid input, .cost-form-grid select{background:var(--input-bg); padding:10px 12px; font-size:14px; border-radius:10px;}
+  .form-field input, .form-field select, .form-field textarea{background:var(--input-bg); color:var(--ink); border:1px solid var(--line); border-radius:10px; padding:10px 12px; font:inherit; font-size:14px;}
+  .form-field label, .cost-form-grid label{font-size:11px; font-weight:600; letter-spacing:.06em;}
+  ::placeholder{color:color-mix(in srgb, var(--muted) 75%, transparent);}
+
+  .card, .panel, .cc-card, .cc-summary{border-radius:14px; box-shadow:var(--shadow);}
+  .panel-head h2{font-size:15px; font-weight:650; letter-spacing:-.01em;}
+  .card-label{font-size:11px; letter-spacing:.06em;}
+  .card-spend{font-size:30px; font-weight:650; letter-spacing:-.025em;}
+  .card.total{background:var(--surface-raised); border-color:color-mix(in srgb, var(--ink) 22%, var(--line));}
+  .card-stats{font-size:13px;}
+
+  table{font-size:13.5px;}
+  thead th{font-size:11px; font-weight:600; letter-spacing:.05em; padding:11px 12px; background:color-mix(in srgb, var(--neutral-bg) 55%, transparent);}
+  tbody td{padding:11px 12px;}
+  tbody tr:hover td{background:color-mix(in srgb, var(--neutral-bg) 60%, transparent);}
+  tbody tr.today{background:color-mix(in srgb, var(--ink) 4%, transparent);}
+
+  .step-num{background:var(--ink); color:var(--surface-raised);}
+  .cc-submit-btn, .cost-form-grid button, #ccBrandSaveBtn, #addAccountSaveBtn{background:var(--accent); color:var(--accent-ink); border-radius:10px; font-weight:600;}
+  .cc-submit-btn:hover:not(:disabled){background:color-mix(in srgb, var(--accent) 88%, var(--surface-raised));}
+  .live-pill{font-size:13px; box-shadow:var(--shadow);}
+  .alert-banner{border-radius:12px; font-size:13.5px; padding:12px 16px;}
+  .roas-pill{font-size:12px; border-radius:6px; padding:2px 8px;}
+
+  /* traffic-source chooser */
+  .source-card-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:12px; max-width:1100px;}
+  .source-card{flex-direction:row; align-items:center; gap:14px; padding:16px 18px; border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow); background:var(--surface-raised); position:relative;}
+  .source-card:hover{border-color:color-mix(in srgb, var(--ink) 35%, var(--line)); transform:translateY(-1px);}
+  .source-card .source-card-ic{width:40px; height:40px; flex:none; border-radius:11px; background:var(--neutral-bg); color:var(--ink); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:16px;}
+  .source-card .source-card-txt{display:flex; flex-direction:column; gap:2px; min-width:0; flex:1;}
+  .source-card .source-card-name{font-size:15px; font-weight:650;}
+  .source-card .source-card-status{font-size:12.5px;}
+  .source-card .source-card-arrow{color:var(--muted); font-size:16px;}
+  .source-card.soon{opacity:.72;}
+  .criar-source-bar{background:var(--surface-raised); border:1px solid var(--line); border-radius:12px; padding:10px 14px; box-shadow:var(--shadow);}
 </style>
 </head>
 <body>
@@ -465,6 +549,10 @@
     <button class="nav-item" data-view="criar"><span class="ic">✚</span>Criar Campanha</button>
     <div class="sidenav-group-label">Configurações</div>
     <button class="nav-item" data-view="contas"><span class="ic">⚙</span>Contas</button>
+    <div class="theme-toggle" id="themeToggle">
+      <button type="button" data-theme-set="light">Claro</button>
+      <button type="button" data-theme-set="dark">Escuro</button>
+    </div>
   </nav>
 
   <main class="content" id="mainContent">
@@ -547,10 +635,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 959 593" id="usMapSvg" style="width:100%;height:auto;display:block;">
   <defs>
 <style>
-.state{fill:#1c1d20}
-.borders{stroke:#09090b; stroke-width:1}
+.state{fill:var(--neutral-bg)}
+.borders{stroke:var(--surface-raised); stroke-width:1}
 .dccircle{display:yes}
-.separator1{stroke:#3a3a40; stroke-width:2}
+.separator1{stroke:var(--line); stroke-width:2}
 </style>
 </defs>
 
@@ -1319,6 +1407,17 @@
     try { localStorage.setItem('nb_' + key, value); } catch {}
   }
 
+
+  function applyTheme(t){
+    document.documentElement.dataset.theme = t;
+    savePref('theme', t);
+    document.querySelectorAll('[data-theme-set]').forEach(b => b.classList.toggle('active', b.dataset.themeSet === t));
+    try { if (typeof renderMapa === 'function' && !document.getElementById('mapaView').hidden) renderMapa(); } catch {}
+    try { renderChart(); } catch {}
+  }
+  document.querySelectorAll('[data-theme-set]').forEach(b => b.addEventListener('click', () => applyTheme(b.dataset.themeSet)));
+  document.querySelectorAll('[data-theme-set]').forEach(b => b.classList.toggle('active', b.dataset.themeSet === (document.documentElement.dataset.theme || 'light')));
+
   let view = loadPref('view', 'painel');
   let scope = loadPref('scope', 'geral');
   let period = loadPref('period', 'today');
@@ -1419,7 +1518,8 @@
   }
 
   function mapaColorFor(pct){
-    const lo = [0x1c,0x1d,0x20], hi = [0x22,0xc5,0x5e];
+    const dark = document.documentElement.dataset.theme === 'dark';
+    const lo = dark ? [0x1c,0x1d,0x20] : [0xea,0xea,0xee], hi = dark ? [0x22,0xc5,0x5e] : [0x15,0x80,0x3d];
     const t = Math.max(0, Math.min(1, pct));
     const rgb = lo.map((c,i) => Math.round(c + (hi[i]-c)*t));
     return 'rgb(' + rgb.join(',') + ')';
@@ -3615,9 +3715,11 @@
     document.getElementById('criarSubnav').hidden = !src;
     if (!src){
       document.getElementById('criarSourceGrid').innerHTML = TRAFFIC_SOURCES.map(x =>
-        '<button type="button" class="source-card' + (x.connected ? ' connected' : '') + '" data-criar-source="' + x.key + '">' +
-          '<span class="source-card-name">' + x.label + '</span>' +
-          '<span class="source-card-status">' + (x.connected ? 'Conectada' : 'Em breve') + '</span>' +
+        '<button type="button" class="source-card' + (x.connected ? ' connected' : ' soon') + '" data-criar-source="' + x.key + '">' +
+          '<span class="source-card-ic">' + x.label.charAt(0) + '</span>' +
+          '<span class="source-card-txt"><span class="source-card-name">' + x.label + '</span>' +
+          '<span class="source-card-status">' + (x.connected ? 'Conectada' : 'Em breve') + '</span></span>' +
+          '<span class="source-card-arrow">→</span>' +
         '</button>'
       ).join('');
       document.querySelectorAll('[data-criar-source]').forEach(btn => btn.addEventListener('click', () => {
