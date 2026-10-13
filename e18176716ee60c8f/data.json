@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-12T22:46:07.325284+00:00",
+  "generatedAt": "2026-10-13T03:23:01.882367+00:00",
   "accounts": {
     "vini": {
       "2026-08-20": {
@@ -1126,7 +1126,6 @@
         "faturamento": 0,
         "cpa": null,
         "roas": 0.0,
-        "partial": true,
         "vendaSource": "redtrack"
       }
     }
