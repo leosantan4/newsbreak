@@ -642,7 +642,15 @@
 
   /* ===== Mobile (placed last so it wins over the desktop refresh above) ===== */
   @media (max-width:720px){
-    .content{padding:12px 12px calc(86px + env(safe-area-inset-bottom, 0px));}
+    .shell{align-items:stretch;}
+    .content{width:100%; min-width:0; padding:12px 12px calc(86px + env(safe-area-inset-bottom, 0px));}
+    .criar-layout{grid-template-columns:minmax(0,1fr);}
+    .criar-main, .criar-layout > aside{min-width:0;}
+    .summary-grid{grid-template-columns:1fr 1fr; gap:10px;}
+    .summary-grid .card.total{grid-column:1 / -1;}
+    .summary-grid .card{padding:12px 14px;}
+    .summary-grid .card-spend{font-size:22px; margin-bottom:8px;}
+    .summary-grid .card-stats{gap:8px 10px; font-size:12px;}
     header{gap:8px; margin-bottom:12px;}
     header h1{font-size:18px; letter-spacing:-.015em;}
     header p{font-size:12px; line-height:1.35;}
