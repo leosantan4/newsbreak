@@ -564,18 +564,18 @@
 <div class="shell">
   <nav class="sidenav" id="sidenav">
     <div class="sidenav-brand">Native Ads</div>
-    <div class="sidenav-group-label">Visão geral</div>
-    <button class="nav-item" data-view="painel"><span class="ic">▦</span>Painel</button>
+    <div class="sidenav-group-label">Tráfego</div>
+    <button class="nav-item" data-view="painel"><span class="ic">▦</span>Dashboard</button>
+    <button class="nav-item" data-view="criar"><span class="ic">✚</span>Criar Campanha</button>
     <button class="nav-item" data-view="campanhas"><span class="ic">▶</span>Campanhas</button>
-    <button class="nav-item" data-view="mapa"><span class="ic">◈</span>Mapa de Vendas</button>
+    <button class="nav-item" data-view="galeria"><span class="ic">▣</span>Galeria de ads</button>
     <div class="sidenav-group-label">Financeiro</div>
     <button class="nav-item" data-view="dre"><span class="ic">▤</span>DRE Mensal</button>
     <button class="nav-item" data-view="custos"><span class="ic">$</span>Custos Fixos</button>
     <button class="nav-item" data-view="saldo"><span class="ic">◒</span>Saldo</button>
+    <button class="nav-item" data-view="mapa"><span class="ic">◈</span>Mapa de Vendas</button>
     <div class="sidenav-group-label">Mídia</div>
     <button class="nav-item" data-view="vturb"><span class="ic">◉</span>VSL</button>
-    <button class="nav-item" data-view="criar"><span class="ic">✚</span>Criar Campanha</button>
-    <button class="nav-item" data-view="galeria"><span class="ic">▣</span>Galeria de ads</button>
     <div class="sidenav-group-label">Configurações</div>
     <button class="nav-item" data-view="contas"><span class="ic">⚙</span>Contas</button>
     <div class="theme-toggle" id="themeToggle">
@@ -595,7 +595,7 @@
   <main class="content" id="mainContent">
     <header>
       <div>
-        <h1>Native Ads — Painel Diário</h1>
+        <h1>Native Ads — Dashboard</h1>
         <p id="headerSubtitle">Gasto e conversão das contas NewsBreak · Vini, Pretorian, Neia, Alan, Troya</p>
       </div>
       <div class="panel-head-right">
@@ -1458,7 +1458,7 @@
       <section class="panel">
         <div class="step-head">
           <div class="step-head-left"><span class="step-title">Contas</span></div>
-          <span class="step-desc">desative uma conta pra ela parar de aparecer no Painel e no seletor da Criar Campanha — não apaga histórico nem dados já sincronizados</span>
+          <span class="step-desc">desative uma conta pra ela parar de aparecer no Dashboard e no seletor da Criar Campanha — não apaga histórico nem dados já sincronizados</span>
         </div>
         <div id="accountsList" class="accounts-list"></div>
         <div style="padding:0 18px 18px;">
@@ -1485,7 +1485,7 @@
       </section>
     </div>
 
-    <footer id="footerNote">Link privado — não compartilhe. Painel, Campanhas e VSL atualizam em tempo real (a cada ~20s, direto da NewsBreak/RedTrack/VTurb). Histórico e Saldo sincronizam a cada poucos minutos. Venda e faturamento vêm do RedTrack (postback real do checkout, mais confiável que o pixel da NewsBreak); gasto vem direto da NewsBreak — mas o gasto de HOJE pode estar defasado algumas horas, pois a própria API de relatórios da NewsBreak não fecha o dia em tempo real (confirmado contra o Ad Management deles). Dias anteriores já fecham certo.</footer>
+    <footer id="footerNote">Link privado — não compartilhe. Dashboard, Campanhas e VSL atualizam em tempo real (a cada ~20s, direto da NewsBreak/RedTrack/VTurb). Histórico e Saldo sincronizam a cada poucos minutos. Venda e faturamento vêm do RedTrack (postback real do checkout, mais confiável que o pixel da NewsBreak); gasto vem direto da NewsBreak — mas o gasto de HOJE pode estar defasado algumas horas, pois a própria API de relatórios da NewsBreak não fecha o dia em tempo real (confirmado contra o Ad Management deles). Dias anteriores já fecham certo.</footer>
   </main>
 </div>
 
@@ -4603,7 +4603,7 @@
         '<div class="account-row' + (active ? '' : ' inactive') + '">' +
           '<div>' +
             '<div class="acc-row-name">' + a.label + (isCustom ? ' <span class="cell-muted" style="font-weight:400; font-size:11.5px;">(adicionada)</span>' : '') + '</div>' +
-            '<div class="acc-row-status">' + (active ? 'Ativa — aparece no Painel e na Criar Campanha' : 'Inativa — escondida do Painel e da Criar Campanha') + '</div>' +
+            '<div class="acc-row-status">' + (active ? 'Ativa — aparece no Dashboard e na Criar Campanha' : 'Inativa — escondida do Dashboard e da Criar Campanha') + '</div>' +
           '</div>' +
           '<div style="display:flex; align-items:center; gap:14px;">' +
             (isCustom ? '<button type="button" class="remove-btn" data-remove-account="' + a.key + '" title="Remover conta">×</button>' : '') +
