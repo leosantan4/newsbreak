@@ -607,6 +607,25 @@
     </div>
   </div>
 
+  <div class="assign-sheet" id="renameSheet" hidden>
+    <div class="assign-sheet-card rename-card" role="dialog" aria-modal="true">
+      <div class="assign-sheet-title" id="renameTitle">Renomear anúncios</div>
+      <div class="pill-row" style="margin-bottom:12px;">
+        <button type="button" class="pill active" data-rmode="pad">Completar com zeros</button>
+        <button type="button" class="pill" data-rmode="seq">Numerar em sequência</button>
+      </div>
+      <div class="rename-fields">
+        <label>Dígitos <input type="number" id="renameDigits" min="1" max="8" value="4"></label>
+        <label id="renamePrefixWrap" hidden>Prefixo <input type="text" id="renamePrefix" placeholder="(opcional)" maxlength="40"></label>
+        <label id="renameStartWrap" hidden>Começar em <input type="number" id="renameStart" min="0" value="1"></label>
+      </div>
+      <div class="rename-preview" id="renamePreview"></div>
+      <div class="cell-muted" id="renameNote" style="min-height:18px; font-size:12px; margin-bottom:10px;"></div>
+      <button type="button" class="assign-sheet-close" id="renameApply">Aplicar</button>
+      <button type="button" class="rename-cancel" id="renameCancel">Cancelar</button>
+    </div>
+  </div>
+
   <main class="content" id="mainContent">
     <header>
       <div>
@@ -693,6 +712,19 @@
 .separator1{stroke:var(--line); stroke-width:2}
 
 
+  .rename-card{max-width:520px;}
+  .rename-fields{display:flex; gap:12px; flex-wrap:wrap; margin-bottom:12px;}
+  .rename-fields label{display:flex; flex-direction:column; gap:4px; font-size:11px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; color:var(--muted);}
+  .rename-fields input{width:110px; text-transform:none; letter-spacing:0; font-size:14px; padding:9px 10px;}
+  .rename-preview{border:1px solid var(--line); border-radius:10px; max-height:220px; overflow:auto; margin-bottom:8px; font-size:13px; font-variant-numeric:tabular-nums;}
+  .rename-row{display:flex; align-items:center; gap:10px; padding:6px 12px; border-bottom:1px solid var(--line);}
+  .rename-row:last-child{border-bottom:none;}
+  .rename-row .old{color:var(--muted); min-width:70px;}
+  .rename-row .arrow{color:var(--muted);}
+  .rename-row .new{font-weight:650;}
+  .rename-row.same .new{color:var(--muted); font-weight:400;}
+  .rename-row.bad .new{color:var(--bad);}
+  .rename-cancel{width:100%; margin-top:8px; border:1px solid var(--line); background:none; color:var(--muted); font:inherit; font-weight:600; font-size:13px; padding:11px; border-radius:12px; cursor:pointer;}
   /* tap-to-assign sheet (touch alternative to drag-and-drop) */
   .assign-sheet{position:fixed; inset:0; z-index:90; display:flex; align-items:flex-end; justify-content:center; background:rgba(0,0,0,.38);}
   .assign-sheet-card{width:100%; max-width:460px; background:var(--surface-raised); border:1px solid var(--line); border-radius:16px 16px 0 0; padding:16px 16px calc(16px + env(safe-area-inset-bottom, 0px)); box-shadow:0 -10px 30px rgba(0,0,0,.2);}
@@ -1465,6 +1497,7 @@
             <span class="gallery-bulk-actions" id="galleryBulkActions" hidden>
               <select id="galleryMoveSelect"></select>
               <button type="button" id="galleryMoveBtn" class="gallery-action-btn">Mover</button>
+              <button type="button" id="galleryRenameBtn" class="gallery-action-btn">Renomear</button>
               <button type="button" id="galleryDeleteSelectedBtn" class="gallery-action-btn bad"></button>
             </span>
           </div>
@@ -3176,6 +3209,83 @@
     updateSelectedLogoLabel();
   }
 
+  // ---- renomear anúncios em lote ----
+  let renameMode = 'pad';
+  const natCollator = new Intl.Collator('pt-BR', { numeric: true });
+
+  function renamePlan(){
+    const items = selectedGalleryIds.map(id => libraryItems.find(i => i.id === id)).filter(Boolean).sort((a, b) => natCollator.compare(a.name, b.name));
+    const digits = Math.max(1, Math.min(8, parseInt(document.getElementById('renameDigits').value, 10) || 4));
+    const prefix = document.getElementById('renamePrefix').value;
+    const start = Math.max(0, parseInt(document.getElementById('renameStart').value, 10) || 0);
+    const plan = items.map((it, idx) => {
+      let name = it.name;
+      if (renameMode === 'pad') { if (/^\d+$/.test(it.name)) name = String(parseInt(it.name, 10)).padStart(digits, '0'); }
+      else name = prefix + String(start + idx).padStart(digits, '0');
+      return { id: it.id, old: it.name, name, category: itemCategory(it) };
+    });
+    const finalNames = new Map();
+    libraryItems.forEach(i => finalNames.set(i.id, i.name));
+    plan.forEach(r => finalNames.set(r.id, r.name));
+    const seen = {};
+    libraryItems.forEach(i => { const k = itemCategory(i) + '\u0000' + finalNames.get(i.id); seen[k] = (seen[k] || 0) + 1; });
+    plan.forEach(r => { r.conflict = seen[r.category + '\u0000' + r.name] > 1; });
+    return plan;
+  }
+
+  function renderRenamePreview(){
+    const plan = renamePlan();
+    const changed = plan.filter(r => r.old !== r.name);
+    const conflicts = plan.filter(r => r.conflict);
+    document.getElementById('renameTitle').textContent = 'Renomear ' + plan.length + ' anúncio' + (plan.length === 1 ? '' : 's');
+    document.getElementById('renamePreview').innerHTML = plan.map(r =>
+      '<div class="rename-row' + (r.old === r.name ? ' same' : '') + (r.conflict ? ' bad' : '') + '"><span class="old">' + ccEsc(r.old) + '</span><span class="arrow">→</span><span class="new">' + ccEsc(r.name) + '</span></div>'
+    ).join('');
+    const note = document.getElementById('renameNote');
+    note.textContent = conflicts.length ? 'Nomes repetidos na mesma pasta — ajuste os números.' : (changed.length ? changed.length + ' serão alterados.' : 'Nada a alterar com essa regra.');
+    document.getElementById('renameApply').disabled = !changed.length || !!conflicts.length;
+  }
+
+  function openRenameSheet(){
+    if (!selectedGalleryIds.length) return;
+    document.getElementById('renameSheet').hidden = false;
+    renderRenamePreview();
+  }
+  function closeRenameSheet(){ document.getElementById('renameSheet').hidden = true; }
+
+  document.querySelectorAll('[data-rmode]').forEach(b => b.addEventListener('click', () => {
+    renameMode = b.dataset.rmode;
+    document.querySelectorAll('[data-rmode]').forEach(x => x.classList.toggle('active', x.dataset.rmode === renameMode));
+    document.getElementById('renamePrefixWrap').hidden = renameMode !== 'seq';
+    document.getElementById('renameStartWrap').hidden = renameMode !== 'seq';
+    renderRenamePreview();
+  }));
+  ['renameDigits', 'renamePrefix', 'renameStart'].forEach(id => document.getElementById(id).addEventListener('input', renderRenamePreview));
+  document.getElementById('renameCancel').addEventListener('click', closeRenameSheet);
+  document.getElementById('renameSheet').addEventListener('click', (e) => { if (e.target.id === 'renameSheet') closeRenameSheet(); });
+  document.getElementById('renameApply').addEventListener('click', async () => {
+    const plan = renamePlan().filter(r => r.old !== r.name);
+    if (!plan.length) return;
+    const note = document.getElementById('renameNote');
+    document.getElementById('renameApply').disabled = true;
+    note.textContent = 'Renomeando…';
+    try {
+      const r = await fetch(LIBRARY_API + '/rename', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY },
+        body: JSON.stringify({ renames: plan.map(x => ({ id: x.id, name: x.name })) }),
+      });
+      const json = await r.json();
+      if (!r.ok) { note.textContent = json.error === 'name_conflict_in_folder' ? 'Já existe "' + json.name + '" nessa pasta.' : 'Falhou — tenta de novo.'; document.getElementById('renameApply').disabled = false; return; }
+      libraryItems = json.items || libraryItems;
+      selectedGalleryIds = [];
+      closeRenameSheet();
+      refreshLibraryViews();
+    } catch {
+      note.textContent = 'Falhou — tenta de novo.';
+      document.getElementById('renameApply').disabled = false;
+    }
+  });
+
   function renderGalleryBulkBar(shown){
     const bar = document.getElementById('galleryBulkBar');
     if (!shown.length) { bar.hidden = true; return; }
@@ -3200,6 +3310,7 @@
       const moveSelect = document.getElementById('galleryMoveSelect');
       moveSelect.innerHTML = folderList().filter(c => c !== galleryOpenFolder).map(c => '<option value="' + c + '">' + folderPathLabel(c) + '</option>').join('');
       document.getElementById('galleryMoveBtn').onclick = () => bulkMoveSelected(moveSelect.value);
+      document.getElementById('galleryRenameBtn').onclick = openRenameSheet;
       document.getElementById('galleryDeleteSelectedBtn').textContent = 'Apagar (' + count + ')';
       document.getElementById('galleryDeleteSelectedBtn').onclick = () => bulkDeleteSelected();
     }

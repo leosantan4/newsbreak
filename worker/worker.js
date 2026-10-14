@@ -988,6 +988,34 @@ export default {
       });
     }
 
+    if (url.pathname === "/library/rename" && request.method === "POST") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      let body;
+      try { body = await request.json(); } catch { return json({ error: "invalid_json" }, 400, origin); }
+      const renames = Array.isArray(body.renames) ? body.renames : [];
+      if (!renames.length || renames.length > 500) return json({ error: "invalid_renames" }, 400, origin);
+      const items = await loadLibrary(env);
+      const byId = new Map(items.map((i) => [i.id, i]));
+      const next = new Map();
+      for (const r of renames) {
+        const name = String((r && r.name) || "").trim().slice(0, 200);
+        if (!r || !byId.has(r.id) || !name) return json({ error: "invalid_renames" }, 400, origin);
+        next.set(r.id, name);
+      }
+      // Validate the final state: names must stay unique inside each folder.
+      const seen = new Set();
+      for (const i of items) {
+        const finalName = next.has(i.id) ? next.get(i.id) : i.name;
+        const k = libItemCategory(i) + "\u0000" + finalName;
+        if (seen.has(k)) return json({ error: "name_conflict_in_folder", name: finalName }, 409, origin);
+        seen.add(k);
+      }
+      items.forEach((i) => { if (next.has(i.id)) i.name = next.get(i.id); });
+      await saveLibrary(env, items);
+      return json({ items }, 200, origin);
+    }
+
     if (url.pathname.match(/^\/library\/[^/]+\/category$/) && request.method === "POST") {
       const key = request.headers.get("X-Access-Key");
       if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
