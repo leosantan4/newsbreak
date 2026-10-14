@@ -3903,7 +3903,7 @@
   function buildDefaultCampaignName(account){
     const label = subAccountCleanName(account).toUpperCase().replace(/[^A-Z0-9]/g, '');
     const suffix = account.id.slice(-3);
-    const dateStr = fmtDateShort(todayKeyLA());
+    const dateStr = fmtDateShort(todayKeyBR());
     return label + '-' + suffix + ' - ' + dateStr + ' - ' + CC_STRUCTURES[ccStructure].suffix;
   }
 
@@ -4221,8 +4221,9 @@
   }
 
   // ---- Dia de início (só semana atual) e fuso PDT ----
-  function todayKeyLA(){
-    return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  // "Hoje" in the creation form is the user's (Brasília) calendar day; only the clock times are PDT.
+  function todayKeyBR(){
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
   }
 
   function laOffsetMinutes(dateKey){
@@ -4243,16 +4244,18 @@
 
   function laWallTimeToBrt(dateKey, timeStr){
     const epoch = laWallTimeToEpoch(dateKey, timeStr);
-    const fmt = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hour12: false });
-    return fmt.format(new Date(epoch * 1000));
+    const d = new Date(epoch * 1000);
+    const hm = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hour12: false }).format(d);
+    const brDay = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+    return brDay === dateKey ? hm : hm + ' (' + fmtDateShort(brDay) + ')';
   }
 
   function renderStartDayPills(){
     const el = document.getElementById('ccStartDay');
-    const todayLA = todayKeyLA();
+    const todayBR = todayKeyBR();
     const labels = ['Hoje', 'Amanhã'];
     el.innerHTML = Array.from({ length: 7 }).map((_, i) => {
-      const dk = shiftDateKey(todayLA, i);
+      const dk = shiftDateKey(todayBR, i);
       const { wd, short } = fmtDate(dk);
       const label = i < labels.length ? labels[i] : (wd + ' ' + short);
       return '<button type="button" class="pill' + (startDaySel === i ? ' active' : '') + '" data-day-offset="' + i + '">' + label + '</button>';
@@ -4266,11 +4269,11 @@
 
   function renderEndDayPills(){
     const el = document.getElementById('ccEndDay');
-    const todayLA = todayKeyLA();
+    const todayBR = todayKeyBR();
     const labels = ['Hoje', 'Amanhã'];
     const opts = [{ offset: null, label: 'Sem término' }].concat(
       Array.from({ length: 7 }).map((_, i) => {
-        const dk = shiftDateKey(todayLA, i);
+        const dk = shiftDateKey(todayBR, i);
         const { wd, short } = fmtDate(dk);
         return { offset: i, label: i < labels.length ? labels[i] : (wd + ' ' + short) };
       })
@@ -4313,7 +4316,7 @@
       : '—';
     document.getElementById('ccSumBudgetTotal').textContent = plan.adsets ? '$' + (plan.adsets * (parseFloat(budget) || 0)).toLocaleString('en-US', { maximumFractionDigits: 2 }) : '—';
 
-    const dayKey = shiftDateKey(todayKeyLA(), startDaySel);
+    const dayKey = shiftDateKey(todayKeyBR(), startDaySel);
     const { wd, short } = fmtDate(dayKey);
     const timeStr = document.getElementById('ccStartTime').value || '05:00';
     const dayLabel = startDaySel === 0 ? 'Hoje' : (startDaySel === 1 ? 'Amanhã' : wd + ' ' + short);
@@ -4325,7 +4328,7 @@
       sumEnd.textContent = 'sem término';
       document.getElementById('ccEndTimeBrt').textContent = '';
     } else {
-      const endDayKey = shiftDateKey(todayKeyLA(), endDaySel);
+      const endDayKey = shiftDateKey(todayKeyBR(), endDaySel);
       const { wd: ewd, short: eshort } = fmtDate(endDayKey);
       const endTimeStr = document.getElementById('ccEndTime').value || '23:59';
       const endDayLabel = endDaySel === 0 ? 'Hoje' : (endDaySel === 1 ? 'Amanhã' : ewd + ' ' + eshort);
@@ -4358,6 +4361,7 @@
 
     const missing = [];
     if (platformProblem()) missing.push('plataforma: Newsletter sozinha não é suportada');
+    if (endDaySel !== null && laWallTimeToEpoch(shiftDateKey(todayKeyBR(), endDaySel), document.getElementById('ccEndTime').value || '23:59') <= Math.floor(Date.now() / 1000)) missing.push('o término já passou (a campanha seria encerrada na hora)');
     if (!accounts.length) missing.push('marque pelo menos uma conta');
     if (!document.getElementById('ccHeadline').value.trim()) missing.push('título');
     if (!document.getElementById('ccBrandDefault').value.trim()) missing.push('marca padrão');
@@ -4716,12 +4720,12 @@
 
     const multi = selectedSubAccountIds.length > 1;
     const budgetCents = Math.round(parseFloat(document.getElementById('ccBudget').value || '200') * 100);
-    const dayKey = shiftDateKey(todayKeyLA(), startDaySel);
+    const dayKey = shiftDateKey(todayKeyBR(), startDaySel);
     const timeStr = document.getElementById('ccStartTime').value || '05:00';
     const startTime = laWallTimeToEpoch(dayKey, timeStr);
     const endTime = endDaySel === null
       ? 2146878847
-      : laWallTimeToEpoch(shiftDateKey(todayKeyLA(), endDaySel), document.getElementById('ccEndTime').value || '23:59');
+      : laWallTimeToEpoch(shiftDateKey(todayKeyBR(), endDaySel), document.getElementById('ccEndTime').value || '23:59');
     const headline = document.getElementById('ccHeadline').value.trim();
     const brandName = document.getElementById('ccBrandDefault').value.trim();
     const description = document.getElementById('ccDescription').value.trim();
@@ -4729,6 +4733,7 @@
     if (!selectedSubAccountIds.length) { ccLog('Marca pelo menos uma sub-conta.', 'err'); btn.disabled = false; return; }
     if (!headline || !brandName || !description) { ccLog('Preenche título, marca padrão e descrição.', 'err'); btn.disabled = false; return; }
     if (endTime <= startTime) { ccLog('A hora de término precisa ser depois da hora de início.', 'err'); btn.disabled = false; return; }
+    if (endDaySel !== null && endTime <= Math.floor(Date.now() / 1000)) { ccLog('O horário de término já passou — a campanha seria encerrada na hora. Ajuste o dia/hora de término.', 'err'); btn.disabled = false; return; }
     if (platformProblem()) { ccLog('Plataforma: ' + platformProblem() + '.', 'err'); btn.disabled = false; return; }
 
     const toCreatives = (ids) => ids.map(id => libraryItems.find(i => i.id === id)).filter(Boolean).map(item => {
