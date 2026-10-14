@@ -555,6 +555,14 @@
     </div>
   </nav>
 
+  <div class="assign-sheet" id="assignSheet" hidden>
+    <div class="assign-sheet-card" role="dialog" aria-modal="true">
+      <div class="assign-sheet-title" id="assignSheetTitle"></div>
+      <div class="assign-sheet-list" id="assignSheetList"></div>
+      <button type="button" class="assign-sheet-close" id="assignSheetClose">Pronto</button>
+    </div>
+  </div>
+
   <main class="content" id="mainContent">
     <header>
       <div>
@@ -640,6 +648,19 @@
 .dccircle{display:yes}
 .separator1{stroke:var(--line); stroke-width:2}
 
+
+  /* tap-to-assign sheet (touch alternative to drag-and-drop) */
+  .assign-sheet{position:fixed; inset:0; z-index:90; display:flex; align-items:flex-end; justify-content:center; background:rgba(0,0,0,.38);}
+  .assign-sheet-card{width:100%; max-width:460px; background:var(--surface-raised); border:1px solid var(--line); border-radius:16px 16px 0 0; padding:16px 16px calc(16px + env(safe-area-inset-bottom, 0px)); box-shadow:0 -10px 30px rgba(0,0,0,.2);}
+  .assign-sheet-title{font-size:14px; font-weight:650; margin-bottom:12px;}
+  .assign-sheet-list{display:flex; flex-direction:column; gap:8px; margin-bottom:14px; max-height:50vh; overflow-y:auto;}
+  .assign-opt{display:flex; align-items:center; gap:12px; text-align:left; border:1.5px solid var(--line); background:var(--surface-raised); color:var(--ink); font:inherit; font-size:14px; font-weight:600; padding:12px 14px; border-radius:12px; cursor:pointer;}
+  .assign-opt .assign-check{width:22px; height:22px; border-radius:6px; border:1.5px solid var(--line); display:flex; align-items:center; justify-content:center; font-size:13px; flex:none; color:var(--accent-ink);}
+  .assign-opt.on{border-color:var(--ink);}
+  .assign-opt.on .assign-check{background:var(--accent); border-color:var(--accent);}
+  .assign-sheet-close{width:100%; border:none; background:var(--accent); color:var(--accent-ink); font:inherit; font-weight:700; font-size:14px; padding:13px; border-radius:12px; cursor:pointer;}
+  @media (min-width:721px){ .assign-sheet{align-items:center;} .assign-sheet-card{border-radius:16px;} }
+
   /* ===== Mobile (placed last so it wins over the desktop refresh above) ===== */
   @media (max-width:720px){
     .shell{align-items:stretch;}
@@ -691,6 +712,8 @@
     .logo-preview-grid{grid-template-columns:repeat(auto-fill,minmax(64px,64px));}
     .cc-selected-preview{grid-template-columns:repeat(3,1fr);}
     .time-with-brt{flex-wrap:wrap;}
+    #brandPresetsTableWrap table, #presetsTableWrap table{min-width:0; table-layout:auto;}
+    #brandPresetsTableWrap th, #brandPresetsTableWrap td, #presetsTableWrap th, #presetsTableWrap td{white-space:normal; word-break:break-word;}
   }
 </style>
 </defs>
@@ -2929,6 +2952,38 @@
     '</div>';
   }
 
+  let assignSheetCreativeId = null;
+
+  function renderAssignSheet(){
+    const item = libraryItems.find(i => i.id === assignSheetCreativeId);
+    document.getElementById('assignSheetTitle').textContent = 'Adicionar ' + (item ? item.name : 'anúncio') + ' a:';
+    document.getElementById('assignSheetList').innerHTML = selectedSubAccountIds.map(id => {
+      const acc = allSubAccounts.find(a => a.id === id);
+      const on = ((accountCampaigns[id] || { creativeIds: [] }).creativeIds).indexOf(assignSheetCreativeId) !== -1;
+      return '<button type="button" class="assign-opt' + (on ? ' on' : '') + '" data-assign-account="' + id + '"><span class="assign-check">' + (on ? '✓' : '') + '</span>' + ccEsc(acc ? subAccountLabel(acc) : id) + '</button>';
+    }).join('');
+    document.querySelectorAll('[data-assign-account]').forEach(btn => btn.addEventListener('click', () => {
+      const camp = accountCampaigns[btn.dataset.assignAccount];
+      if (!camp) return;
+      const idx = camp.creativeIds.indexOf(assignSheetCreativeId);
+      if (idx === -1) camp.creativeIds.push(assignSheetCreativeId); else camp.creativeIds.splice(idx, 1);
+      renderAssignSheet();
+      renderAccountCampaignBlocks();
+      renderMediaGrid();
+      renderCcSummary();
+    }));
+  }
+
+  function openAssignSheet(creativeId){
+    assignSheetCreativeId = creativeId;
+    renderAssignSheet();
+    document.getElementById('assignSheet').hidden = false;
+  }
+
+  function closeAssignSheet(){ document.getElementById('assignSheet').hidden = true; }
+  document.getElementById('assignSheetClose').addEventListener('click', closeAssignSheet);
+  document.getElementById('assignSheet').addEventListener('click', (e) => { if (e.target.id === 'assignSheet') closeAssignSheet(); });
+
   function renderMediaGrid(){
     const grid = document.getElementById('mediaGrid');
     const note = document.getElementById('mediaGridNote');
@@ -2964,6 +3019,7 @@
           e.dataTransfer.setData('text/plain', el.dataset.id);
           e.dataTransfer.effectAllowed = 'copy';
         });
+        el.addEventListener('click', () => openAssignSheet(el.dataset.id));
       });
       return;
     }
