@@ -1187,12 +1187,17 @@
                 <label>Nicho — define quais headlines e criativos aparecem abaixo</label>
                 <div class="pill-row" id="ccNichePills"></div>
               </div>
+              <div class="form-field span2">
+                <label>Estrutura da campanha</label>
+                <div class="pill-row" id="ccStructurePills"></div>
+                <span class="cell-muted" id="ccStructureHint" style="font-size:12px; margin-top:6px;"></span>
+              </div>
               <div class="form-field span2" id="ccAccountBlocksWrap" hidden>
                 <label>Campanhas por conta — edite o nome de cada uma (os criativos são arrastados pro card "Anúncios por conta", na lateral)</label>
                 <div id="ccAccountBlocks" class="cc-account-blocks"></div>
               </div>
               <div class="form-field span2" id="ccSingleCreativeNote">
-                <span class="step-desc" style="text-align:left; display:block;">Criativos selecionados — um vira um conjunto de anúncios cada (ex: 3 criativos = estrutura 1 campanha / 3 conjuntos / 1 anúncio cada). A seleção aparece no resumo da campanha, ao lado.</span>
+                <span class="step-desc" style="text-align:left; display:block;">Criativos selecionados — a estrutura escolhida acima define como eles viram conjuntos e anúncios. A seleção aparece no resumo da campanha, ao lado.</span>
               </div>
               <div class="form-field span2">
                 <label for="ccHeadline">Título</label>
@@ -1231,7 +1236,10 @@
             <h3>Resumo da campanha</h3>
             <div class="cc-summary-row"><span class="cc-label">Conta</span><span class="cc-value" id="ccSumAccounts">nenhuma</span></div>
             <div class="cc-summary-row"><span class="cc-label">Nome</span><span class="cc-value" id="ccSumName">—</span></div>
-            <div class="cc-summary-row"><span class="cc-label">Orçamento/dia</span><span class="cc-value" id="ccSumBudget">$200</span></div>
+            <div class="cc-summary-row"><span class="cc-label">Estrutura</span><span class="cc-value" id="ccSumStructure">—</span></div>
+            <div class="cc-summary-row"><span class="cc-label">Vai criar</span><span class="cc-value" id="ccSumPlan">—</span></div>
+            <div class="cc-summary-row"><span class="cc-label">Orçamento/conjunto</span><span class="cc-value" id="ccSumBudget">$200</span></div>
+            <div class="cc-summary-row"><span class="cc-label">Total/dia</span><span class="cc-value" id="ccSumBudgetTotal">—</span></div>
             <div class="cc-summary-row"><span class="cc-label">Início</span><span class="cc-value" id="ccSumStart">—</span></div>
             <div class="cc-summary-row"><span class="cc-label">Fim</span><span class="cc-value" id="ccSumEnd">Hoje 20:00 PDT</span></div>
             <div class="cc-summary-row"><span class="cc-label">Segmentação</span><span class="cc-value" id="ccSumTargeting">—</span></div>
@@ -3286,16 +3294,63 @@
     renderAccountSelectTrigger();
   }
 
+  const CC_STRUCTURES = {
+    perCreative: { label: '1-X-1', suffix: '1-3-1', hint: '1 campanha, 1 conjunto por criativo, 1 anúncio em cada. O orçamento vale por conjunto.' },
+    oneAdset:    { label: '1-1-X', suffix: '1-1-3', hint: '1 campanha, 1 conjunto com todos os criativos como anúncios. O orçamento vale uma vez só.' },
+    nCampaigns:  { label: 'N × 1-1-1', suffix: '1-1-1', hint: 'Uma campanha por criativo, cada uma com 1 conjunto e 1 anúncio. O orçamento vale por campanha.' },
+  };
+  let ccStructure = loadPref('ccStructure', 'perCreative');
+  if (!CC_STRUCTURES[ccStructure]) ccStructure = 'perCreative';
+
+  function ccCreativeCounts(){
+    if (selectedSubAccountIds.length > 1) return selectedSubAccountIds.map(id => (accountCampaigns[id] || { creativeIds: [] }).creativeIds.length);
+    return selectedSubAccountIds.length ? [selectedCreativeIds.length] : [];
+  }
+
+  function ccPlan(){
+    const per = ccCreativeCounts();
+    const creatives = per.reduce((a, b) => a + b, 0);
+    let campaigns, adsets;
+    if (ccStructure === 'nCampaigns') { campaigns = creatives; adsets = creatives; }
+    else if (ccStructure === 'oneAdset') { campaigns = per.filter(n => n > 0).length; adsets = campaigns; }
+    else { campaigns = per.filter(n => n > 0).length; adsets = creatives; }
+    return { campaigns, adsets, ads: creatives };
+  }
+
+  function renderStructurePills(){
+    const el = document.getElementById('ccStructurePills');
+    el.innerHTML = Object.keys(CC_STRUCTURES).map(k =>
+      '<button type="button" class="pill' + (k === ccStructure ? ' active' : '') + '" data-structure="' + k + '">' + CC_STRUCTURES[k].label + '</button>'
+    ).join('');
+    document.getElementById('ccStructureHint').textContent = CC_STRUCTURES[ccStructure].hint;
+    el.querySelectorAll('[data-structure]').forEach(btn => btn.addEventListener('click', () => {
+      ccStructure = btn.dataset.structure;
+      savePref('ccStructure', ccStructure);
+      applyStructureToNames();
+      renderStructurePills();
+      renderCcSummary();
+    }));
+  }
+
+  function applyStructureToNames(){
+    const suffix = CC_STRUCTURES[ccStructure].suffix;
+    const swap = (v) => /(^|\s)1-\d+-\d+$/.test(v) ? v.replace(/1-\d+-\d+$/, suffix) : v;
+    const nameInput = document.getElementById('ccName');
+    nameInput.value = swap(nameInput.value);
+    Object.keys(accountCampaigns).forEach(id => { accountCampaigns[id].name = swap(accountCampaigns[id].name); });
+    renderAccountCampaignBlocks();
+  }
+
   function buildDefaultCampaignName(account){
     const label = subAccountCleanName(account).toUpperCase().replace(/[^A-Z0-9]/g, '');
     const suffix = account.id.slice(-3);
     const dateStr = fmtDateShort(todayKeyLA());
-    return label + '-' + suffix + ' - ' + dateStr + ' - 1-3-1';
+    return label + '-' + suffix + ' - ' + dateStr + ' - ' + CC_STRUCTURES[ccStructure].suffix;
   }
 
   function prefillCampaignName(account){
     const nameInput = document.getElementById('ccName');
-    const structure = '1-3-1';
+    const structure = CC_STRUCTURES[ccStructure].suffix;
     nameInput.value = buildDefaultCampaignName(account);
     nameInput.focus();
     nameInput.setSelectionRange(nameInput.value.length - structure.length, nameInput.value.length);
@@ -3609,6 +3664,12 @@
 
     const budget = document.getElementById('ccBudget').value || '200';
     document.getElementById('ccSumBudget').textContent = '$' + budget;
+    const plan = ccPlan();
+    document.getElementById('ccSumStructure').textContent = CC_STRUCTURES[ccStructure].label;
+    document.getElementById('ccSumPlan').textContent = plan.ads
+      ? plan.campaigns + ' campanha' + (plan.campaigns === 1 ? '' : 's') + ' · ' + plan.adsets + ' conjunto' + (plan.adsets === 1 ? '' : 's') + ' · ' + plan.ads + ' anúncio' + (plan.ads === 1 ? '' : 's')
+      : '—';
+    document.getElementById('ccSumBudgetTotal').textContent = plan.adsets ? '$' + (plan.adsets * (parseFloat(budget) || 0)).toLocaleString('en-US', { maximumFractionDigits: 2 }) : '—';
 
     const dayKey = shiftDateKey(todayKeyLA(), startDaySel);
     const { wd, short } = fmtDate(dayKey);
@@ -3747,6 +3808,7 @@
   }
 
   function initCriarView(){
+    renderStructurePills();
     document.getElementById('criarSourceBack').addEventListener('click', () => { criarSource = null; renderCriarSubNav(); });
     renderStartDayPills();
     renderEndDayPills();
@@ -3787,8 +3849,8 @@
   function ccMakeRun(acc, shared){
     const run = {
       acc, shared, status: 'pending', error: null, done: 0,
-      total: (shared.logoLibraryId ? 1 : 0) + 1 + 1 + shared.creatives.length * 3,
-      logoDone: false, logoUrl: null, trackingId: null, campaignId: null, cstate: {},
+      total: (shared.logoLibraryId ? 1 : 0) + 1 + 1 + (shared.mode === 'oneAdset' ? 1 + shared.creatives.length * 2 : shared.creatives.length * 3),
+      logoDone: false, logoUrl: null, trackingId: null, campaignId: null, adSetId: null, cstate: {},
     };
     shared.creatives.forEach(c => { run.cstate[c.libraryId] = { status: 'pending', error: null, assetUrl: null, adSetId: null }; });
     return run;
@@ -3879,8 +3941,37 @@
         ccLog(prefix + 'Campanha já criada (id ' + run.campaignId + ') — continuando de onde parou.');
       }
 
+      const buildAdSetBody = (name) => ({
+        accountKey: acc.accountKey, campaignId: run.campaignId, name,
+        budgetType: 'DAILY', budget: shared.budgetCents,
+        startTime: shared.startTime, endTime: shared.endTime,
+        bidType: 'MAX_CONVERSION', trackingId: run.trackingId, status: 'ON',
+        targeting: {
+          gender: { positive: genderSel },
+          ageGroup: { positive: ageSel },
+          interest: { positive: ['all'] },
+          location: { positive: ['all'] },
+          deviceLocation: { positive: ['all'] },
+          language: { positive: languageSel },
+          os: { positive: ['all'] },
+          manufacturer: { positive: ['all'] },
+          carrier: { positive: ['all'] },
+          network: { positive: networkSel },
+        },
+      });
+
+      if (shared.mode === 'oneAdset' && !run.adSetId) {
+        ccLog(prefix + 'Criando conjunto de anúncios…');
+        const oneResp = await post(NB_ADSET_API, buildAdSetBody(shared.name));
+        if (oneResp.error) throw new Error(oneResp.detail || oneResp.error);
+        run.adSetId = oneResp.adSet.id;
+        ccLog(prefix + 'Conjunto criado (id ' + run.adSetId + ').', 'ok');
+        step();
+      }
+
       for (const creative of shared.creatives) {
         const cs = run.cstate[creative.libraryId];
+        if (shared.mode === 'oneAdset') cs.adSetId = run.adSetId;
         if (cs.status === 'ok') continue;
         cs.status = 'running';
         cs.error = null;
@@ -3897,24 +3988,7 @@
           }
 
           if (!cs.adSetId) {
-            const adSetBody = {
-              accountKey: acc.accountKey, campaignId: run.campaignId, name: shared.name + ' - ' + creative.name,
-              budgetType: 'DAILY', budget: shared.budgetCents,
-              startTime: shared.startTime, endTime: shared.endTime,
-              bidType: 'MAX_CONVERSION', trackingId: run.trackingId, status: 'ON',
-              targeting: {
-                gender: { positive: genderSel },
-                ageGroup: { positive: ageSel },
-                interest: { positive: ['all'] },
-                location: { positive: ['all'] },
-                deviceLocation: { positive: ['all'] },
-                language: { positive: languageSel },
-                os: { positive: ['all'] },
-                manufacturer: { positive: ['all'] },
-                carrier: { positive: ['all'] },
-                network: { positive: networkSel },
-              },
-            };
+            const adSetBody = buildAdSetBody(shared.mode === 'nCampaigns' ? shared.name : shared.name + ' - ' + creative.name);
             ccLog(cPrefix + 'Criando conjunto de anúncios…');
             const adSetResp = await post(NB_ADSET_API, adSetBody);
             if (adSetResp.error) throw new Error(adSetResp.detail || adSetResp.error);
@@ -4041,7 +4115,15 @@
       runs = [{ acc, shared: { logoLibraryId: selectedLogoLibraryId, name, creatives, budgetCents, startTime, endTime, headline, brandName, description } }];
     }
 
-    ccRuns = runs.map(({ acc, shared }) => ccMakeRun(acc, shared));
+    const expanded = [];
+    runs.forEach(({ acc, shared }) => {
+      if (ccStructure === 'nCampaigns') {
+        shared.creatives.forEach(c => expanded.push({ acc, shared: { ...shared, mode: 'nCampaigns', name: shared.name + ' - ' + c.name, creatives: [c] } }));
+      } else {
+        expanded.push({ acc, shared: { ...shared, mode: ccStructure } });
+      }
+    });
+    ccRuns = expanded.map(({ acc, shared }) => ccMakeRun(acc, shared));
     await ccRunAll(ccRuns);
   });
 
