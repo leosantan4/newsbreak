@@ -1365,6 +1365,25 @@ export default {
       }
     }
 
+    if (url.pathname === "/nb/adset-schedule" && request.method === "POST") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      let body;
+      try { body = await request.json(); } catch { return json({ error: "invalid_json" }, 400, origin); }
+      const { accountKey, id } = body;
+      // endTime in epoch seconds; null/omitted = "no end date" (same sentinel the creation form uses)
+      const endTime = body.endTime == null ? 2146878847 : Number(body.endTime);
+      if (!id || !isFinite(endTime) || endTime <= 0) return json({ error: "invalid_body" }, 400, origin);
+      try {
+        const token = await tokenForAccountKey(env, accountKey);
+        await nbApi(token, `ad-set/update/${id}`, { method: "PUT", body: JSON.stringify({ endTime }) });
+        await env.COSTS_KV.delete("live_campanhas");
+        return json({ ok: true, endTime }, 200, origin);
+      } catch (e) {
+        return json({ error: "nb_adset_schedule_failed", detail: String(e.message || e) }, 502, origin);
+      }
+    }
+
     if (url.pathname === "/nb/adset-budget" && request.method === "POST") {
       const key = request.headers.get("X-Access-Key");
       if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
