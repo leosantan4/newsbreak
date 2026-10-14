@@ -4375,6 +4375,12 @@
     return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
+  // NewsBreak rejects ad names shorter than 3 characters (e.g. creative "01").
+  function ccAdName(name){
+    const n = String(name || '').trim();
+    return (n.length >= 3 ? n : 'AD ' + n).slice(0, 256);
+  }
+
   function ccMakeRun(acc, shared){
     const run = {
       acc, shared, status: 'pending', error: null, done: 0,
@@ -4528,7 +4534,7 @@
           }
 
           const adBody = {
-            accountKey: acc.accountKey, adSetId: cs.adSetId, name: creative.name, status: 'ON',
+            accountKey: acc.accountKey, adSetId: cs.adSetId, name: ccAdName(creative.name), status: 'ON',
             creative: {
               type: creative.creativeType, headline: shared.headline, assetUrl: cs.assetUrl,
               description: shared.description, callToAction: 'Learn More',
