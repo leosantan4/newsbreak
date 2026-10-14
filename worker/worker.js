@@ -186,7 +186,7 @@ async function getAllTokens(env) {
     .filter(([, token]) => !!token);
   const custom = await loadCustomAccounts(env);
   for (const [key, meta] of Object.entries(custom)) {
-    if (meta && meta.token) entries.push([key, meta.token]);
+    if (meta && meta.token && !meta.createOnly) entries.push([key, meta.token]);
   }
   return entries;
 }
@@ -1189,7 +1189,7 @@ export default {
 
     if (url.pathname === "/accounts" && request.method === "GET") {
       const custom = await loadCustomAccounts(env);
-      const accounts = Object.keys(custom).map((k) => ({ key: k, label: custom[k].label }));
+      const accounts = Object.keys(custom).map((k) => ({ key: k, label: custom[k].label, createOnly: !!custom[k].createOnly }));
       return json({ accounts }, 200, origin);
     }
 
@@ -1212,6 +1212,21 @@ export default {
       await saveCustomAccounts(env, custom);
       const accounts = Object.keys(custom).map((k) => ({ key: k, label: custom[k].label }));
       return json({ accounts, key: finalKey }, 201, origin);
+    }
+
+    if (url.pathname.match(/^\/accounts\/[^/]+\/create-only$/) && request.method === "POST") {
+      const authKey = request.headers.get("X-Access-Key");
+      if (authKey !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      const accKey = decodeURIComponent(url.pathname.split("/")[2]);
+      let body;
+      try { body = await request.json(); } catch { return json({ error: "invalid_json" }, 400, origin); }
+      const custom = await loadCustomAccounts(env);
+      if (!custom[accKey]) return json({ error: "not_found" }, 404, origin);
+      custom[accKey].createOnly = body.createOnly === true;
+      await saveCustomAccounts(env, custom);
+      await env.COSTS_KV.delete("live_painel");
+      await env.COSTS_KV.delete("live_campanhas");
+      return json({ ok: true, createOnly: custom[accKey].createOnly }, 200, origin);
     }
 
     if (url.pathname.match(/^\/accounts\/[^/]+\/org-id$/) && request.method === "POST") {

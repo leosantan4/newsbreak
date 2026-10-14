@@ -1556,7 +1556,9 @@
   let ACCOUNTS = STATIC_ACCOUNTS.slice();
   let accountSettings = {};
   function isAccountActive(key){ return accountSettings[key] ? accountSettings[key].active !== false : true; }
-  function activeAccounts(){ return ACCOUNTS.filter(a => isAccountActive(a.key)); }
+  // createOnly accounts (e.g. PARETO) are used only to create campaigns: no data, cards or totals in the dashboard
+  function activeAccounts(){ return ACCOUNTS.filter(a => isAccountActive(a.key) && !a.createOnly); }
+  function creatableAccounts(){ return ACCOUNTS.filter(a => isAccountActive(a.key)); }
   const WEEKDAYS = ['Dom','Seg','Ter','Qua','Qui','Sex','Sab'];
   const MONTHS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   const MONTHS_FULL = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -1962,7 +1964,7 @@
 
   function renderTabs(){
     const wrap = document.getElementById('scopeTabs');
-    const tabs = [{key:'geral', label:'Geral'}, ...ACCOUNTS];
+    const tabs = [{key:'geral', label:'Geral'}, ...ACCOUNTS.filter(a => !a.createOnly)];
     wrap.innerHTML = tabs.map(t => '<button class="tab' + (scope===t.key?' active':'') + '" data-scope="' + t.key + '">' + t.label + '</button>').join('');
     wrap.querySelectorAll('.tab').forEach(btn => btn.addEventListener('click', () => { scope = btn.dataset.scope; savePref('scope', scope); renderAll(); }));
   }
@@ -3801,7 +3803,7 @@
 
   // ---- Sub-contas (multi-seleção pra espelhar campanha), cada card já traz o link ----
   function loadAllSubAccounts(){
-    return Promise.all(activeAccounts().map(a =>
+    return Promise.all(creatableAccounts().map(a =>
       fetch(NB_ADACCOUNTS_API + '?accountKey=' + a.key, { headers: { 'X-Access-Key': COSTS_API_KEY } })
         .then(r => r.json())
         .then(json => (json.accounts || []).map(acc => ({ id: acc.id, name: acc.name, accountKey: a.key, accountLabel: a.label })))
@@ -4829,7 +4831,7 @@
         '<div class="account-row' + (active ? '' : ' inactive') + '">' +
           '<div>' +
             '<div class="acc-row-name">' + a.label + (isCustom ? ' <span class="cell-muted" style="font-weight:400; font-size:11.5px;">(adicionada)</span>' : '') + '</div>' +
-            '<div class="acc-row-status">' + (active ? 'Ativa — aparece no Dashboard e na Criar Campanha' : 'Inativa — escondida do Dashboard e da Criar Campanha') + '</div>' +
+            '<div class="acc-row-status">' + (active ? (a.createOnly ? 'Ativa — só pra criar campanhas (nenhum dado vai pro Dashboard)' : 'Ativa — aparece no Dashboard e na Criar Campanha') : 'Inativa — escondida do Dashboard e da Criar Campanha') + '</div>' +
           '</div>' +
           '<div style="display:flex; align-items:center; gap:14px;">' +
             (isCustom ? '<button type="button" class="remove-btn" data-remove-account="' + a.key + '" title="Remover conta">×</button>' : '') +
