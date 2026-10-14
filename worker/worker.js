@@ -106,6 +106,19 @@ async function loadLibrary(env) {
 async function saveLibrary(env, items) {
   await env.COSTS_KV.put("library", JSON.stringify(items));
 }
+// Folder identity is a "/"-joined path of upper-case segments (e.g. "HL/LEVA1");
+// "logo" is the special top-level logos folder and cannot have sub-folders.
+function normFolderPath(raw) {
+  const r = String(raw || "").trim();
+  if (r.toLowerCase() === "logo") return "logo";
+  return r
+    .split("/")
+    .map((seg) => seg.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 12))
+    .filter(Boolean)
+    .slice(0, 6)
+    .join("/");
+}
+
 function libItemCategory(i) {
   return i.category === "logo" ? "logo" : String(i.category || "").toUpperCase();
 }
@@ -857,9 +870,13 @@ export default {
       if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
       let body;
       try { body = await request.json(); } catch { return json({ error: "invalid_json" }, 400, origin); }
-      const code = String(body.code || "").trim().toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 12);
-      if (!code) return json({ error: "invalid_code" }, 400, origin);
+      const parent = body.parent ? normFolderPath(body.parent) : "";
+      const leaf = normFolderPath(String(body.code || "").split("/").pop());
+      if (!leaf || leaf === "logo") return json({ error: "invalid_code" }, 400, origin);
+      const code = parent ? parent + "/" + leaf : leaf;
+      if (code.split("/").length > 6) return json({ error: "too_deep" }, 400, origin);
       const niches = await loadNiches(env);
+      if (parent && !niches.includes(parent)) return json({ error: "parent_not_found" }, 400, origin);
       if (!niches.includes(code)) {
         niches.push(code);
         await saveNiches(env, niches);
@@ -870,10 +887,14 @@ export default {
     if (url.pathname.match(/^\/niches\/[^/]+$/) && request.method === "DELETE") {
       const key = request.headers.get("X-Access-Key");
       if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
-      const code = decodeURIComponent(url.pathname.split("/")[2]);
+      const code = normFolderPath(decodeURIComponent(url.pathname.split("/")[2]));
       const items = await loadLibrary(env);
-      if (items.some((i) => i.category === code)) {
+      if (items.some((i) => libItemCategory(i) === code || libItemCategory(i).startsWith(code + "/"))) {
         return json({ error: "niche_in_use" }, 409, origin);
+      }
+      const current = await loadNiches(env);
+      if (current.some((n) => n.startsWith(code + "/"))) {
+        return json({ error: "has_subfolders" }, 409, origin);
       }
       const niches = (await loadNiches(env)).filter((n) => n !== code);
       await saveNiches(env, niches);
@@ -894,7 +915,8 @@ export default {
       const filename = String((file && file.name) || name).slice(0, 200);
       const rawCategory = String(form.get("category") || "").trim();
       if (!rawCategory) return json({ error: "missing_category" }, 400, origin);
-      const category = rawCategory === "logo" ? "logo" : rawCategory.toUpperCase().slice(0, 12);
+      const category = normFolderPath(rawCategory);
+      if (!category) return json({ error: "missing_category" }, 400, origin);
       if (!file || typeof file.arrayBuffer !== "function") {
         return json({ error: "missing_file" }, 400, origin);
       }
@@ -943,7 +965,8 @@ export default {
       try { body = await request.json(); } catch { return json({ error: "invalid_json" }, 400, origin); }
       const rawCategory = String(body.category || "").trim();
       if (!rawCategory) return json({ error: "missing_category" }, 400, origin);
-      const category = rawCategory === "logo" ? "logo" : rawCategory.toUpperCase().slice(0, 12);
+      const category = normFolderPath(rawCategory);
+      if (!category) return json({ error: "missing_category" }, 400, origin);
       const items = await loadLibrary(env);
       const item = items.find((i) => i.id === id);
       if (!item) return json({ error: "not_found" }, 404, origin);

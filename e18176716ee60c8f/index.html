@@ -352,12 +352,32 @@
   .gallery-inline-form input#galleryNameInput{text-transform:none; min-width:200px;}
   .gallery-inline-form button{border:none; background:var(--accent); color:var(--accent-ink); font:inherit; font-weight:600; font-size:12.5px; padding:8px 14px; border-radius:var(--radius-sm); cursor:pointer;}
   .gallery-inline-form button.ghost{background:none; border:1px solid var(--line); color:var(--muted);}
-  .gallery-folder-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:14px; padding:4px 18px 20px;}
-  .gallery-folder-tile{display:flex; flex-direction:column; align-items:center; gap:6px; padding:18px 10px; border:1px solid var(--line); border-radius:var(--radius-md); background:var(--bg); cursor:pointer; text-align:center;}
-  .gallery-folder-tile:hover{border-color:var(--accent); background:color-mix(in srgb, var(--accent) 6%, var(--bg));}
-  .gallery-folder-icon{font-size:34px; line-height:1;}
-  .gallery-folder-name{font-weight:700; font-size:13px;}
-  .gallery-folder-count{font-size:11px; color:var(--muted);}
+  .gallery-explorer{display:grid; grid-template-columns:250px minmax(0,1fr); align-items:start;}
+  .gallery-tree{border-right:1px solid var(--line); padding:6px 8px 14px; min-height:320px; max-height:640px; overflow:auto; background:color-mix(in srgb, var(--neutral-bg) 45%, transparent);}
+  .gallery-main{min-width:0; padding-top:10px;}
+  .tree-row{display:flex; align-items:center; gap:4px; padding:6px 8px; border-radius:8px; cursor:pointer; font-size:13.5px; color:var(--ink); user-select:none; border:1px solid transparent;}
+  .tree-row:hover{background:var(--neutral-bg);}
+  .tree-row.active{background:var(--surface-raised); border-color:var(--line); font-weight:650; box-shadow:var(--shadow);}
+  .tree-caret{width:18px; height:18px; flex:none; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:9px; border-radius:5px; transition:transform .12s ease;}
+  .tree-caret:hover{background:var(--line);}
+  .tree-caret.open{transform:rotate(90deg);}
+  .tree-caret.none{visibility:hidden;}
+  .tree-ic{width:18px; height:18px; flex:none; color:var(--muted);}
+  .tree-row.active .tree-ic{color:var(--ink);}
+  .tree-name{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .tree-count{font-size:11px; color:var(--muted); font-variant-numeric:tabular-nums;}
+  .gallery-subfolders{display:flex; flex-wrap:wrap; gap:8px; padding:0 18px 14px;}
+  .gallery-subfolders:empty{display:none;}
+  .subfolder-chip{display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border:1px solid var(--line); border-radius:10px; background:var(--surface-raised); font-size:13px; font-weight:600; cursor:pointer; box-shadow:var(--shadow);}
+  .subfolder-chip:hover{border-color:color-mix(in srgb, var(--ink) 35%, var(--line));}
+  .subfolder-chip .tree-ic{color:var(--muted);}
+  .subfolder-chip small{font-weight:500; color:var(--muted); font-size:11px;}
+  .gallery-breadcrumb{flex-wrap:wrap;}
+  .gallery-breadcrumb .crumb-sep{opacity:.5;}
+  @media (max-width:720px){
+    .gallery-explorer{grid-template-columns:minmax(0,1fr);}
+    .gallery-tree{border-right:none; border-bottom:1px solid var(--line); min-height:0; max-height:220px;}
+  }
   .gallery-bulkbar{display:flex; align-items:center; gap:12px; padding:0 18px 12px; flex-wrap:wrap;}
   .gallery-bulk-actions{display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
   .gallery-bulk-actions select{border:1px solid var(--line); border-radius:var(--radius-sm); padding:8px 10px; font:inherit; font-size:12.5px; background:var(--bg); color:var(--ink);}
@@ -1382,15 +1402,19 @@
           <div class="step-head">
             <div class="step-head-left"><span class="step-title">Galeria de anúncios</span></div>
           </div>
+          <div class="gallery-explorer">
+            <aside class="gallery-tree" id="galleryTree"></aside>
+            <div class="gallery-main">
           <div class="gallery-toolbar">
             <div class="gallery-breadcrumb" id="galleryBreadcrumb"></div>
             <div class="gallery-actions">
-              <button type="button" id="addPastaBtn" class="gallery-action-btn">+ Add pasta</button>
+              <button type="button" id="addPastaBtn" class="gallery-action-btn">+ Nova pasta</button>
               <button type="button" id="addAdsBtn" class="gallery-action-btn accent">+ Add ads</button>
+              <button type="button" id="deletePastaBtn" class="gallery-action-btn bad" hidden>Excluir pasta</button>
             </div>
           </div>
           <div class="gallery-inline-form" id="addPastaInline" hidden>
-            <input type="text" id="newNicheInput" placeholder="Nome da pasta (ex: ED)" maxlength="12">
+            <input type="text" id="newNicheInput" placeholder="Nome da pasta" maxlength="12">
             <button type="button" id="newNicheConfirmBtn">Criar</button>
             <button type="button" class="ghost" id="newNicheCancelBtn">cancelar</button>
             <span class="cell-muted" id="newNicheNote"></span>
@@ -1403,7 +1427,7 @@
             <button type="button" class="ghost" id="galleryUploadCancelBtn">cancelar</button>
           </div>
           <div class="cell-muted" id="galleryUploadNote" style="padding:0 18px 10px;"></div>
-          <div class="gallery-folder-grid" id="galleryFolderGrid"></div>
+          <div class="gallery-subfolders" id="galleryFolderGrid"></div>
           <div class="gallery-bulkbar" id="galleryBulkBar" hidden>
             <button type="button" id="gallerySelectAllBtn" class="gallery-action-btn"></button>
             <span class="cell-muted" id="gallerySelectedCount"></span>
@@ -1415,6 +1439,8 @@
           </div>
           <div class="media-grid-note" id="galleryGridNote"></div>
           <div class="media-grid" id="galleryGrid"></div>
+            </div>
+          </div>
         </section>
       </div>
     </div>
@@ -2719,16 +2745,40 @@
   let selectedNiche = loadPref('ccNiche', '');
 
   function itemCategory(it){ return it.category === 'logo' ? 'logo' : (it.category || '').toUpperCase(); }
+  function inFolder(cat, folder){ return !!folder && (cat === folder || cat.indexOf(folder + '/') === 0); }
+  function topNiches(){ return niches.filter(n => n.indexOf('/') === -1); }
   function folderLabel(code){
     if (code === 'logo') return 'Logos';
     if (code === 'CREATIVE') return 'Sem pasta (antigo)';
-    return code;
+    return code.split('/').pop();
   }
+  function folderPathLabel(code){
+    if (code === 'logo') return 'Logos';
+    return code.split('/').map(seg => seg === 'CREATIVE' ? 'Sem pasta (antigo)' : seg).join(' / ');
+  }
+  function childFolders(parent){
+    const known = folderList();
+    if (!parent) return known.filter(c => c.indexOf('/') === -1);
+    return known.filter(c => c.indexOf(parent + '/') === 0 && c.slice(parent.length + 1).indexOf('/') === -1);
+  }
+  function folderItemCount(code){ return libraryItems.filter(it => inFolder(itemCategory(it), code)).length; }
   function folderList(){
-    const known = new Set(['logo'].concat(niches));
-    const extra = Array.from(new Set(libraryItems.map(it => itemCategory(it)).filter(c => c && !known.has(c))));
-    return ['logo'].concat(niches, extra);
+    const set = new Set(['logo'].concat(niches));
+    libraryItems.forEach(it => { const c = itemCategory(it); if (c) set.add(c); });
+    const all = Array.from(set);
+    const withParents = new Set(all);
+    all.forEach(c => { const parts = c.split('/'); for (let k = 1; k < parts.length; k++) withParents.add(parts.slice(0, k).join('/')); });
+    const rest = Array.from(withParents).filter(c => c !== 'logo').sort((x, y) => {
+      const ix = niches.indexOf(x), iy = niches.indexOf(y);
+      if (x.split('/')[0] === y.split('/')[0]) return x.localeCompare(y);
+      const tx = niches.indexOf(x.split('/')[0]), ty = niches.indexOf(y.split('/')[0]);
+      return (tx === -1 ? 999 : tx) - (ty === -1 ? 999 : ty) || x.localeCompare(y);
+    });
+    return ['logo'].concat(rest);
   }
+  const FOLDER_SVG = '<svg class="tree-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>';
+  let galleryExpanded = new Set((loadPref('galleryExpanded', '') || '').split('|').filter(Boolean));
+  function saveExpanded(){ savePref('galleryExpanded', Array.from(galleryExpanded).join('|')); }
 
   function loadNiches(){
     return fetch(NICHES_API, { cache: 'no-store' }).then(r => r.json()).then(json => {
@@ -2739,19 +2789,42 @@
   function createNiche(code){
     const note = document.getElementById('newNicheNote');
     const clean = code.trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12);
-    if (!clean) { note.textContent = 'Digite um código pra pasta (ex: ED).'; return; }
+    if (!clean) { note.textContent = 'Digite um nome pra pasta (ex: ED).'; return; }
+    const parent = galleryOpenFolder && galleryOpenFolder !== 'logo' ? galleryOpenFolder : '';
     note.textContent = 'Criando…';
     fetch(NICHES_API, {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY },
-      body: JSON.stringify({ code: clean }),
-    }).then(r => r.json()).then(json => {
+      body: JSON.stringify({ code: clean, parent }),
+    }).then(r => r.json().then(json => ({ ok: r.ok, json }))).then(({ ok, json }) => {
+      if (!ok) { note.textContent = json.error === 'parent_not_found' ? 'A pasta de cima não existe mais.' : 'Falhou — tenta de novo.'; return; }
       niches = json.niches || niches;
       document.getElementById('newNicheInput').value = '';
       note.textContent = '';
       document.getElementById('addPastaInline').hidden = true;
+      if (parent) { galleryExpanded.add(parent); saveExpanded(); }
       renderNicheSelect();
       renderGalleryPanel();
     }).catch(() => { note.textContent = 'Falhou — tenta de novo.'; });
+  }
+
+  function deleteGalleryFolder(){
+    const folder = galleryOpenFolder;
+    if (!folder || folder === 'logo') return;
+    const note = document.getElementById('galleryUploadNote');
+    if (!confirm('Excluir a pasta "' + folderPathLabel(folder) + '"? Só dá certo se ela estiver vazia.')) return;
+    fetch(NICHES_API + '/' + encodeURIComponent(folder), { method: 'DELETE', headers: { 'X-Access-Key': COSTS_API_KEY } })
+      .then(r => r.json().then(json => ({ ok: r.ok, json }))).then(({ ok, json }) => {
+        if (!ok) {
+          note.textContent = json.error === 'niche_in_use' ? 'A pasta tem anúncios — mova ou apague antes.' : json.error === 'has_subfolders' ? 'A pasta tem subpastas — exclua elas antes.' : 'Falhou — tenta de novo.';
+          return;
+        }
+        niches = json.niches || niches;
+        if (selectedNiche === folder) { selectedNiche = ''; savePref('ccNiche', ''); }
+        note.textContent = '';
+        const up = folder.indexOf('/') === -1 ? null : folder.slice(0, folder.lastIndexOf('/'));
+        renderNicheSelect();
+        openGalleryFolder(up);
+      }).catch(() => { note.textContent = 'Falhou — tenta de novo.'; });
   }
 
   const NICHE_EMOJI = { ED: '🔥', BS: '🩸', WL: '🥑', TN: '🦻🏼', NP: '🦵🏼' };
@@ -2760,7 +2833,7 @@
   function renderNicheSelect(){
     const el = document.getElementById('ccNichePills');
     if (!el) return;
-    el.innerHTML = niches.map(n =>
+    el.innerHTML = topNiches().map(n =>
       '<button type="button" class="pill' + (n === selectedNiche ? ' active' : '') + '" data-niche="' + n + '">' + nicheLabel(n) + '</button>'
     ).join('');
     el.querySelectorAll('[data-niche]').forEach(btn => btn.addEventListener('click', () => {
@@ -2782,6 +2855,7 @@
 
   function openGalleryFolder(code){
     galleryOpenFolder = code;
+    if (code) { const parts = code.split('/'); for (let k = 1; k < parts.length; k++) galleryExpanded.add(parts.slice(0, k).join('/')); saveExpanded(); }
     savePref('galleryOpenFolder', code || '__root__');
     selectedGalleryIds = [];
     document.getElementById('addAdsInline').hidden = true;
@@ -2797,27 +2871,55 @@
       el.innerHTML = '<span class="crumb-current">Galeria de anúncios</span>';
       return;
     }
-    el.innerHTML = '<span class="crumb-link" id="galleryCrumbRoot">Galeria de anúncios</span><span>/</span><span class="crumb-current">' + folderLabel(galleryOpenFolder) + '</span>';
-    document.getElementById('galleryCrumbRoot').addEventListener('click', () => openGalleryFolder(null));
+    const parts = galleryOpenFolder === 'logo' ? ['logo'] : galleryOpenFolder.split('/');
+    let html = '<span class="crumb-link" data-crumb="">Galeria de anúncios</span>';
+    parts.forEach((seg, idx) => {
+      const path = galleryOpenFolder === 'logo' ? 'logo' : parts.slice(0, idx + 1).join('/');
+      html += '<span class="crumb-sep">›</span>' + (idx === parts.length - 1
+        ? '<span class="crumb-current">' + folderLabel(path) + '</span>'
+        : '<span class="crumb-link" data-crumb="' + path + '">' + folderLabel(path) + '</span>');
+    });
+    el.innerHTML = html;
+    el.querySelectorAll('[data-crumb]').forEach(n => n.addEventListener('click', () => openGalleryFolder(n.dataset.crumb || null)));
+  }
+
+  function renderGalleryTree(){
+    const wrap = document.getElementById('galleryTree');
+    const rows = [];
+    rows.push('<div class="tree-row' + (!galleryOpenFolder ? ' active' : '') + '" data-open=""><span class="tree-caret none">▸</span>' + FOLDER_SVG + '<span class="tree-name">Todas as pastas</span><span class="tree-count">' + libraryItems.length + '</span></div>');
+    const walk = (parent, depth) => {
+      childFolders(parent).forEach(code => {
+        const kids = childFolders(code);
+        const open = galleryExpanded.has(code);
+        rows.push('<div class="tree-row' + (galleryOpenFolder === code ? ' active' : '') + '" data-open="' + code + '" style="padding-left:' + (8 + depth * 16) + 'px">' +
+          '<span class="tree-caret' + (kids.length ? (open ? ' open' : '') : ' none') + '" data-toggle="' + code + '">▸</span>' + FOLDER_SVG +
+          '<span class="tree-name" title="' + folderPathLabel(code) + '">' + folderLabel(code) + '</span>' +
+          '<span class="tree-count">' + folderItemCount(code) + '</span></div>');
+        if (kids.length && open) walk(code, depth + 1);
+      });
+    };
+    walk('', 0);
+    wrap.innerHTML = rows.join('');
+    wrap.querySelectorAll('[data-toggle]').forEach(c => c.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const code = c.dataset.toggle;
+      if (galleryExpanded.has(code)) galleryExpanded.delete(code); else galleryExpanded.add(code);
+      saveExpanded();
+      renderGalleryTree();
+    }));
+    wrap.querySelectorAll('[data-open]').forEach(r => r.addEventListener('click', () => openGalleryFolder(r.dataset.open || null)));
   }
 
   function renderGalleryFolderGrid(){
     const wrap = document.getElementById('galleryFolderGrid');
     const gridWrap = document.getElementById('galleryGrid');
     const note = document.getElementById('galleryGridNote');
-    if (galleryOpenFolder) { wrap.hidden = true; return; }
-    wrap.hidden = false;
-    gridWrap.innerHTML = '';
-    note.textContent = '';
-    wrap.innerHTML = folderList().map(code => {
-      const count = libraryItems.filter(it => itemCategory(it) === code).length;
-      return '<div class="gallery-folder-tile" data-folder="' + code + '">' +
-        '<div class="gallery-folder-icon">📁</div>' +
-        '<div class="gallery-folder-name">' + folderLabel(code) + '</div>' +
-        '<div class="gallery-folder-count">' + count + ' anúncio' + (count === 1 ? '' : 's') + '</div>' +
-      '</div>';
-    }).join('');
-    wrap.querySelectorAll('.gallery-folder-tile').forEach(el => el.addEventListener('click', () => openGalleryFolder(el.dataset.folder)));
+    const subs = childFolders(galleryOpenFolder);
+    if (!galleryOpenFolder) { gridWrap.innerHTML = ''; note.textContent = 'Escolha uma pasta na lateral ou abra uma abaixo.'; }
+    wrap.innerHTML = subs.map(code =>
+      '<div class="subfolder-chip" data-folder="' + code + '">' + FOLDER_SVG + folderLabel(code) + ' <small>' + folderItemCount(code) + '</small></div>'
+    ).join('');
+    wrap.querySelectorAll('.subfolder-chip').forEach(el => el.addEventListener('click', () => openGalleryFolder(el.dataset.folder)));
   }
 
   async function bulkMoveSelected(category){
@@ -2893,7 +2995,7 @@
     actions.hidden = !count;
     if (count) {
       const moveSelect = document.getElementById('galleryMoveSelect');
-      moveSelect.innerHTML = folderList().filter(c => c !== galleryOpenFolder).map(c => '<option value="' + c + '">' + folderLabel(c) + '</option>').join('');
+      moveSelect.innerHTML = folderList().filter(c => c !== galleryOpenFolder).map(c => '<option value="' + c + '">' + folderPathLabel(c) + '</option>').join('');
       document.getElementById('galleryMoveBtn').onclick = () => bulkMoveSelected(moveSelect.value);
       document.getElementById('galleryDeleteSelectedBtn').textContent = 'Apagar (' + count + ')';
       document.getElementById('galleryDeleteSelectedBtn').onclick = () => bulkDeleteSelected();
@@ -2902,16 +3004,21 @@
 
   function renderGalleryPanel(){
     renderGalleryBreadcrumb();
+    renderGalleryTree();
     renderGalleryFolderGrid();
     document.getElementById('addAdsBtn').disabled = !galleryOpenFolder;
+    document.getElementById('addPastaBtn').disabled = galleryOpenFolder === 'logo';
+    document.getElementById('addPastaBtn').textContent = galleryOpenFolder && galleryOpenFolder !== 'logo' ? '+ Nova subpasta' : '+ Nova pasta';
+    document.getElementById('newNicheInput').placeholder = galleryOpenFolder && galleryOpenFolder !== 'logo' ? 'Subpasta dentro de ' + folderLabel(galleryOpenFolder) : 'Nome da pasta';
+    document.getElementById('deletePastaBtn').hidden = !galleryOpenFolder || galleryOpenFolder === 'logo';
     const grid = document.getElementById('galleryGrid');
     const note = document.getElementById('galleryGridNote');
-    if (!galleryOpenFolder) { grid.innerHTML = ''; note.textContent = ''; document.getElementById('galleryBulkBar').hidden = true; return; }
-    const inFolder = libraryItems.filter(it => itemCategory(it) === galleryOpenFolder);
-    renderGalleryBulkBar(inFolder);
-    if (!inFolder.length){ note.textContent = '0 anúncio(s) nessa pasta'; grid.innerHTML = '<div class="empty-state">Nenhum anúncio nessa pasta ainda.</div>'; return; }
-    note.textContent = inFolder.length + ' anúncio(s) nessa pasta';
-    const shown = inFolder.slice().reverse();
+    if (!galleryOpenFolder) { grid.innerHTML = ''; document.getElementById('galleryBulkBar').hidden = true; return; }
+    const inFolderItems = libraryItems.filter(it => itemCategory(it) === galleryOpenFolder);
+    renderGalleryBulkBar(inFolderItems);
+    if (!inFolderItems.length){ note.textContent = '0 anúncio(s) nessa pasta'; grid.innerHTML = '<div class="empty-state">Nenhum anúncio nessa pasta ainda.</div>'; return; }
+    note.textContent = inFolderItems.length + ' anúncio(s) nessa pasta';
+    const shown = inFolderItems.slice().reverse();
     grid.innerHTML = shown.map(it => mediaItemHtml(it, selectedGalleryIds)).join('');
     grid.querySelectorAll('.media-item').forEach(el => el.addEventListener('click', () => {
       const id = el.dataset.id;
@@ -3021,7 +3128,7 @@
       selectAllBtn.hidden = true;
       return;
     }
-    const shown = libraryItems.filter(it => itemCategory(it) === selectedNiche && it.name.toLowerCase().indexOf(q) !== -1).slice().reverse();
+    const shown = libraryItems.filter(it => inFolder(itemCategory(it), selectedNiche) && it.name.toLowerCase().indexOf(q) !== -1).slice().reverse();
     note.textContent = shown.length + ' resultado(s) na pasta ' + selectedNiche + ' pra "' + mediaSearchQuery.trim() + '"';
     if (!shown.length){
       grid.innerHTML = '<div class="empty-state">Nenhum anúncio encontrado na pasta ' + selectedNiche + ' pra "' + mediaSearchQuery.trim() + '". Confira o nome na Galeria.</div>';
@@ -3134,6 +3241,8 @@
     if (e.key === 'Enter') createNiche(e.target.value);
   });
 
+  document.getElementById('deletePastaBtn').addEventListener('click', deleteGalleryFolder);
+
   document.getElementById('addAdsBtn').addEventListener('click', () => {
     if (!galleryOpenFolder) return;
     document.getElementById('galleryFileInput').click();
@@ -3204,7 +3313,7 @@
 
   function renderMediaDatalist(){
     const dl = document.getElementById('mediaNamesList');
-    const pool = selectedNiche ? libraryItems.filter(it => itemCategory(it) === selectedNiche) : [];
+    const pool = selectedNiche ? libraryItems.filter(it => inFolder(itemCategory(it), selectedNiche)) : [];
     dl.innerHTML = pool.map(it => '<option value="' + it.name.replace(/"/g, '&quot;') + '">').join('');
   }
 
@@ -3217,7 +3326,7 @@
     if (e.key !== 'Enter') return;
     const typed = mediaSearchQuery.trim().toLowerCase();
     if (!typed || !selectedNiche) return;
-    const pool = libraryItems.filter(it => itemCategory(it) === selectedNiche);
+    const pool = libraryItems.filter(it => inFolder(itemCategory(it), selectedNiche));
     const matches = pool.filter(it => it.name.toLowerCase().indexOf(typed) !== -1);
     const match = matches.length === 1 ? matches[0] : pool.find(it => it.name.toLowerCase() === typed);
     if (match) {
