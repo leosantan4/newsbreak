@@ -358,11 +358,12 @@
   .tree-row{display:flex; align-items:center; gap:4px; padding:6px 8px; border-radius:8px; cursor:pointer; font-size:13.5px; color:var(--ink); user-select:none; border:1px solid transparent;}
   .tree-row:hover{background:var(--neutral-bg);}
   .tree-row.active{background:var(--surface-raised); border-color:var(--line); font-weight:650; box-shadow:var(--shadow);}
-  .tree-caret{width:18px; height:18px; flex:none; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:9px; border-radius:5px; transition:transform .12s ease;}
+  .tree-caret{width:24px; height:24px; flex:none; display:flex; align-items:center; justify-content:center; color:var(--ink); border-radius:7px; cursor:pointer; transition:background .12s ease;}
+  .tree-caret svg{width:15px; height:15px; transition:transform .15s ease;}
   .tree-caret:hover{background:var(--line);}
-  .tree-caret.open{transform:rotate(90deg);}
+  .tree-caret.open svg{transform:rotate(90deg);}
   .tree-caret.none{visibility:hidden;}
-  .tree-ic{width:18px; height:18px; flex:none; color:var(--muted);}
+  .tree-ic{width:20px; height:20px; flex:none; color:color-mix(in srgb, var(--ink) 70%, transparent);}
   .tree-row.active .tree-ic{color:var(--ink);}
   .tree-name{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .tree-count{font-size:11px; color:var(--muted); font-variant-numeric:tabular-nums;}
@@ -2786,6 +2787,7 @@
     });
     return ['logo'].concat(rest);
   }
+  const CHEV_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>';
   const FOLDER_SVG = '<svg class="tree-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>';
   let galleryExpanded = new Set((loadPref('galleryExpanded', '') || '').split('|').filter(Boolean));
   function saveExpanded(){ savePref('galleryExpanded', Array.from(galleryExpanded).join('|')); }
@@ -3056,13 +3058,13 @@
   function renderGalleryTree(){
     const wrap = document.getElementById('galleryTree');
     const rows = [];
-    rows.push('<div class="tree-row' + (!galleryOpenFolder ? ' active' : '') + '" data-open=""><span class="tree-caret none">▸</span>' + FOLDER_SVG + '<span class="tree-name">Todas as pastas</span><span class="tree-count">' + libraryItems.length + '</span></div>');
+    rows.push('<div class="tree-row' + (!galleryOpenFolder ? ' active' : '') + '" data-open=""><span class="tree-caret none">' + CHEV_SVG + '</span>' + FOLDER_SVG + '<span class="tree-name">Todas as pastas</span><span class="tree-count">' + libraryItems.length + '</span></div>');
     const walk = (parent, depth) => {
       childFolders(parent).forEach(code => {
         const kids = childFolders(code);
         const open = galleryExpanded.has(code);
         rows.push('<div class="tree-row' + (galleryOpenFolder === code ? ' active' : '') + '" data-open="' + code + '" style="padding-left:' + (8 + depth * 16) + 'px">' +
-          '<span class="tree-caret' + (kids.length ? (open ? ' open' : '') : ' none') + '" data-toggle="' + code + '">▸</span>' + FOLDER_SVG +
+          '<span class="tree-caret' + (kids.length ? (open ? ' open' : '') : ' none') + '" data-toggle="' + code + '">' + CHEV_SVG + '</span>' + FOLDER_SVG +
           '<span class="tree-name" title="' + folderPathLabel(code) + '">' + folderLabel(code) + '</span>' +
           '<span class="tree-count">' + folderItemCount(code) + '</span></div>');
         if (kids.length && open) walk(code, depth + 1);
