@@ -575,6 +575,7 @@
     <div class="sidenav-group-label">Mídia</div>
     <button class="nav-item" data-view="vturb"><span class="ic">◉</span>VSL</button>
     <button class="nav-item" data-view="criar"><span class="ic">✚</span>Criar Campanha</button>
+    <button class="nav-item" data-view="galeria"><span class="ic">▣</span>Galeria de ads</button>
     <div class="sidenav-group-label">Configurações</div>
     <button class="nav-item" data-view="contas"><span class="ic">⚙</span>Contas</button>
     <div class="theme-toggle" id="themeToggle">
@@ -1190,7 +1191,6 @@
       <div class="criar-subnav" id="criarSubnav">
         <button type="button" class="criar-subtab active" data-criarsub="nova">Nova campanha</button>
         <button type="button" class="criar-subtab" data-criarsub="links">Links das contas</button>
-        <button type="button" class="criar-subtab" data-criarsub="galeria">Galeria de anúncios</button>
       </div>
 
       <div id="criarSubNova" class="criar-layout">
@@ -1341,7 +1341,7 @@
 
             <div class="step-head" style="margin-top:8px;">
               <div class="step-head-left"><span class="step-title" style="font-size:13px;">Imagem do anúncio</span></div>
-              <span class="step-desc">digite o nome do anúncio pra achar na galeria — nada é exibido até você digitar. Suba criativos novos na aba "Galeria de anúncios"</span>
+              <span class="step-desc">digite o nome do anúncio pra achar na galeria — nada é exibido até você digitar. Suba criativos novos em "Galeria de ads", no menu lateral</span>
             </div>
             <div class="creative-search">
               <input type="text" id="mediaSearchInput" list="mediaNamesList" placeholder="Digite o nome/número do anúncio…">
@@ -1405,7 +1405,9 @@
         </section>
       </div>
 
-      <div id="criarSubGaleria" hidden>
+    </div>
+
+    <div id="galeriaView" hidden>
         <section class="panel">
           <div class="step-head">
             <div class="step-head-left"><span class="step-title">Galeria de anúncios</span></div>
@@ -1450,7 +1452,6 @@
             </div>
           </div>
         </section>
-      </div>
     </div>
 
     <div id="contasView" hidden>
@@ -1829,8 +1830,9 @@
     document.getElementById('saldoView').hidden = view !== 'saldo';
     document.getElementById('vturbView').hidden = view !== 'vturb';
     document.getElementById('criarView').hidden = view !== 'criar';
+    document.getElementById('galeriaView').hidden = view !== 'galeria';
     document.getElementById('contasView').hidden = view !== 'contas';
-    document.getElementById('mainContent').classList.toggle('wide', view === 'criar');
+    document.getElementById('mainContent').classList.toggle('wide', view === 'criar' || view === 'galeria');
   }
 
   function vturbBreakdown(list){
@@ -4186,6 +4188,7 @@
   }
 
   let criarSubView = loadPref('criarSubView', 'nova');
+  if (criarSubView !== 'nova' && criarSubView !== 'links') criarSubView = 'nova';
 
   let criarSource = null;
 
@@ -4210,7 +4213,6 @@
       }));
       document.getElementById('criarSubNova').hidden = true;
       document.getElementById('criarSubLinks').hidden = true;
-      document.getElementById('criarSubGaleria').hidden = true;
       document.getElementById('criarOtherPanel').hidden = true;
       return;
     }
@@ -4220,12 +4222,11 @@
     });
     document.getElementById('criarSubNova').hidden = !connected || criarSubView !== 'nova';
     document.getElementById('criarSubLinks').hidden = !connected || criarSubView !== 'links';
-    document.getElementById('criarSubGaleria').hidden = criarSubView !== 'galeria';
-    const showOther = !connected && criarSubView !== 'galeria';
+    const showOther = !connected;
     document.getElementById('criarOtherPanel').hidden = !showOther;
     if (showOther){
       document.getElementById('criarOtherHead').textContent = 'Criar campanha — ' + src.label;
-      document.getElementById('criarOtherBody').textContent = 'A integração com ' + src.label + ' ainda não está conectada. Quando for, a criação de campanhas dessa fonte aparece aqui. A Galeria de anúncios continua disponível.';
+      document.getElementById('criarOtherBody').textContent = 'A integração com ' + src.label + ' ainda não está conectada. Quando for, a criação de campanhas dessa fonte aparece aqui. A Galeria de ads fica no menu lateral e vale pra qualquer fonte.';
     }
   }
 
@@ -4254,7 +4255,6 @@
     document.querySelectorAll('.criar-subtab').forEach(btn => btn.addEventListener('click', () => {
       criarSubView = btn.dataset.criarsub;
       savePref('criarSubView', criarSubView);
-      if (criarSubView === 'galeria') openGalleryFolder(null);
       renderCriarSubNav();
     }));
     renderCriarSubNav();
