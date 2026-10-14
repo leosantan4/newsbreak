@@ -374,6 +374,13 @@
   .subfolder-chip small{font-weight:500; color:var(--muted); font-size:11px;}
   .media-grid .empty-state{grid-column:1 / -1;}
   .gallery-breadcrumb{flex-wrap:wrap;}
+  #galleryGrid{position:relative; user-select:none; -webkit-user-select:none;}
+  .gallery-marquee{position:absolute; border:1px solid var(--ink); background:color-mix(in srgb, var(--ink) 10%, transparent); pointer-events:none; z-index:5; border-radius:3px;}
+  .tree-row.drop-ok, .subfolder-chip.drop-ok, .crumb-link.drop-ok{outline:2px solid var(--ink); outline-offset:-2px; background:color-mix(in srgb, var(--ink) 9%, var(--surface-raised));}
+  .is-dragging{opacity:.45;}
+  .tree-row[draggable="true"], .subfolder-chip[draggable="true"]{cursor:grab;}
+  .drag-ghost{position:fixed; top:-200px; left:-200px; padding:7px 12px; background:var(--ink); color:var(--surface-raised); border-radius:8px; font-size:12.5px; font-weight:700;}
+  #galleryGrid .media-item[draggable="true"]{cursor:grab;}
   .gallery-breadcrumb .crumb-sep{opacity:.5;}
   @media (max-width:720px){
     .gallery-explorer{grid-template-columns:minmax(0,1fr);}
@@ -2866,6 +2873,166 @@
     renderGalleryPanel();
   }
 
+  // ---- drag & drop: ads -> folders, folders -> folders ----
+  let galleryDrag = null;
+
+  function remapPath(c, from, to){ return c === from ? to : (c.indexOf(from + '/') === 0 ? to + c.slice(from.length) : c); }
+  function parentOf(path){ return path.indexOf('/') === -1 ? '' : path.slice(0, path.lastIndexOf('/')); }
+
+  function canDropOn(target){
+    if (!galleryDrag) return false;
+    if (galleryDrag.kind === 'items') {
+      if (!target) return false;
+      if (target === galleryOpenFolder) return false;
+      if (target === 'logo') {
+        return galleryDrag.ids.every(id => { const it = libraryItems.find(i => i.id === id); return it && /^image\//.test(it.contentType || '') && it.contentType !== 'image/gif'; });
+      }
+      return true;
+    }
+    const path = galleryDrag.path;
+    if (target === 'logo') return false;
+    if (target === path || target.indexOf(path + '/') === 0) return false;
+    return target !== parentOf(path);
+  }
+
+  function wireDropTarget(el, target){
+    el.addEventListener('dragover', (e) => {
+      if (!canDropOn(target)) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      el.classList.add('drop-ok');
+    });
+    el.addEventListener('dragleave', () => el.classList.remove('drop-ok'));
+    el.addEventListener('drop', (e) => {
+      el.classList.remove('drop-ok');
+      if (!canDropOn(target)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      dropOnFolder(target);
+    });
+  }
+
+  function makeFolderDraggable(el, path){
+    el.draggable = true;
+    el.addEventListener('dragstart', (e) => {
+      galleryDrag = { kind: 'folder', path };
+      e.dataTransfer.setData('text/plain', path);
+      e.dataTransfer.effectAllowed = 'move';
+      el.classList.add('is-dragging');
+    });
+    el.addEventListener('dragend', () => { galleryDrag = null; el.classList.remove('is-dragging'); document.querySelectorAll('.drop-ok').forEach(n => n.classList.remove('drop-ok')); });
+  }
+
+  function makeItemDraggable(el){
+    el.draggable = true;
+    el.addEventListener('dragstart', (e) => {
+      const id = el.dataset.id;
+      const ids = selectedGalleryIds.indexOf(id) !== -1 ? selectedGalleryIds.slice() : [id];
+      galleryDrag = { kind: 'items', ids };
+      e.dataTransfer.setData('text/plain', ids.join(','));
+      e.dataTransfer.effectAllowed = 'move';
+      if (ids.length > 1) {
+        const ghost = document.createElement('div');
+        ghost.className = 'drag-ghost';
+        ghost.textContent = ids.length + ' anúncios';
+        document.body.appendChild(ghost);
+        e.dataTransfer.setDragImage(ghost, 12, 12);
+        setTimeout(() => ghost.remove(), 0);
+      }
+      el.classList.add('is-dragging');
+    });
+    el.addEventListener('dragend', () => { galleryDrag = null; el.classList.remove('is-dragging'); document.querySelectorAll('.drop-ok').forEach(n => n.classList.remove('drop-ok')); });
+  }
+
+  async function dropOnFolder(target){
+    const drag = galleryDrag;
+    galleryDrag = null;
+    if (!drag) return;
+    if (drag.kind === 'items') {
+      await moveItems(drag.ids, target);
+      return;
+    }
+    await moveFolderTo(drag.path, target);
+  }
+
+  async function moveFolderTo(path, parent){
+    const note = document.getElementById('galleryUploadNote');
+    if (path.indexOf('/') === -1 && !confirm('"' + folderLabel(path) + '" é uma pasta principal (aparece como nicho na Criar Campanha). Movendo ela pra dentro de ' + (parent ? '"' + folderPathLabel(parent) + '"' : 'outra pasta') + ', ela deixa de ser nicho. Continuar?')) return;
+    note.textContent = 'Movendo pasta…';
+    try {
+      const r = await fetch(NICHES_API + '/move', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY },
+        body: JSON.stringify({ path, parent }),
+      });
+      const json = await r.json();
+      if (!r.ok) {
+        note.textContent = json.error === 'name_conflict' ? 'Já existe uma pasta com esse nome no destino.' : json.error === 'too_deep' ? 'Muitos níveis de pasta.' : json.error === 'invalid_target' ? 'Não dá pra mover uma pasta pra dentro dela mesma.' : 'Falhou — tenta de novo.';
+        return;
+      }
+      const to = (parent ? parent + '/' : '') + path.split('/').pop();
+      niches = json.niches || niches;
+      libraryItems = json.items || libraryItems;
+      if (galleryOpenFolder) galleryOpenFolder = remapPath(galleryOpenFolder, path, to);
+      if (selectedNiche && (selectedNiche === path || selectedNiche.indexOf(path + '/') === 0)) { selectedNiche = ''; savePref('ccNiche', ''); }
+      galleryExpanded = new Set(Array.from(galleryExpanded).map(c => remapPath(c, path, to)));
+      if (parent) galleryExpanded.add(parent);
+      saveExpanded();
+      savePref('galleryOpenFolder', galleryOpenFolder || '__root__');
+      note.textContent = '';
+      renderNicheSelect();
+      refreshLibraryViews();
+    } catch {
+      note.textContent = 'Falhou — tenta de novo.';
+    }
+  }
+
+  function initGalleryMarquee(){
+    const grid = document.getElementById('galleryGrid');
+    grid.addEventListener('mousedown', (e) => {
+      if (e.button !== 0 || e.target.closest('.media-item')) return;
+      if (!galleryOpenFolder) return;
+      e.preventDefault();
+      const additive = e.ctrlKey || e.metaKey || e.shiftKey;
+      const base = additive ? selectedGalleryIds.slice() : [];
+      const sx = e.clientX, sy = e.clientY;
+      const box = document.createElement('div');
+      box.className = 'gallery-marquee';
+      grid.appendChild(box);
+      let moved = false;
+      const gr = () => grid.getBoundingClientRect();
+      const onMove = (ev) => {
+        if (!moved && Math.abs(ev.clientX - sx) < 4 && Math.abs(ev.clientY - sy) < 4) return;
+        moved = true;
+        const x1 = Math.min(sx, ev.clientX), x2 = Math.max(sx, ev.clientX), y1 = Math.min(sy, ev.clientY), y2 = Math.max(sy, ev.clientY);
+        const g = gr();
+        box.style.left = (x1 - g.left) + 'px'; box.style.top = (y1 - g.top) + 'px';
+        box.style.width = (x2 - x1) + 'px'; box.style.height = (y2 - y1) + 'px';
+        const hit = [];
+        grid.querySelectorAll('.media-item').forEach(el => {
+          const r = el.getBoundingClientRect();
+          if (r.right >= x1 && r.left <= x2 && r.bottom >= y1 && r.top <= y2) hit.push(el.dataset.id);
+        });
+        selectedGalleryIds = Array.from(new Set(base.concat(hit)));
+        grid.querySelectorAll('.media-item').forEach(el => {
+          const on = selectedGalleryIds.indexOf(el.dataset.id) !== -1;
+          el.classList.toggle('selected', on);
+          const badge = el.querySelector('.media-check');
+          if (on && !badge) { const b = document.createElement('div'); b.className = 'media-check'; b.textContent = '✓'; el.appendChild(b); }
+          if (!on && badge) badge.remove();
+        });
+      };
+      const onUp = () => {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        box.remove();
+        if (!moved && !additive) selectedGalleryIds = [];
+        renderGalleryPanel();
+      };
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+  }
+
   function renderGalleryBreadcrumb(){
     const el = document.getElementById('galleryBreadcrumb');
     if (!galleryOpenFolder) {
@@ -2881,7 +3048,7 @@
         : '<span class="crumb-link" data-crumb="' + path + '">' + folderLabel(path) + '</span>');
     });
     el.innerHTML = html;
-    el.querySelectorAll('[data-crumb]').forEach(n => n.addEventListener('click', () => openGalleryFolder(n.dataset.crumb || null)));
+    el.querySelectorAll('[data-crumb]').forEach(n => { n.addEventListener('click', () => openGalleryFolder(n.dataset.crumb || null)); wireDropTarget(n, n.dataset.crumb || ''); });
   }
 
   function renderGalleryTree(){
@@ -2908,7 +3075,12 @@
       saveExpanded();
       renderGalleryTree();
     }));
-    wrap.querySelectorAll('[data-open]').forEach(r => r.addEventListener('click', () => openGalleryFolder(r.dataset.open || null)));
+    wrap.querySelectorAll('[data-open]').forEach(r => {
+      const code = r.dataset.open;
+      r.addEventListener('click', () => openGalleryFolder(code || null));
+      wireDropTarget(r, code);
+      if (code && code !== 'logo') makeFolderDraggable(r, code);
+    });
   }
 
   function renderGalleryFolderGrid(){
@@ -2920,12 +3092,16 @@
     wrap.innerHTML = subs.map(code =>
       '<div class="subfolder-chip" data-folder="' + code + '">' + FOLDER_SVG + folderLabel(code) + ' <small>' + folderItemCount(code) + '</small></div>'
     ).join('');
-    wrap.querySelectorAll('.subfolder-chip').forEach(el => el.addEventListener('click', () => openGalleryFolder(el.dataset.folder)));
+    wrap.querySelectorAll('.subfolder-chip').forEach(el => {
+      const code = el.dataset.folder;
+      el.addEventListener('click', () => openGalleryFolder(code));
+      wireDropTarget(el, code);
+      if (code !== 'logo') makeFolderDraggable(el, code);
+    });
   }
 
-  async function bulkMoveSelected(category){
+  async function moveItems(ids, category){
     const note = document.getElementById('galleryGridNote');
-    const ids = selectedGalleryIds.slice();
     for (let i = 0; i < ids.length; i++) {
       note.textContent = 'Movendo ' + (i + 1) + '/' + ids.length + '…';
       try {
@@ -2946,6 +3122,8 @@
     selectedGalleryIds = [];
     renderGalleryPanel();
   }
+
+  function bulkMoveSelected(category){ return moveItems(selectedGalleryIds.slice(), category); }
 
   async function bulkDeleteSelected(){
     const ids = selectedGalleryIds.slice();
@@ -3021,12 +3199,15 @@
     note.textContent = inFolderItems.length + ' anúncio(s) nessa pasta';
     const shown = inFolderItems.slice().reverse();
     grid.innerHTML = shown.map(it => mediaItemHtml(it, selectedGalleryIds)).join('');
-    grid.querySelectorAll('.media-item').forEach(el => el.addEventListener('click', () => {
-      const id = el.dataset.id;
-      const idx = selectedGalleryIds.indexOf(id);
-      if (idx !== -1) selectedGalleryIds.splice(idx, 1); else selectedGalleryIds.push(id);
-      renderGalleryPanel();
-    }));
+    grid.querySelectorAll('.media-item').forEach(el => {
+      makeItemDraggable(el);
+      el.addEventListener('click', () => {
+        const id = el.dataset.id;
+        const idx = selectedGalleryIds.indexOf(id);
+        if (idx !== -1) selectedGalleryIds.splice(idx, 1); else selectedGalleryIds.push(id);
+        renderGalleryPanel();
+      });
+    });
   }
 
   function loadLibraryItems(){
@@ -3243,6 +3424,7 @@
   });
 
   document.getElementById('deletePastaBtn').addEventListener('click', deleteGalleryFolder);
+  initGalleryMarquee();
 
   document.getElementById('addAdsBtn').addEventListener('click', () => {
     if (!galleryOpenFolder) return;

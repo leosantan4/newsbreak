@@ -884,6 +884,37 @@ export default {
       return json({ niches }, 201, origin);
     }
 
+    if (url.pathname === "/niches/move" && request.method === "POST") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      let body;
+      try { body = await request.json(); } catch { return json({ error: "invalid_json" }, 400, origin); }
+      const from = normFolderPath(body.path);
+      const parent = body.parent ? normFolderPath(body.parent) : "";
+      if (!from || from === "logo" || parent === "logo") return json({ error: "invalid_folder" }, 400, origin);
+      if (parent === from || parent.startsWith(from + "/")) return json({ error: "invalid_target" }, 400, origin);
+      const leaf = from.split("/").pop();
+      const to = parent ? parent + "/" + leaf : leaf;
+      const items = await loadLibrary(env);
+      const niches = await loadNiches(env);
+      if (to === from) return json({ niches, items }, 200, origin);
+      if (parent && !niches.includes(parent)) return json({ error: "parent_not_found" }, 400, origin);
+      const under = (c, root) => c === root || c.startsWith(root + "/");
+      if (niches.some((n) => under(n, to)) || items.some((i) => under(libItemCategory(i), to))) {
+        return json({ error: "name_conflict" }, 409, origin);
+      }
+      const remap = (c) => (c === from ? to : c.startsWith(from + "/") ? to + c.slice(from.length) : c);
+      const nextNiches = niches.map(remap);
+      let deepest = 0;
+      nextNiches.forEach((n) => { deepest = Math.max(deepest, n.split("/").length); });
+      items.forEach((i) => { if (under(libItemCategory(i), from)) deepest = Math.max(deepest, remap(libItemCategory(i)).split("/").length); });
+      if (deepest > 6) return json({ error: "too_deep" }, 400, origin);
+      items.forEach((i) => { if (under(libItemCategory(i), from)) i.category = remap(libItemCategory(i)); });
+      await saveNiches(env, nextNiches);
+      await saveLibrary(env, items);
+      return json({ niches: nextNiches, items }, 200, origin);
+    }
+
     if (url.pathname.match(/^\/niches\/[^/]+$/) && request.method === "DELETE") {
       const key = request.headers.get("X-Access-Key");
       if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
