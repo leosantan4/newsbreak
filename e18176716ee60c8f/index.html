@@ -375,6 +375,19 @@
   .subfolder-chip small{font-weight:500; color:var(--muted); font-size:11px;}
   .media-grid .empty-state{grid-column:1 / -1;}
   .nb-only-tag{display:inline-block; margin-left:8px; padding:1px 7px; border-radius:999px; background:var(--neutral-bg); color:var(--muted); font-size:10px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; vertical-align:middle;}
+  .plat-list{display:flex; flex-direction:column; gap:8px; max-width:460px;}
+  .plat-card{display:flex; flex-direction:column; gap:10px; border:1.5px solid var(--line); border-radius:12px; padding:12px 14px; background:var(--surface-raised); cursor:pointer; transition:border-color .12s;}
+  .plat-card:hover{border-color:color-mix(in srgb, var(--ink) 35%, var(--line));}
+  .plat-card.on{border-color:var(--ink);}
+  .plat-card-main{display:flex; align-items:center; gap:12px;}
+  .plat-box{width:20px; height:20px; border-radius:6px; border:1.5px solid color-mix(in srgb, var(--ink) 30%, var(--line)); display:flex; align-items:center; justify-content:center; flex:none; font-size:12px; font-weight:800; color:var(--accent-ink);}
+  .plat-card.on .plat-box{background:var(--accent); border-color:var(--accent);}
+  .plat-txt{display:flex; flex-direction:column; gap:2px; min-width:0;}
+  .plat-name{font-size:14px; font-weight:650;}
+  .plat-desc{font-size:12px; color:var(--muted);}
+  .plat-sub{display:flex; gap:6px; flex-wrap:wrap; padding-left:32px;}
+  .plat-or{display:flex; align-items:center; gap:10px; color:var(--muted); font-size:12px; margin:2px 0;}
+  .plat-or::before, .plat-or::after{content:""; flex:1; height:1px; background:var(--line);}
   .gallery-breadcrumb{flex-wrap:wrap;}
   #galleryGrid{position:relative; user-select:none; -webkit-user-select:none;}
   .gallery-marquee{position:absolute; border:1px solid var(--ink); background:color-mix(in srgb, var(--ink) 10%, transparent); pointer-events:none; z-index:5; border-radius:3px;}
@@ -1280,7 +1293,7 @@
               </div>
               <div class="form-field span2">
                 <label>Plataforma / posicionamento <span class="nb-only-tag">NewsBreak</span></label>
-                <div class="pill-row" id="ccPlatform"></div>
+                <div class="plat-list" id="ccPlatform"></div>
                 <span class="cell-muted" id="ccPlatformHint" style="font-size:12px; margin-top:6px;"></span>
               </div>
             </div>
@@ -4016,27 +4029,57 @@
       ? 'Newsletter sozinha precisa de um criativo próprio (ainda não suportado) — combine com outra plataforma' : '';
   }
 
+  const PLATFORM_CARDS = [
+    { value: 'NEWSBREAK', name: 'NewsBreak', desc: 'Tráfego próprio no app e no site da NewsBreak.' },
+    { value: 'PREMIUM', name: 'Parceiros premium', desc: 'Sites e apps parceiros da NewsBreak.' },
+    { value: 'SCOOPZ', name: 'Scoopz', desc: '' },
+    { value: 'NEWSLETTER', name: 'NewsBreak Newsletter', desc: 'Não pode ser a única — precisa de criativo próprio.' },
+  ];
+  const PREMIUM_SUBS = [
+    { value: 'PREMIUM_PARTNERS_ALL', label: 'Todos' },
+    { value: 'PREMIUM_PARTNERS_GAMING', label: 'Só games' },
+    { value: 'PREMIUM_PARTNERS_NON_GAMING', label: 'Sem games' },
+  ];
+
+  function platformPremiumValue(){ return platformSel.find(x => x.indexOf('PREMIUM_PARTNERS_') === 0) || ''; }
+
   function renderPlatformPills(){
     const el = document.getElementById('ccPlatform');
-    el.innerHTML = PLATFORM_OPTIONS.map(o =>
-      '<button type="button" class="pill' + (platformSel.indexOf(o.value) !== -1 ? ' active' : '') + '" data-value="' + o.value + '">' + o.label + '</button>'
-    ).join('');
+    const unl = platformSel[0] === PLATFORM_UNLIMITED;
+    const box = (on) => '<span class="plat-box">' + (on ? '✓' : '') + '</span>';
+    let html = '<div class="plat-card' + (unl ? ' on' : '') + '" data-plat="' + PLATFORM_UNLIMITED + '"><div class="plat-card-main">' + box(unl) +
+      '<div class="plat-txt"><span class="plat-name">Ilimitado (todas)</span><span class="plat-desc">Padrão: app e site da NewsBreak + parceiros premium.</span></div></div></div>' +
+      '<div class="plat-or">ou escolha plataformas específicas</div>';
+    PLATFORM_CARDS.forEach(c => {
+      const prem = platformPremiumValue();
+      const on = c.value === 'PREMIUM' ? !!prem : platformSel.indexOf(c.value) !== -1;
+      html += '<div class="plat-card' + (on ? ' on' : '') + '" data-plat="' + c.value + '"><div class="plat-card-main">' + box(on) +
+        '<div class="plat-txt"><span class="plat-name">' + c.name + '</span>' + (c.desc ? '<span class="plat-desc">' + c.desc + '</span>' : '') + '</div></div>' +
+        (c.value === 'PREMIUM' && on ? '<div class="plat-sub">' + PREMIUM_SUBS.map(o => '<button type="button" class="pill' + (prem === o.value ? ' active' : '') + '" data-premium="' + o.value + '">' + o.label + '</button>').join('') + '</div>' : '') +
+        '</div>';
+    });
+    el.innerHTML = html;
     const problem = platformProblem();
-    document.getElementById('ccPlatformHint').textContent = problem ||
-      (platformSel[0] === PLATFORM_UNLIMITED
-        ? 'Todas = app e site da NewsBreak + parceiros premium. Marque uma ou mais pra restringir (parceiros premium: só uma opção por vez).'
-        : 'Restrito a: ' + platformSummary() + '.');
-    el.querySelectorAll('button').forEach(btn => btn.addEventListener('click', () => {
-      const v = btn.dataset.value;
+    document.getElementById('ccPlatformHint').textContent = problem || (unl ? '' : 'Restrito a: ' + platformSummary() + '.');
+    el.querySelectorAll('[data-premium]').forEach(btn => btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      platformSel = platformSel.filter(x => x.indexOf('PREMIUM_PARTNERS_') !== 0);
+      platformSel.push(btn.dataset.premium);
+      renderPlatformPills();
+      renderCcSummary();
+    }));
+    el.querySelectorAll('[data-plat]').forEach(card => card.addEventListener('click', () => {
+      const v = card.dataset.plat;
       if (v === PLATFORM_UNLIMITED) {
         platformSel = [PLATFORM_UNLIMITED];
       } else {
         platformSel = platformSel.filter(x => x !== PLATFORM_UNLIMITED);
-        const isPremium = v.indexOf('PREMIUM_PARTNERS_') === 0;
-        if (platformSel.indexOf(v) !== -1) {
+        if (v === 'PREMIUM') {
+          if (platformPremiumValue()) platformSel = platformSel.filter(x => x.indexOf('PREMIUM_PARTNERS_') !== 0);
+          else platformSel.push('PREMIUM_PARTNERS_ALL');
+        } else if (platformSel.indexOf(v) !== -1) {
           platformSel = platformSel.filter(x => x !== v);
         } else {
-          if (isPremium) platformSel = platformSel.filter(x => x.indexOf('PREMIUM_PARTNERS_') !== 0);
           platformSel.push(v);
         }
         if (!platformSel.length) platformSel = [PLATFORM_UNLIMITED];
