@@ -374,6 +374,7 @@
   .subfolder-chip .tree-ic{color:var(--muted);}
   .subfolder-chip small{font-weight:500; color:var(--muted); font-size:11px;}
   .media-grid .empty-state{grid-column:1 / -1;}
+  .nb-only-tag{display:inline-block; margin-left:8px; padding:1px 7px; border-radius:999px; background:var(--neutral-bg); color:var(--muted); font-size:10px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; vertical-align:middle;}
   .gallery-breadcrumb{flex-wrap:wrap;}
   #galleryGrid{position:relative; user-select:none; -webkit-user-select:none;}
   .gallery-marquee{position:absolute; border:1px solid var(--ink); background:color-mix(in srgb, var(--ink) 10%, transparent); pointer-events:none; z-index:5; border-radius:3px;}
@@ -1277,6 +1278,11 @@
                 <label>Rede</label>
                 <div class="pill-row" id="ccNetwork"></div>
               </div>
+              <div class="form-field span2">
+                <label>Plataforma / posicionamento <span class="nb-only-tag">NewsBreak</span></label>
+                <div class="pill-row" id="ccPlatform"></div>
+                <span class="cell-muted" id="ccPlatformHint" style="font-size:12px; margin-top:6px;"></span>
+              </div>
             </div>
           </section>
 
@@ -1369,6 +1375,7 @@
             <div class="cc-summary-row"><span class="cc-label">Início</span><span class="cc-value" id="ccSumStart">—</span></div>
             <div class="cc-summary-row"><span class="cc-label">Fim</span><span class="cc-value" id="ccSumEnd">Hoje 20:00 PDT</span></div>
             <div class="cc-summary-row"><span class="cc-label">Segmentação</span><span class="cc-value" id="ccSumTargeting">—</span></div>
+            <div class="cc-summary-row"><span class="cc-label">Plataforma</span><span class="cc-value" id="ccSumPlatform">Todas</span></div>
             <div class="cc-summary-row"><span class="cc-label">Criativos</span><span class="cc-value" id="ccSumCreative">nenhum</span></div>
             <div id="ccSumStatus"></div>
             <button type="button" id="ccSubmitBtn" class="cc-submit-btn">Criar campanha</button>
@@ -3987,6 +3994,58 @@
     }));
   }
 
+  // ---- Plataforma / posicionamento (campo `platforms` do conjunto, só NewsBreak) ----
+  const PLATFORM_UNLIMITED = 'APP_AND_WEB_UNLIMITED';
+  const PLATFORM_OPTIONS = [
+    { value: 'APP_AND_WEB_UNLIMITED', label: 'Todas (padrão)', short: 'Todas' },
+    { value: 'NEWSBREAK', label: 'NewsBreak (app + web)', short: 'NewsBreak' },
+    { value: 'SCOOPZ', label: 'Scoopz', short: 'Scoopz' },
+    { value: 'NEWSLETTER', label: 'Newsletter', short: 'Newsletter' },
+    { value: 'PREMIUM_PARTNERS_ALL', label: 'Parceiros premium · todos', short: 'Parceiros (todos)' },
+    { value: 'PREMIUM_PARTNERS_GAMING', label: 'Parceiros · games', short: 'Parceiros (games)' },
+    { value: 'PREMIUM_PARTNERS_NON_GAMING', label: 'Parceiros · sem games', short: 'Parceiros (sem games)' },
+  ];
+  let platformSel = [PLATFORM_UNLIMITED];
+
+  function platformSummary(){
+    return platformSel.map(v => (PLATFORM_OPTIONS.find(o => o.value === v) || { short: v }).short).join(' + ');
+  }
+
+  function platformProblem(){
+    return platformSel.length === 1 && platformSel[0] === 'NEWSLETTER'
+      ? 'Newsletter sozinha precisa de um criativo próprio (ainda não suportado) — combine com outra plataforma' : '';
+  }
+
+  function renderPlatformPills(){
+    const el = document.getElementById('ccPlatform');
+    el.innerHTML = PLATFORM_OPTIONS.map(o =>
+      '<button type="button" class="pill' + (platformSel.indexOf(o.value) !== -1 ? ' active' : '') + '" data-value="' + o.value + '">' + o.label + '</button>'
+    ).join('');
+    const problem = platformProblem();
+    document.getElementById('ccPlatformHint').textContent = problem ||
+      (platformSel[0] === PLATFORM_UNLIMITED
+        ? 'Todas = app e site da NewsBreak + parceiros premium. Marque uma ou mais pra restringir (parceiros premium: só uma opção por vez).'
+        : 'Restrito a: ' + platformSummary() + '.');
+    el.querySelectorAll('button').forEach(btn => btn.addEventListener('click', () => {
+      const v = btn.dataset.value;
+      if (v === PLATFORM_UNLIMITED) {
+        platformSel = [PLATFORM_UNLIMITED];
+      } else {
+        platformSel = platformSel.filter(x => x !== PLATFORM_UNLIMITED);
+        const isPremium = v.indexOf('PREMIUM_PARTNERS_') === 0;
+        if (platformSel.indexOf(v) !== -1) {
+          platformSel = platformSel.filter(x => x !== v);
+        } else {
+          if (isPremium) platformSel = platformSel.filter(x => x.indexOf('PREMIUM_PARTNERS_') !== 0);
+          platformSel.push(v);
+        }
+        if (!platformSel.length) platformSel = [PLATFORM_UNLIMITED];
+      }
+      renderPlatformPills();
+      renderCcSummary();
+    }));
+  }
+
   function initTargetingPills(){
     renderPillGroup('ccGender', [
       { value: 'all', label: 'Todos' }, { value: 'male', label: 'Masculino' },
@@ -4002,6 +4061,7 @@
     renderPillGroup('ccNetwork', [
       { value: 'all', label: 'Todas' }, { value: 'wifi', label: 'WiFi' }, { value: 'cellular', label: 'Dados móveis' },
     ], networkSel, false);
+    renderPlatformPills();
   }
 
   // ---- Dia de início (só semana atual) e fuso PDT ----
@@ -4117,6 +4177,7 @@
       document.getElementById('ccEndTimeBrt').textContent = '→ ' + laWallTimeToBrt(endDayKey, endTimeStr) + ' BRT';
     }
 
+    document.getElementById('ccSumPlatform').textContent = platformSummary();
     const genderLabel = { all: 'Todos', male: 'Masc', female: 'Fem', notdisclosed: 'N/I' }[genderSel[0]] || genderSel[0];
     const ageLabel = ageSel.indexOf('all') !== -1 ? 'todas idades' : ageSel.join('/');
     document.getElementById('ccSumTargeting').textContent = genderLabel + ' · ' + ageLabel;
@@ -4140,6 +4201,7 @@
     }
 
     const missing = [];
+    if (platformProblem()) missing.push('plataforma: Newsletter sozinha não é suportada');
     if (!accounts.length) missing.push('marque pelo menos uma conta');
     if (!document.getElementById('ccHeadline').value.trim()) missing.push('título');
     if (!document.getElementById('ccBrandDefault').value.trim()) missing.push('marca padrão');
@@ -4382,6 +4444,7 @@
           carrier: { positive: ['all'] },
           network: { positive: networkSel },
         },
+        platforms: platformSel.slice(),
       });
 
       if (shared.mode === 'oneAdset' && !run.adSetId) {
@@ -4504,6 +4567,7 @@
     if (!selectedSubAccountIds.length) { ccLog('Marca pelo menos uma sub-conta.', 'err'); btn.disabled = false; return; }
     if (!headline || !brandName || !description) { ccLog('Preenche título, marca padrão e descrição.', 'err'); btn.disabled = false; return; }
     if (endTime <= startTime) { ccLog('A hora de término precisa ser depois da hora de início.', 'err'); btn.disabled = false; return; }
+    if (platformProblem()) { ccLog('Plataforma: ' + platformProblem() + '.', 'err'); btn.disabled = false; return; }
 
     const toCreatives = (ids) => ids.map(id => libraryItems.find(i => i.id === id)).filter(Boolean).map(item => {
       const isVideo = (item.contentType || '').indexOf('video') === 0;
