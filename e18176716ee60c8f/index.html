@@ -661,6 +661,8 @@
   .assign-sheet-close{width:100%; border:none; background:var(--accent); color:var(--accent-ink); font:inherit; font-weight:700; font-size:14px; padding:13px; border-radius:12px; cursor:pointer;}
   @media (min-width:721px){ .assign-sheet{align-items:center;} .assign-sheet-card{border-radius:16px;} }
 
+  .camp-body:empty{display:none;}
+
   /* ===== Mobile (placed last so it wins over the desktop refresh above) ===== */
   @media (max-width:720px){
     .shell{align-items:stretch;}
@@ -723,7 +725,7 @@
     .camp-head-sub{white-space:normal; overflow:visible;}
     .camp-head-metrics{order:9; flex:1 1 100%; width:100%; display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:6px; padding-top:8px; border-top:1px solid var(--line);}
     .camp-metric{text-align:left; min-width:0;}
-    .camp-metric-label{white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+    .camp-metric-label{white-space:normal; line-height:1.2;}
     .camp-body{padding:8px 10px 12px;}
     .adset-head{flex-wrap:wrap; gap:6px 10px; padding:9px 10px;}
     .adset-head-main{flex:1 1 100%; white-space:normal; overflow:visible;}
