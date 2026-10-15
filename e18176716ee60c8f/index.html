@@ -4462,6 +4462,7 @@ function ccPreviewLines(adsets, nameOf){
     const lines = [];
     plan.slice(0, maxC).forEach(c => {
       lines.push('<div><b>Campanha:</b> <code>' + esc(c.campName) + '</code></div>');
+      if (!c.adsets.length) lines.push('<div style="padding-left:16px;"><i>Conjuntos: coloque anúncios no cartão da campanha pra ver os nomes.</i></div>');
       c.adsets.slice(0, maxS).forEach(a => lines.push('<div style="padding-left:16px;"><b>Conjunto:</b> <code>' + esc(a.name) + '</code></div>'));
       if (c.adsets.length > maxS) lines.push('<div style="padding-left:16px;">… +' + (c.adsets.length - maxS) + ' conjuntos</div>');
     });
