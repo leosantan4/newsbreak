@@ -396,7 +396,8 @@
   .cc-repeat input{width:76px; padding:8px 10px; font-size:14px;}
   .pill:disabled{opacity:.35; cursor:not-allowed;}
   .cc-struct-row{display:flex; gap:14px; align-items:flex-end; flex-wrap:wrap;}
-  .cc-quick-inline{padding-bottom:8px; margin:0;}
+  .cc-struct-extra{display:flex; align-items:center; gap:14px; flex-wrap:wrap; padding-bottom:8px;}
+  .cc-struct-extra .cc-mirror, .cc-quick-inline{padding-bottom:0; margin:0;}
   .cc-ads-note-wrap{padding:0 18px 10px;}
   .cc-struct-num{display:flex; flex-direction:column; gap:4px; font-size:11px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; color:var(--muted);}
   .cc-struct-num input{width:96px; padding:9px 10px; font-size:14px; text-transform:none; letter-spacing:0;}
@@ -1431,8 +1432,10 @@
                 <div class="cc-struct-row">
                   <label class="cc-struct-num">Campanhas <input type="number" id="ccC" min="1" max="20" value="1"></label>
                   <label class="cc-struct-num">Conjuntos por campanha <input type="number" id="ccS" min="1" max="30" value="1"></label>
-                  <label class="cc-mirror"><input type="checkbox" id="ccMirror" checked> Campanhas espelho (mesmos anúncios)</label>
-                  <div class="pill-row cc-quick-inline" id="ccStructureQuick"></div>
+                  <div class="cc-struct-extra">
+                    <label class="cc-mirror"><input type="checkbox" id="ccMirror" checked> Campanhas espelho (mesmos anúncios)</label>
+                    <div class="pill-row cc-quick-inline" id="ccStructureQuick"></div>
+                  </div>
                 </div>
                 <span class="cell-muted cc-note" id="ccStructureHint" style="margin-top:6px;"></span>
               </div>
