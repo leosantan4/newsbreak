@@ -1373,9 +1373,9 @@
                 <div class="pill-row" id="ccStructurePills"></div>
                 <span class="cell-muted" id="ccStructureHint" style="font-size:12px; margin-top:6px;"></span>
                 <div class="cc-repeat" id="ccRepeatWrap">
-                  <label for="ccRepeat">Conjuntos por criativo</label>
+                  <label for="ccRepeat" id="ccRepeatLabel">Conjuntos por criativo</label>
                   <input type="number" id="ccRepeat" min="1" max="20" value="1">
-                  <span class="cell-muted" style="font-size:12px;">repete o mesmo criativo em N conjuntos (ex: 1 criativo × 3 = 1-3-1)</span>
+                  <span class="cell-muted" id="ccRepeatHint" style="font-size:12px;"></span>
                 </div>
               </div>
               <div class="form-field span2" id="ccAccountBlocksWrap" hidden>
@@ -3876,7 +3876,7 @@
   }
 
   function ccRepeatCount(){
-    if (ccStructure !== 'perCreative') return 1;
+    if (ccStructure !== 'perCreative' && ccStructure !== 'nCampaigns') return 1;
     return Math.max(1, Math.min(20, parseInt(document.getElementById('ccRepeat').value, 10) || 1));
   }
 
@@ -3884,10 +3884,10 @@
     const per = ccCreativeCounts();
     const creatives = per.reduce((a, b) => a + b, 0);
     let campaigns, adsets;
-    if (ccStructure === 'nCampaigns') { campaigns = creatives; adsets = creatives; }
+    if (ccStructure === 'nCampaigns') { campaigns = creatives * ccRepeatCount(); adsets = campaigns; }
     else if (ccStructure === 'oneAdset') { campaigns = per.filter(n => n > 0).length; adsets = campaigns; }
     else { campaigns = per.filter(n => n > 0).length; adsets = creatives * ccRepeatCount(); }
-    return { campaigns, adsets, ads: ccStructure === 'perCreative' ? adsets : creatives };
+    return { campaigns, adsets, ads: ccStructure === 'oneAdset' ? creatives : adsets };
   }
 
   function renderStructurePills(){
@@ -3896,7 +3896,9 @@
       '<button type="button" class="pill' + (k === ccStructure ? ' active' : '') + '" data-structure="' + k + '">' + CC_STRUCTURES[k].label + '</button>'
     ).join('');
     document.getElementById('ccStructureHint').textContent = CC_STRUCTURES[ccStructure].hint;
-    document.getElementById('ccRepeatWrap').hidden = ccStructure !== 'perCreative';
+    document.getElementById('ccRepeatWrap').hidden = ccStructure !== 'perCreative' && ccStructure !== 'nCampaigns';
+    document.getElementById('ccRepeatLabel').textContent = ccStructure === 'nCampaigns' ? 'Campanhas por criativo' : 'Conjuntos por criativo';
+    document.getElementById('ccRepeatHint').textContent = ccStructure === 'nCampaigns' ? 'repete o mesmo criativo em N campanhas (ex: 1 criativo × 3 = 3-1-1)' : 'repete o mesmo criativo em N conjuntos (ex: 1 criativo × 3 = 1-3-1)';
     el.querySelectorAll('[data-structure]').forEach(btn => btn.addEventListener('click', () => {
       ccStructure = btn.dataset.structure;
       savePref('ccStructure', ccStructure);
@@ -3908,7 +3910,7 @@
 
   function applyStructureToNames(){
     const suffix = CC_STRUCTURES[ccStructure].suffix;
-    const swap = (v) => /(^|\s)1-\d+-\d+$/.test(v) ? v.replace(/1-\d+-\d+$/, suffix) : v;
+    const swap = (v) => /(^|\s)\d{1,2}-\d{1,2}-\d{1,2}$/.test(v) ? v.replace(/\d{1,2}-\d{1,2}-\d{1,2}$/, suffix) : v;
     const nameInput = document.getElementById('ccName');
     nameInput.value = swap(nameInput.value);
     Object.keys(accountCampaigns).forEach(id => { accountCampaigns[id].name = swap(accountCampaigns[id].name); });
@@ -4801,7 +4803,8 @@
     const expanded = [];
     runs.forEach(({ acc, shared }) => {
       if (ccStructure === 'nCampaigns') {
-        shared.creatives.forEach(c => expanded.push({ acc, shared: { ...shared, mode: 'nCampaigns', name: shared.name + ' - ' + c.name, creatives: [c] } }));
+        const times = ccRepeatCount();
+        shared.creatives.forEach(c => { for (let k = 1; k <= times; k++) expanded.push({ acc, shared: { ...shared, mode: 'nCampaigns', name: shared.name + ' - ' + c.name + (times > 1 ? ' #' + k : ''), creatives: [c] } }); });
       } else if (ccStructure === 'perCreative' && ccRepeatCount() > 1) {
         const times = ccRepeatCount();
         const repeated = [];
