@@ -1400,7 +1400,35 @@
 
           <section class="panel">
             <div class="step-head">
-              <div class="step-head-left"><span class="step-num">5</span><span class="step-title">Marca &amp; logo padrão</span></div>
+              <div class="step-head-left"><span class="step-num">5</span><span class="step-title">Estrutura da campanha</span></div>
+            </div>
+            <div class="form-grid">
+              <div class="form-field span2">
+                <div class="cc-struct-row">
+                  <label class="cc-struct-num">Campanhas <input type="number" id="ccC" min="1" max="20" value="1"></label>
+                  <label class="cc-struct-num">Conjuntos por campanha <input type="number" id="ccS" min="1" max="30" value="1"></label>
+                  <div class="cc-struct-extra">
+                    <label class="cc-mirror"><input type="checkbox" id="ccMirror" checked> Campanhas espelho (mesmos anúncios)</label>
+                    <div class="pill-row cc-quick-inline" id="ccStructureQuick"></div>
+                  </div>
+                </div>
+                <span class="cell-muted cc-note" id="ccStructureHint" style="margin-top:6px;"></span>
+              </div>
+              <div class="form-field span2" id="ccNameFieldWrap">
+                <label for="ccName">Nome da campanha</label>
+                <input type="text" id="ccName" placeholder="Ex: TROYA-177 - 28/09 - 1-3-1">
+              </div>
+              <div class="form-field span2 cell-muted" id="ccMultiAccountNote" hidden>Várias contas marcadas — o nome de cada campanha é editado no bloco de cada conta, logo abaixo.</div>
+              <div class="form-field span2" id="ccAccountBlocksWrap" hidden>
+                <label>Nome da campanha em cada conta (a estrutura e os anúncios valem iguais pra todas as contas marcadas)</label>
+                <div id="ccAccountBlocks" class="cc-account-blocks"></div>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="step-head">
+              <div class="step-head-left"><span class="step-num">6</span><span class="step-title">Marca &amp; logo padrão</span></div>
             </div>
             <div class="form-grid">
               <div class="form-field">
@@ -1424,30 +1452,9 @@
 
           <section class="panel">
             <div class="step-head">
-              <div class="step-head-left"><span class="step-num">6</span><span class="step-title">Anúncio</span></div>
+              <div class="step-head-left"><span class="step-num">7</span><span class="step-title">Anúncio</span></div>
             </div>
             <div class="form-grid">
-              <div class="form-field span2">
-                <label>Estrutura da campanha</label>
-                <div class="cc-struct-row">
-                  <label class="cc-struct-num">Campanhas <input type="number" id="ccC" min="1" max="20" value="1"></label>
-                  <label class="cc-struct-num">Conjuntos por campanha <input type="number" id="ccS" min="1" max="30" value="1"></label>
-                  <div class="cc-struct-extra">
-                    <label class="cc-mirror"><input type="checkbox" id="ccMirror" checked> Campanhas espelho (mesmos anúncios)</label>
-                    <div class="pill-row cc-quick-inline" id="ccStructureQuick"></div>
-                  </div>
-                </div>
-                <span class="cell-muted cc-note" id="ccStructureHint" style="margin-top:6px;"></span>
-              </div>
-              <div class="form-field span2" id="ccNameFieldWrap">
-                <label for="ccName">Nome da campanha</label>
-                <input type="text" id="ccName" placeholder="Ex: TROYA-177 - 28/09 - 1-3-1">
-              </div>
-              <div class="form-field span2 cell-muted" id="ccMultiAccountNote" hidden>Várias contas marcadas — o nome de cada campanha é editado no bloco de cada conta, logo abaixo.</div>
-              <div class="form-field span2" id="ccAccountBlocksWrap" hidden>
-                <label>Nome da campanha em cada conta (a estrutura e os anúncios valem iguais pra todas as contas marcadas)</label>
-                <div id="ccAccountBlocks" class="cc-account-blocks"></div>
-              </div>
               <div class="form-field span2">
                 <label for="ccHeadline">Título</label>
                 <input type="text" id="ccHeadline">
@@ -1464,10 +1471,9 @@
             <div class="table-scroll" id="presetsTableWrap"></div>
 
             <div class="step-head" style="margin-top:8px;">
-              <div class="step-head-left"><span class="step-title" style="font-size:13px;">Imagem do anúncio</span></div>
-              <span class="step-desc">digite o nome do anúncio pra achar na galeria — nada é exibido até você digitar. Suba criativos novos em "Galeria de ads", no menu lateral</span>
+              <div class="step-head-left"><span class="step-title" style="font-size:13px;">Imagem / vídeo do anúncio</span></div>
+              <span class="step-desc">clique ou arraste o anúncio pro cartão da campanha, na lateral — dá pra repetir o mesmo</span>
             </div>
-            <div class="cc-ads-note-wrap" id="ccSingleCreativeNote"><span class="step-desc cc-note">Anúncios: clique no anúncio (ou arraste) pra colocar na campanha ativa, na lateral. Dá pra repetir o mesmo anúncio. 1 anúncio vai em todos os conjuntos; vários anúncios se distribuem entre os conjuntos.</span></div>
             <div class="creative-search">
               <input type="text" id="mediaSearchInput" list="mediaNamesList" placeholder="Digite o nome/número do anúncio…">
               <datalist id="mediaNamesList"></datalist>
