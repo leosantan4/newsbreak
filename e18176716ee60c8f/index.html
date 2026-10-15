@@ -586,6 +586,7 @@
     <div class="sidenav-group-label">Tráfego</div>
     <button class="nav-item" data-view="painel"><span class="ic">▦</span>Dashboard</button>
     <button class="nav-item" data-view="criar"><span class="ic">✚</span>Criar Campanha</button>
+    <button class="nav-item" data-view="links"><span class="ic">⛓</span>Links das contas</button>
     <button class="nav-item" data-view="campanhas"><span class="ic">▶</span>Campanhas</button>
     <button class="nav-item" data-view="galeria"><span class="ic">▣</span>Galeria de ads</button>
     <div class="sidenav-group-label">Financeiro</div>
@@ -1239,13 +1240,25 @@
         <div class="panel-head"><h2 id="criarOtherHead"></h2></div>
         <div class="empty-state" id="criarOtherBody"></div>
       </section>
-      <div class="criar-subnav" id="criarSubnav">
-        <button type="button" class="criar-subtab active" data-criarsub="nova">Nova campanha</button>
-        <button type="button" class="criar-subtab" data-criarsub="links">Links das contas</button>
-      </div>
-
       <div id="criarSubNova" class="criar-layout">
         <div class="criar-main">
+          <section class="panel" id="ccNichePanel">
+            <div class="step-head">
+              <div class="step-head-left"><span class="step-title">Nicho</span></div>
+              <span class="step-desc">escolha o nicho — a configuração vem presetada</span>
+            </div>
+            <div class="form-grid">
+              <div class="form-field span2">
+                <div class="pill-row" id="ccNichePills"></div>
+                <span class="cell-muted" id="ccNicheNote" style="font-size:12px; margin-top:6px;"></span>
+              </div>
+            </div>
+            <div style="padding:0 18px 16px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+              <button type="button" id="nichePresetSaveBtn" style="border:1px solid var(--line); background:var(--surface-raised); color:var(--ink); font:inherit; font-weight:600; font-size:12.5px; padding:8px 14px; border-radius:var(--radius-sm); cursor:pointer;">Salvar a configuração atual como preset do nicho</button>
+              <span class="cell-muted" id="nichePresetNote" style="font-size:12px;"></span>
+            </div>
+          </section>
+
           <section class="panel">
             <div class="step-head">
               <div class="step-head-left"><span class="step-num">1</span><span class="step-title">Conta(s)</span></div>
@@ -1366,7 +1379,7 @@
             <div class="form-grid">
               <div class="form-field span2">
                 <label>Nicho — define quais headlines e criativos aparecem abaixo</label>
-                <div class="pill-row" id="ccNichePills"></div>
+                <span class="cell-muted" style="font-size:13px;">Escolhido no topo da página: <b id="ccNicheEcho" style="color:var(--ink);">nenhum</b></span>
               </div>
               <div class="form-field span2">
                 <label>Estrutura da campanha</label>
@@ -1457,7 +1470,9 @@
         </aside>
       </div>
 
-      <div id="criarSubLinks" hidden>
+    </div>
+
+    <div id="linksView" hidden>
         <section class="panel">
           <div class="step-head">
             <div class="step-head-left"><span class="step-title">Links das contas</span></div>
@@ -1465,8 +1480,6 @@
           </div>
           <div class="account-picker" id="linksManagerList"></div>
         </section>
-      </div>
-
     </div>
 
     <div id="galeriaView" hidden>
@@ -1896,6 +1909,7 @@
     document.getElementById('vturbView').hidden = view !== 'vturb';
     document.getElementById('criarView').hidden = view !== 'criar';
     document.getElementById('galeriaView').hidden = view !== 'galeria';
+    document.getElementById('linksView').hidden = view !== 'links';
     document.getElementById('contasView').hidden = view !== 'contas';
     document.getElementById('mainContent').classList.toggle('wide', view === 'criar' || view === 'galeria');
   }
@@ -2906,12 +2920,96 @@
   const NICHE_EMOJI = { ED: '🔥', BS: '🩸', WL: '🥑', TN: '🦻🏼', NP: '🦵🏼' };
   function nicheLabel(code){ return NICHE_EMOJI[code] ? code + ' ' + NICHE_EMOJI[code] : code; }
 
+  // ---- Presets por nicho: escolher o nicho já monta a configuração ----
+  const NICHE_PRESETS_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/niche-presets';
+  let nichePresets = {};
+  // Defaults used until the user saves their own preset for the niche.
+  const DEFAULT_NICHE_PRESETS = {
+    ED: { gender: ['male'], age: ['31-44', '45-64', '65+'], language: ['en_us'], network: ['all'], platforms: ['APP_AND_WEB_UNLIMITED'], budget: 200, startTime: '04:00', endTime: '20:00' },
+    HL: { gender: ['female'], age: ['31-44', '45-64', '65+'], language: ['en_us'], network: ['all'], platforms: ['NEWSBREAK'], budget: 200, startTime: '04:00', noEnd: true, brandName: 'Hair Loss Institute' },
+  };
+
+  function loadNichePresets(){
+    return fetch(NICHE_PRESETS_API, { cache: 'no-store' }).then(r => r.json()).then(json => { nichePresets = json.presets || {}; }).catch(() => {});
+  }
+
+  function setArr(arr, vals){ arr.length = 0; vals.forEach(v => arr.push(v)); }
+
+  function nichePresetFor(niche){ return nichePresets[niche] || DEFAULT_NICHE_PRESETS[niche] || null; }
+
+  function applyNichePreset(niche){
+    const p = nichePresetFor(niche);
+    const note = document.getElementById('ccNicheNote');
+    if (!p) { note.textContent = 'Sem preset pra ' + niche + ' ainda — monte a configuração e use "Salvar como preset do nicho".'; return; }
+    if (p.gender) setArr(genderSel, p.gender);
+    if (p.age) setArr(ageSel, p.age);
+    if (p.language) setArr(languageSel, p.language);
+    if (p.network) setArr(networkSel, p.network);
+    if (p.platforms) platformSel = p.platforms.slice();
+    if (p.structure && CC_STRUCTURES[p.structure]) { ccStructure = p.structure; savePref('ccStructure', ccStructure); }
+    if (p.repeat) document.getElementById('ccRepeat').value = String(p.repeat);
+    if (p.budget) document.getElementById('ccBudget').value = String(p.budget);
+    if (p.startTime) document.getElementById('ccStartTime').value = p.startTime;
+    if (p.noEnd) {
+      endDaySel = null;
+      document.getElementById('ccEndTime').disabled = true;
+    } else if (p.endTime) {
+      if (endDaySel === null) endDaySel = Math.max(0, startDaySel);
+      document.getElementById('ccEndTime').disabled = false;
+      document.getElementById('ccEndTime').value = p.endTime;
+    }
+    let brand = p.brandName || '';
+    let logoId = p.logoLibraryId || null;
+    if (p.brandName && !logoId) {
+      const bp = brandPresets.find(b => b.brandName === p.brandName);
+      if (bp) logoId = bp.logoLibraryId;
+    }
+    if (brand) {
+      document.getElementById('ccBrandDefault').value = brand;
+      if (logoId) { selectedLogoLibraryId = logoId; updateSelectedLogoLabel(); renderLogoGrid(); }
+    }
+    initTargetingPills();
+    renderStructurePills();
+    renderStartDayPills();
+    renderEndDayPills();
+    applyStructureToNames();
+    renderCcSummary();
+    note.textContent = 'Preset do nicho ' + niche + ' aplicado' + (nichePresets[niche] ? '.' : ' (padrão do sistema — salve o seu pra personalizar).');
+  }
+
+  function captureNichePreset(){
+    const g = id => document.getElementById(id);
+    return {
+      gender: genderSel.slice(), age: ageSel.slice(), language: languageSel.slice(), network: networkSel.slice(),
+      platforms: platformSel.slice(), structure: ccStructure, repeat: ccRepeatCount(),
+      budget: parseFloat(g('ccBudget').value) || 200,
+      startTime: g('ccStartTime').value || '04:00',
+      endTime: g('ccEndTime').value || '20:00', noEnd: endDaySel === null,
+      brandName: g('ccBrandDefault').value.trim(), logoLibraryId: selectedLogoLibraryId,
+    };
+  }
+
+  document.getElementById('nichePresetSaveBtn').addEventListener('click', () => {
+    const note = document.getElementById('nichePresetNote');
+    if (!selectedNiche) { note.textContent = 'Escolha um nicho primeiro.'; return; }
+    note.textContent = 'Salvando…';
+    fetch(NICHE_PRESETS_API, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY },
+      body: JSON.stringify({ niche: selectedNiche, preset: captureNichePreset() }),
+    }).then(r => r.json()).then(json => {
+      nichePresets = json.presets || nichePresets;
+      note.textContent = 'Preset do nicho ' + selectedNiche + ' salvo.';
+    }).catch(() => { note.textContent = 'Falhou — tenta de novo.'; });
+  });
+
   function renderNicheSelect(){
     const el = document.getElementById('ccNichePills');
     if (!el) return;
     el.innerHTML = topNiches().map(n =>
       '<button type="button" class="pill' + (n === selectedNiche ? ' active' : '') + '" data-niche="' + n + '">' + nicheLabel(n) + '</button>'
     ).join('');
+    const echo = document.getElementById('ccNicheEcho');
+    if (echo) echo.textContent = selectedNiche || 'nenhum';
     el.querySelectorAll('[data-niche]').forEach(btn => btn.addEventListener('click', () => {
       selectedNiche = btn.dataset.niche === selectedNiche ? '' : btn.dataset.niche;
       savePref('ccNiche', selectedNiche);
@@ -2921,6 +3019,8 @@
       renderMediaGrid();
       renderMediaDatalist();
       renderPresetsTable();
+      if (selectedNiche) applyNichePreset(selectedNiche);
+      else document.getElementById('ccNicheNote').textContent = '';
     }));
   }
 
@@ -4444,9 +4544,6 @@
     }
   }
 
-  let criarSubView = loadPref('criarSubView', 'nova');
-  if (criarSubView !== 'nova' && criarSubView !== 'links') criarSubView = 'nova';
-
   let criarSource = null;
 
   function renderCriarSubNav(){
@@ -4454,7 +4551,6 @@
     const connected = !!(src && src.connected);
     document.getElementById('criarSourceChooser').hidden = !!src;
     document.getElementById('criarSourceBar').hidden = !src;
-    document.getElementById('criarSubnav').hidden = !src;
     if (!src){
       document.getElementById('criarSourceGrid').innerHTML = TRAFFIC_SOURCES.map(x =>
         '<button type="button" class="source-card' + (x.connected ? ' connected' : ' soon') + '" data-criar-source="' + x.key + '">' +
@@ -4469,16 +4565,11 @@
         renderCriarSubNav();
       }));
       document.getElementById('criarSubNova').hidden = true;
-      document.getElementById('criarSubLinks').hidden = true;
       document.getElementById('criarOtherPanel').hidden = true;
       return;
     }
     document.getElementById('criarSourceName').textContent = src.label;
-    document.querySelectorAll('.criar-subtab').forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.criarsub === criarSubView);
-    });
-    document.getElementById('criarSubNova').hidden = !connected || criarSubView !== 'nova';
-    document.getElementById('criarSubLinks').hidden = !connected || criarSubView !== 'links';
+    document.getElementById('criarSubNova').hidden = !connected;
     const showOther = !connected;
     document.getElementById('criarOtherPanel').hidden = !showOther;
     if (showOther){
@@ -4504,16 +4595,12 @@
     loadLibraryItems();
     loadCopyPresets();
     loadBrandPresets();
+    loadNichePresets();
     loadCcSettings().then(renderCcSummary);
     loadAllSubAccounts().then(() => loadCcLinks().then(renderCcSummary));
     ['ccName', 'ccBudget', 'ccStartTime', 'ccEndTime', 'ccHeadline', 'ccBrandDefault', 'ccDescription'].forEach(id => {
       document.getElementById(id).addEventListener('input', renderCcSummary);
     });
-    document.querySelectorAll('.criar-subtab').forEach(btn => btn.addEventListener('click', () => {
-      criarSubView = btn.dataset.criarsub;
-      savePref('criarSubView', criarSubView);
-      renderCriarSubNav();
-    }));
     renderCriarSubNav();
     renderCcSummary();
   }

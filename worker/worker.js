@@ -159,6 +159,14 @@ async function saveCcSettings(env, settings) {
   await env.COSTS_KV.put("cc_settings", JSON.stringify(settings));
 }
 
+async function loadNichePresets(env) {
+  const raw = await env.COSTS_KV.get("niche_presets");
+  return raw ? JSON.parse(raw) : {};
+}
+async function saveNichePresets(env, obj) {
+  await env.COSTS_KV.put("niche_presets", JSON.stringify(obj));
+}
+
 async function loadBrandPresets(env) {
   const raw = await env.COSTS_KV.get("brand_presets");
   return raw ? JSON.parse(raw) : [];
@@ -1132,6 +1140,36 @@ export default {
       };
       await saveCcSettings(env, settings);
       return json({ settings }, 200, origin);
+    }
+
+    if (url.pathname === "/niche-presets" && request.method === "GET") {
+      const presets = await loadNichePresets(env);
+      return json({ presets }, 200, origin);
+    }
+
+    if (url.pathname === "/niche-presets" && request.method === "POST") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      let body;
+      try { body = await request.json(); } catch { return json({ error: "invalid_json" }, 400, origin); }
+      const niche = normFolderPath(body.niche);
+      if (!niche || niche === "logo" || niche.includes("/")) return json({ error: "invalid_niche" }, 400, origin);
+      const preset = body.preset;
+      if (!preset || typeof preset !== "object" || JSON.stringify(preset).length > 8000) return json({ error: "invalid_preset" }, 400, origin);
+      const presets = await loadNichePresets(env);
+      presets[niche] = { ...preset, updatedAt: new Date().toISOString() };
+      await saveNichePresets(env, presets);
+      return json({ presets }, 200, origin);
+    }
+
+    if (url.pathname.startsWith("/niche-presets/") && request.method === "DELETE") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      const niche = normFolderPath(decodeURIComponent(url.pathname.split("/")[2] || ""));
+      const presets = await loadNichePresets(env);
+      delete presets[niche];
+      await saveNichePresets(env, presets);
+      return json({ presets }, 200, origin);
     }
 
     if (url.pathname === "/brand-presets" && request.method === "GET") {
