@@ -191,6 +191,40 @@
   .media-grid-note-row .media-grid-note{padding-right:0;}
   .select-all-btn{border:1px solid var(--line); background:var(--surface-raised); color:var(--ink); font:inherit; font-weight:600; font-size:11.5px; padding:6px 13px; border-radius:var(--radius-xs); cursor:pointer; flex:none; white-space:nowrap;}
   .select-all-btn:hover{border-color:var(--accent);}
+  .rej-toolbar{display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; padding:12px 18px;}
+  .rej-bulk{display:flex; align-items:center; gap:10px; font-size:13px; font-weight:600;}
+  .rej-edit-btn{border:none; background:var(--accent); color:var(--accent-ink); font:inherit; font-weight:700; font-size:12.5px; padding:8px 14px; border-radius:var(--radius-sm); cursor:pointer;}
+  .rej-row{display:grid; grid-template-columns:24px 64px minmax(0,1fr); gap:14px; align-items:start; padding:14px 18px; border-top:1px solid var(--line);}
+  .rej-row.sel{background:color-mix(in srgb, var(--accent) 12%, transparent); box-shadow:inset 3px 0 0 var(--accent);}
+  .rej-row-edit{margin-left:auto; border:1px solid var(--line); background:var(--accent); color:var(--accent-ink); font:inherit; font-weight:700; font-size:12.5px; padding:6px 14px; border-radius:var(--radius-sm); cursor:pointer;}
+  .rej-editing{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;}
+  .rej-editing-item{display:flex; align-items:center; gap:8px; border:1px solid var(--line); border-radius:10px; padding:5px 10px 5px 5px; font-size:13px; font-weight:650; background:var(--neutral-bg);}
+  .rej-editing-item img, .rej-editing-item video{width:34px; height:48px; border-radius:6px; object-fit:cover; background:var(--line);}
+  .rej-editing-item small{display:block; font-weight:500; color:var(--muted); font-size:11px;}
+  .rej-row input[type=checkbox]{margin-top:4px; width:17px; height:17px; accent-color:var(--accent);}
+  .rej-thumb{width:64px; height:92px; border-radius:8px; object-fit:cover; background:var(--neutral-bg); display:block;}
+  .rej-title{font-weight:650; font-size:14px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
+  .rej-chip{font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px; background:var(--neutral-bg); color:var(--muted);}
+  .rej-chip.bad{background:var(--bad-bg); color:var(--bad);}
+  .rej-path{font-size:12px; color:var(--muted); margin-top:3px; word-break:break-word;}
+  .rej-copy{font-size:12.5px; margin-top:6px;}
+  .rej-reason{font-size:13px; font-weight:600; color:var(--bad); margin-top:6px;}
+  .rej-card{max-width:640px; max-height:92vh; overflow-y:auto;}
+  .rej-form{display:grid; gap:10px; margin-bottom:14px;}
+  .rej-form label, .rej-on{display:flex; flex-direction:column; gap:4px; font-size:11px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; color:var(--muted);}
+  .rej-form input, .rej-pick input{width:100%; text-transform:none; letter-spacing:0; font-size:14px; padding:9px 10px;}
+  .rej-on{flex-direction:row; align-items:center; gap:8px; text-transform:none; letter-spacing:0; font-size:13px; color:var(--ink); margin:10px 0;}
+  .rej-pick-head{font-size:12.5px; font-weight:650; margin-bottom:6px;}
+  .rej-pick-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(78px,1fr)); gap:8px; margin:8px 0; max-height:210px; overflow-y:auto;}
+  .rej-pick-item{position:relative; border:2px solid var(--line); border-radius:8px; overflow:hidden; cursor:pointer; aspect-ratio:9/13; background:var(--neutral-bg);}
+  .rej-pick-item.on{border-color:var(--accent);}
+  .rej-pick-item img, .rej-pick-item video{width:100%; height:100%; object-fit:cover; display:block;}
+  .rej-pick-item span{position:absolute; left:0; right:0; bottom:0; background:rgba(0,0,0,.6); color:#fff; font-size:10.5px; padding:2px 4px; text-align:center;}
+  .rej-pick-item b{position:absolute; top:3px; right:3px; background:var(--accent); color:var(--accent-ink); border-radius:50%; width:18px; height:18px; font-size:11px; display:flex; align-items:center; justify-content:center;}
+  .rej-summary{font-size:12.5px; color:var(--muted); margin:6px 0 10px; line-height:1.5;}
+  .rej-log{font-size:12px; max-height:140px; overflow-y:auto; margin-bottom:10px;}
+  .rej-log .ok{color:var(--good);} .rej-log .err{color:var(--bad);}
+
   .select-all-group{display:flex; gap:8px; flex:none; flex-wrap:wrap; justify-content:flex-end;}
   .select-all-btn.danger:hover{border-color:var(--bad); color:var(--bad);}
   .cc-selected-preview{display:grid; grid-template-columns:repeat(auto-fill,minmax(70px,1fr)); gap:7px; align-items:start;}
@@ -615,9 +649,13 @@
   .bell-badge{position:absolute; top:-5px; right:-5px; min-width:19px; height:19px; padding:0 5px; border-radius:999px; background:var(--bad); color:#fff; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; animation:nbpulse 1.6s ease-out infinite;}
   @keyframes nbring{0%,60%,100%{transform:rotate(0);} 66%{transform:rotate(14deg);} 72%{transform:rotate(-12deg);} 78%{transform:rotate(9deg);} 84%{transform:rotate(-6deg);} 90%{transform:rotate(3deg);}}
   @keyframes nbpulse{0%{box-shadow:0 0 0 0 color-mix(in srgb, var(--bad) 60%, transparent);} 70%,100%{box-shadow:0 0 0 9px transparent;}}
-  @media (prefers-reduced-motion: reduce){ .bell-btn, .bell-badge{animation:none;} }
+  @media (prefers-reduced-motion: reduce){ .bell-btn, .bell-badge, .nav-badge{animation:none;} }
   .bell-pop{position:absolute; right:0; top:calc(100% + 8px); z-index:70; width:min(340px, 86vw); background:var(--surface-raised); border:1px solid var(--line); border-radius:12px; box-shadow:0 12px 32px -8px rgba(0,0,0,.45); padding:12px 14px; font-size:13px;}
   .bell-pop[hidden]{display:none;}
+  @media (max-width:720px){ .bell-pop{left:0; right:auto;} }
+  .nav-badge{margin-left:auto; min-width:19px; height:19px; padding:0 6px; border-radius:999px; background:var(--bad); color:#fff; font-size:11px; font-weight:700; display:inline-flex; align-items:center; justify-content:center; animation:nbpulse 1.6s ease-out infinite;}
+  .nav-badge[hidden]{display:none;}
+  .bell-pop-link{margin-top:8px; border:none; background:none; color:var(--accent); font:inherit; font-weight:700; font-size:12.5px; padding:4px 0; cursor:pointer;}
   .bell-pop-title{font-size:11px; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); font-weight:700; margin-bottom:8px;}
   .bell-pop-row{display:flex; justify-content:space-between; gap:12px; padding:7px 0; border-top:1px solid var(--line);}
   .bell-pop-row:first-of-type{border-top:none;}
@@ -654,7 +692,7 @@
     <button class="nav-item" data-view="links"><span class="ic">⛓</span>Links das contas</button>
     <button class="nav-item" data-view="galeria"><span class="ic">▣</span>Galeria de ads</button>
     <div class="sidenav-group-label">Acompanhamento</div>
-    <button class="nav-item" data-view="rejeicoes"><span class="ic">⊘</span>Rejeições</button>
+    <button class="nav-item" data-view="rejeicoes"><span class="ic">⊘</span>Rejeições<span class="nav-badge" id="rejNavBadge" hidden>0</span></button>
     <button class="nav-item" data-view="regras"><span class="ic">☰</span>Regras</button>
     <button class="nav-item" data-view="mapa"><span class="ic">◈</span>Mapa de Vendas</button>
     <button class="nav-item" data-view="vturb"><span class="ic">◉</span>VSL</button>
@@ -666,6 +704,27 @@
     </div>
   </nav>
   <button type="button" class="nav-expand-btn" id="navExpandBtn" title="Mostrar menu" aria-label="Mostrar menu" hidden>☰</button>
+
+  <div class="assign-sheet" id="rejSheet" hidden>
+    <div class="assign-sheet-card rej-card" role="dialog" aria-modal="true">
+      <div class="assign-sheet-title" id="rejSheetTitle">Editar anúncios</div>
+      <div class="rej-editing" id="rejEditing"></div>
+      <div class="rej-form">
+        <label>Título <input type="text" id="rejHeadline" placeholder="(manter o atual)"></label>
+        <label>Descrição <input type="text" id="rejDescription" placeholder="(manter a atual)"></label>
+      </div>
+      <div class="rej-pick">
+        <div class="rej-pick-head">Trocar o criativo <span class="cell-muted">(opcional — escolha da galeria)</span></div>
+        <input type="text" id="rejPickSearch" placeholder="Digite o nome/número do anúncio…" list="mediaNamesList">
+        <div class="rej-pick-grid" id="rejPickGrid"></div>
+        <div class="cell-muted" id="rejPickNote" style="font-size:12px;"></div>
+      </div>
+      <div class="rej-summary" id="rejSummary"></div>
+      <div class="rej-log" id="rejLog"></div>
+      <button type="button" class="assign-sheet-close" id="rejApply">Aplicar nos selecionados</button>
+      <button type="button" class="rename-cancel" id="rejCancel">Fechar</button>
+    </div>
+  </div>
 
   <div class="assign-sheet" id="renameSheet" hidden>
     <div class="assign-sheet-card rename-card" role="dialog" aria-modal="true">
@@ -1544,9 +1603,18 @@
     <div id="rejeicoesView" hidden>
         <section class="panel">
           <div class="step-head">
-            <div class="step-head-left"><span class="step-title">Rejeições</span></div>
+            <div class="step-head-left"><span class="step-title">Rejeições</span><span class="cell-muted" id="rejCount"></span></div>
+            <button type="button" class="select-all-btn" id="rejRefreshBtn">Atualizar</button>
           </div>
-          <div class="empty-state">Em construção.</div>
+          <div class="rej-toolbar">
+            <div class="pill-row" id="rejAccPills"></div>
+            <div class="rej-bulk" id="rejBulk" hidden>
+              <span id="rejSelCount"></span>
+              <button type="button" class="select-all-btn" id="rejSelAllBtn"></button>
+              <button type="button" class="rej-edit-btn" id="rejEditBtn">Editar selecionados</button>
+            </div>
+          </div>
+          <div id="rejList"></div>
         </section>
     </div>
 
@@ -1722,6 +1790,7 @@
   document.getElementById('navExpandBtn').addEventListener('click', () => applyNavCollapsed(false));
   applyNavCollapsed(loadPref('navCollapsed', '') === '1');
 
+  let libraryItems = [];
   let view = loadPref('view', 'painel');
   let criarSource = loadPref('criarSource', '') || null;
   let scope = loadPref('scope', 'geral');
@@ -1878,6 +1947,7 @@
   }
 
   function loadMapaVendas(){
+
     const [dateFrom, dateTo] = mapaDateRange(mapaPeriod);
     const key = dateFrom + ':' + dateTo;
     mapaLoadedKey = key;
@@ -2033,6 +2103,7 @@
   }
 
   function loadVturb(){
+
     fetch(VTURB_API, {cache:'no-store'}).then(r => r.json()).then(data => {
       if (data && !data.error) renderVturb(data);
     }).catch(() => {});
@@ -2713,32 +2784,57 @@
     return new Date(Date.UTC(y,m-1,d)).getUTCDay() === 5;
   }
 
+  let balAlerts = [];
+  let balLabel = '';
   function renderAlertBanner(){
-    const banner = document.getElementById('alertBanner');
     const friday = isFriday();
     const threshold = friday ? 500 : 300;
     const results = Object.keys(subAccounts)
       .map(id => ({id, ...computeBalance(id)}))
       .filter(r => r.hasTopup && r.balance <= threshold)
       .filter(r => { const a = subAccounts[r.id]; return !a || (isAccountActive(a.accountKey) && !(ACCOUNTS.find(x => x.key === a.accountKey) || {}).createOnly); });
+    results.sort((a,b) => a.balance - b.balance);
+    balAlerts = results;
+    balLabel = friday ? 'Sexta-feira — saldo abaixo de $500' : 'Saldo baixo — abaixo de $300';
+    document.getElementById('alertBanner').hidden = true;
+    renderBell();
+  }
+  function renderBell(){
     const bell = document.getElementById('balanceBell');
     const pop = document.getElementById('balancePop');
-    banner.hidden = true;
-    if (!results.length){
-      bell.classList.add('idle');
-      bell.title = 'Sem alertas de saldo';
-      pop.innerHTML = '<div class="bell-pop-title">Saldo</div><div class="cell-muted">Nenhuma conta ativa com saldo baixo.</div>';
-      document.title = document.title.replace(/^\(\d+\) /, '');
-      return;
+    const rej = (typeof rejAds !== 'undefined') ? rejAds : [];
+    const total = balAlerts.length + rej.length;
+    bell.classList.toggle('idle', !total);
+    document.getElementById('balanceBellCount').textContent = total;
+    bell.title = total ? total + ' alerta' + (total === 1 ? '' : 's') : 'Sem alertas';
+    let html = '';
+    if (rej.length) {
+      html += '<div class="bell-pop-title">Anúncios recusados (' + rej.length + ')</div>' +
+        rej.slice(0, 6).map(a => '<div class="bell-pop-row"><span>' + ccEsc(a.name) + ' · ' + ccEsc(a.adAccountName) + '</span><span class="cell-muted">' + ccEsc(rejReason(a.statusTxt)) + '</span></div>').join('') +
+        (rej.length > 6 ? '<div class="bell-pop-row cell-muted">+' + (rej.length - 6) + ' …</div>' : '') +
+        '<button type="button" class="bell-pop-link" data-goto-view="rejeicoes">Ver em Rejeições →</button>';
     }
-    bell.classList.remove('idle');
-    results.sort((a,b) => a.balance - b.balance);
-    const label = friday ? 'Sexta-feira — saldo abaixo de $500' : 'Saldo baixo — abaixo de $300';
-    document.getElementById('balanceBellCount').textContent = results.length;
-    bell.title = label + ' (' + results.length + ')';
-    pop.innerHTML = '<div class="bell-pop-title">' + label + '</div>' +
-      results.map(r => '<div class="bell-pop-row"><span>' + r.name + '</span><span class="bal">' + fmtUSD(r.balance) + '</span></div>').join('');
-    document.title = '(' + results.length + ') ' + document.title.replace(/^\(\d+\) /, '');
+    if (balAlerts.length) {
+      html += '<div class="bell-pop-title"' + (rej.length ? ' style="margin-top:12px;"' : '') + '>' + balLabel + '</div>' +
+        balAlerts.map(r => '<div class="bell-pop-row"><span>' + r.name + '</span><span class="bal">' + fmtUSD(r.balance) + '</span></div>').join('');
+    }
+    if ('Notification' in window && Notification.permission === 'default') html += '<button type="button" class="bell-pop-link" id="enableNotifBtn">Ativar avisos do navegador</button>';
+    html += '<button type="button" class="bell-pop-link" id="pushTestBtn" style="display:block;">Enviar aviso de teste pro celular</button><div class="cell-muted" id="pushTestMsg" style="font-size:12px;"></div>';
+    pop.innerHTML = html || '<div class="bell-pop-title">Alertas</div><div class="cell-muted">Nada de errado agora.</div>';
+    const pt = document.getElementById('pushTestBtn');
+    if (pt) pt.addEventListener('click', () => {
+      const msg = document.getElementById('pushTestMsg'); msg.textContent = 'Enviando…';
+      fetch('https://newbreak-costs-api.prof-leosantana.workers.dev/push-test', { method: 'POST', headers: { 'X-Access-Key': COSTS_API_KEY } })
+        .then(r => r.json())
+        .then(j => { msg.textContent = j.ok ? 'Enviado! Confira o celular.' : (j.error === 'not_configured' ? 'Ainda não configurado: falta cadastrar o endereço do Pushcut no servidor.' : 'O Pushcut recusou o envio (status ' + (j.status || '?') + '). Confira o endereço cadastrado.'); })
+        .catch(() => { msg.textContent = 'Sem conexão com o servidor.'; });
+    });
+    const nb = document.getElementById('enableNotifBtn');
+    if (nb) nb.addEventListener('click', () => Notification.requestPermission().then(() => renderBell()));
+    pop.querySelectorAll('[data-goto-view]').forEach(b => b.addEventListener('click', () => { view = b.dataset.gotoView; savePref('view', view); pop.hidden = true; renderAll(); }));
+    const badge = document.getElementById('rejNavBadge');
+    if (badge) { badge.hidden = !rej.length; badge.textContent = rej.length; }
+    document.title = (total ? '(' + total + ') ' : '') + document.title.replace(/^\(\d+\) /, '');
   }
   document.getElementById('balanceBell').addEventListener('click', (e) => { e.stopPropagation(); const pop = document.getElementById('balancePop'); pop.hidden = !pop.hidden; });
   document.addEventListener('click', (e) => { const pop = document.getElementById('balancePop'); if (!pop.hidden && !pop.contains(e.target)) pop.hidden = true; });
@@ -2767,7 +2863,7 @@
     renderMapa();
   }
 
-  document.querySelectorAll('.nav-item').forEach(btn => btn.addEventListener('click', () => { view = btn.dataset.view; savePref('view', view); renderAll(); }));
+  document.querySelectorAll('.nav-item').forEach(btn => btn.addEventListener('click', () => { view = btn.dataset.view; savePref('view', view); renderAll(); if (view === 'rejeicoes') loadRejeicoes(); }));
 
   document.getElementById('costDate').value = todayKey();
   document.getElementById('costForm').addEventListener('submit', (e) => {
@@ -2828,7 +2924,314 @@
       .catch(() => { note.textContent = 'Não consegui salvar — tenta de novo.'; });
   });
 
+
+  // ---------- Rejeições ----------
+  let rejAds = [];
+  let rejFailed = [];
+  let rejLoading = false;
+  let rejLoaded = false;
+  let rejAccFilter = 'all';
+  let rejSelected = new Set();
+  let rejPickIds = [];
+  let rejBusy = false;
+
+  // Short, plain reason for the list ("uso de celebridade"); full NewsBreak text goes in the tooltip.
+  function rejReason(txt){
+    const raw = String(txt || '').trim();
+    const t = raw.toLowerCase();
+    if (!raw) return 'motivo não informado';
+    if (/celebrit/.test(t)) return 'uso de celebridade';
+    if (/sexual|adult|nudity|nude/.test(t)) return 'conteúdo sexual/adulto';
+    if (/before.{0,12}after/.test(t)) return 'antes e depois';
+    if (/miracle|cure|medical|health claim|weight loss/.test(t)) return 'alegação de saúde';
+    if (/misleading|deceptive|clickbait|sensational/.test(t)) return 'enganoso/sensacionalista';
+    if (/landing page|website|destination|url/.test(t)) return 'página de destino';
+    if (/trademark|copyright/.test(t)) return 'marca/direitos autorais';
+    const clean = raw.replace(/^violation of advertising policy\s*[-–:]\s*/i, '').split(/(?<=[.!?])\s/)[0];
+    return clean.length > 90 ? clean.slice(0, 87) + '…' : clean;
+  }
+
+  let rejLiveLoaded = false;
+  let rejKnown = null;
+  function rejNotifyNew(fresh){
+    try {
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('Anúncio recusado' + (fresh.length > 1 ? 's (' + fresh.length + ')' : ''), {
+          body: fresh.slice(0, 4).map(a => a.name + ' · ' + a.adAccountName + ' — ' + rejReason(a.statusTxt)).join('\n'),
+          tag: 'pc-rejected',
+        });
+      }
+    } catch (e) {}
+  }
+
+  // Rejected ads that matter: campaign ON + ad set ON + ad ON (anything paused/ended no longer matters).
+  function rejRecompute(){
+    const out = [];
+    (campaigns || []).forEach(c => {
+      if (c.status !== 'ON') return;
+      (c.adSets || []).forEach(sx => {
+        if (sx.status !== 'ON') return;
+        (sx.ads || []).forEach(ad => {
+          if (ad.auditStatus === 'REJECTED' && ad.status === 'ON') {
+            out.push({ ...ad, accountKey: c.accountKey, adAccountId: c.adAccountId, adAccountName: c.adAccountName, campaignId: c.id, campaignName: c.name, adSetId: sx.id, adSetName: sx.name });
+          }
+        });
+      });
+    });
+    out.sort((x, y) => String(y.id).localeCompare(String(x.id)));
+    const prevIds = rejKnown;
+    rejAds = out;
+    if (prevIds && rejLiveLoaded) {
+      const fresh = out.filter(a => !prevIds.has(a.id));
+      if (fresh.length) rejNotifyNew(fresh);
+    }
+    rejKnown = new Set(out.map(a => a.id));
+    rejLoaded = rejLiveLoaded;
+    rejSelected = new Set([...rejSelected].filter(id => out.some(a => a.id === id)));
+    renderBell();
+    if (view === 'rejeicoes' && !rejBusy && document.getElementById('rejSheet').hidden) renderRejeicoes();
+  }
+
+  function loadRejeicoes(){
+    const b = document.getElementById('rejRefreshBtn');
+    b.disabled = true; b.textContent = 'Atualizando…';
+    return loadLiveCampanhas().then(() => { rejRecompute(); renderRejeicoes(); }).finally(() => { b.disabled = false; b.textContent = 'Atualizar'; });
+  }
+
+  function rejVisible(){
+    return rejAds.filter(a => rejAccFilter === 'all' || a.adAccountName === rejAccFilter);
+  }
+
+  function renderRejeicoes(){
+    const list = document.getElementById('rejList');
+    if (!list) return;
+    const names = [...new Set(rejAds.map(a => a.adAccountName))].sort();
+    if (rejAccFilter !== 'all' && names.indexOf(rejAccFilter) === -1) rejAccFilter = 'all';
+    document.getElementById('rejAccPills').innerHTML = ['all'].concat(names).map(n =>
+      '<button type="button" class="pill' + (rejAccFilter === n ? ' active' : '') + '" data-rej-acc="' + ccEsc(n) + '">' +
+      (n === 'all' ? 'Todas' : ccEsc(n)) + (n === 'all' ? ' (' + rejAds.length + ')' : ' (' + rejAds.filter(a => a.adAccountName === n).length + ')') + '</button>').join('');
+    document.querySelectorAll('[data-rej-acc]').forEach(b => b.addEventListener('click', () => { rejAccFilter = b.dataset.rejAcc; renderRejeicoes(); }));
+    const vis = rejVisible();
+    document.getElementById('rejCount').textContent = rejLoaded ? vis.length + ' recusado' + (vis.length === 1 ? '' : 's') : '';
+    const failNote = rejFailed.length ? '<div class="empty-state" style="color:var(--bad);">Não consegui ler: ' + ccEsc(rejFailed.join(' · ')) + '</div>' : '';
+    if (!rejLoaded) { list.innerHTML = '<div class="empty-state">Carregando…</div>'; }
+    else if (!vis.length) { list.innerHTML = failNote + '<div class="empty-state">Nenhum anúncio recusado em campanha, conjunto e anúncio ativos. 🎉</div>'; }
+    else {
+      list.innerHTML = failNote + vis.map(a => {
+        const isVideo = a.creativeType === 'VIDEO';
+        const media = isVideo ? '<video class="rej-thumb" src="' + ccEsc(a.assetUrl) + '" muted preload="metadata"></video>' : '<img class="rej-thumb" src="' + ccEsc(a.assetUrl) + '" loading="lazy">';
+        return '<div class="rej-row' + (rejSelected.has(a.id) ? ' sel' : '') + '" data-rej-id="' + a.id + '">' +
+          '<input type="checkbox" data-rej-check="' + a.id + '"' + (rejSelected.has(a.id) ? ' checked' : '') + ' title="Selecionar pra editar">' +
+          media +
+          '<div><div class="rej-title">' + ccEsc(a.name) + ' <span class="rej-chip">' + ccEsc(a.adAccountName) + '</span>' +
+          '<button type="button" class="rej-row-edit" data-rej-edit="' + a.id + '">Editar</button></div>' +
+          '<div class="rej-path">' + ccEsc(a.campaignName) + ' › ' + ccEsc(a.adSetName) + '</div>' +
+          '<div class="rej-copy"><b>' + ccEsc(a.headline || '') + '</b> — ' + ccEsc(a.description || '') + '</div>' +
+          '<div class="rej-reason" title="' + ccEsc(a.statusTxt || '') + '">Rejeitado — ' + ccEsc(rejReason(a.statusTxt)) + '</div></div></div>';
+      }).join('');
+      list.querySelectorAll('[data-rej-edit]').forEach(b => b.addEventListener('click', () => {
+        rejSelected = new Set([b.dataset.rejEdit]);
+        renderRejeicoes();
+        openRejSheet();
+      }));
+      list.querySelectorAll('[data-rej-check]').forEach(c => c.addEventListener('change', () => {
+        if (c.checked) rejSelected.add(c.dataset.rejCheck); else rejSelected.delete(c.dataset.rejCheck);
+        renderRejeicoes();
+      }));
+      list.querySelectorAll('.rej-thumb').forEach(t => t.addEventListener('click', () => { const id = t.closest('.rej-row').dataset.rejId; if (rejSelected.has(id)) rejSelected.delete(id); else rejSelected.add(id); renderRejeicoes(); }));
+    }
+    const selVis = vis.filter(a => rejSelected.has(a.id)).length;
+    document.getElementById('rejBulk').hidden = !vis.length;
+    document.getElementById('rejSelCount').textContent = selVis + ' selecionado' + (selVis === 1 ? '' : 's');
+    document.getElementById('rejSelAllBtn').textContent = selVis === vis.length ? 'Desmarcar todos' : 'Marcar todos (' + vis.length + ')';
+    document.getElementById('rejEditBtn').disabled = !selVis;
+  }
+
+  document.getElementById('rejRefreshBtn').addEventListener('click', () => loadRejeicoes());
+  document.getElementById('rejSelAllBtn').addEventListener('click', () => {
+    const vis = rejVisible();
+    const all = vis.every(a => rejSelected.has(a.id));
+    vis.forEach(a => { if (all) rejSelected.delete(a.id); else rejSelected.add(a.id); });
+    renderRejeicoes();
+  });
+
+  function rejSelectedAds(){ return rejVisible().filter(a => rejSelected.has(a.id)); }
+
+  function renderRejPick(){
+    try { renderRejPickInner(); } catch (e) { const n = document.getElementById('rejPickNote'); if (n) n.textContent = 'Erro ao listar a galeria: ' + e.message; }
+  }
+  function renderRejPickInner(){
+    const q = document.getElementById('rejPickSearch').value.trim().toLowerCase();
+    const grid = document.getElementById('rejPickGrid');
+    const items = libraryItems.filter(it => itemCategory(it) !== 'logo' && (!q || it.name.toLowerCase().indexOf(q) !== -1))
+      .slice().reverse().slice(0, q ? 60 : 24);
+    grid.innerHTML = items.map(it => {
+      const isVideo = (it.contentType || '').indexOf('video') === 0;
+      const url = LIBRARY_API + '/' + it.id + '/file';
+      const n = rejPickIds.indexOf(it.id);
+      return '<div class="rej-pick-item' + (n !== -1 ? ' on' : '') + '" data-pick="' + it.id + '">' +
+        (isVideo ? '<video src="' + url + '" muted preload="metadata"></video>' : '<img src="' + url + '" loading="lazy">') +
+        (n !== -1 ? '<b>' + (n + 1) + '</b>' : '') + '<span>' + ccEsc(it.name) + ' · ' + ccEsc(itemCategory(it)) + '</span></div>';
+    }).join('') || '<div class="cell-muted" style="grid-column:1/-1;">Nada encontrado na galeria.</div>';
+    grid.querySelectorAll('[data-pick]').forEach(el => el.addEventListener('click', () => {
+      const id = el.dataset.pick; const i = rejPickIds.indexOf(id);
+      if (i === -1) rejPickIds.push(id); else rejPickIds.splice(i, 1);
+      renderRejPick(); renderRejSummary();
+    }));
+    document.getElementById('rejPickNote').textContent = rejPickIds.length
+      ? rejPickIds.length + ' escolhido' + (rejPickIds.length === 1 ? '' : 's') + ': ' + rejPickIds.map(id => (libraryItems.find(i => i.id === id) || {}).name).join(', ')
+      : 'Sem troca de criativo: só os textos acima serão alterados.';
+  }
+
+  function rejPlan(){
+    const ads = rejSelectedAds();
+    const h = document.getElementById('rejHeadline').value.trim();
+    const d = document.getElementById('rejDescription').value.trim();
+    const b = '';
+    let err = '';
+    if (rejPickIds.length > 1 && rejPickIds.length !== ads.length) err = 'Escolha 1 criativo (vale pra todos) ou exatamente ' + ads.length + ' (um pra cada, na ordem da lista).';
+    if (!h && !d && !b && !rejPickIds.length) err = 'Preencha algum campo ou escolha um criativo.';
+    return { ads, h, d, b, err };
+  }
+
+  function renderRejSummary(){
+    const { ads, h, d, b, err } = rejPlan();
+    const parts = [];
+    if (h) parts.push('título → "' + h + '"'); if (d) parts.push('descrição → "' + d + '"'); if (b) parts.push('marca → "' + b + '"');
+    if (rejPickIds.length) parts.push(rejPickIds.length === 1 ? 'criativo → ' + ((libraryItems.find(i => i.id === rejPickIds[0]) || {}).name) : 'criativos trocados na ordem');
+    document.getElementById('rejSummary').textContent = err || ('Vai alterar ' + ads.length + ' anúncio' + (ads.length === 1 ? '' : 's') + ': ' + parts.join(' · ') + '.');
+    document.getElementById('rejApply').disabled = rejBusy || !!err || !ads.length;
+  }
+
+  function ensureLibrary(){
+    if (libraryItems.length) return Promise.resolve();
+    return fetch(LIBRARY_API, { cache: 'no-store' }).then(r => r.json()).then(j => { libraryItems = j.items || []; }).catch(() => {});
+  }
+
+  function openRejSheet(){
+    if (!rejSelectedAds().length) return;
+    ['rejHeadline', 'rejDescription', 'rejPickSearch'].forEach(id => { document.getElementById(id).value = ''; });
+    rejPickIds = [];
+    document.getElementById('rejLog').innerHTML = '';
+    document.getElementById('rejSheetTitle').textContent = 'Editar ' + rejSelectedAds().length + ' anúncio' + (rejSelectedAds().length === 1 ? '' : 's') + ' recusado' + (rejSelectedAds().length === 1 ? '' : 's');
+    document.getElementById('rejEditing').innerHTML = rejSelectedAds().map(a => {
+      const media = a.creativeType === 'VIDEO' ? '<video src="' + ccEsc(a.assetUrl) + '" muted preload="metadata"></video>' : '<img src="' + ccEsc(a.assetUrl) + '">';
+      return '<div class="rej-editing-item">' + media + '<span>' + ccEsc(a.name) + '<small>' + ccEsc(a.adAccountName) + '</small></span></div>';
+    }).join('');
+    document.getElementById('rejSheet').hidden = false;
+    ensureLibrary().then(() => { renderRejPick(); renderRejSummary(); });
+  }
+  document.getElementById('rejEditBtn').addEventListener('click', openRejSheet);
+  document.getElementById('rejCancel').addEventListener('click', () => { if (!rejBusy) document.getElementById('rejSheet').hidden = true; });
+  document.getElementById('rejSheet').addEventListener('click', (e) => { if (e.target.id === 'rejSheet' && !rejBusy) document.getElementById('rejSheet').hidden = true; });
+  ['rejHeadline', 'rejDescription'].forEach(id => document.getElementById(id).addEventListener('input', renderRejSummary));
+  document.getElementById('rejPickSearch').addEventListener('input', renderRejPick);
+
+  // Plain-language errors (the technical text stays in the tooltip). Used by Rejeições and Criar Campanha.
+  const FRIENDLY_WHERE = { upload: 'ao enviar o criativo', update: 'ao atualizar o anúncio', ad: 'ao criar o anúncio', adset: 'ao criar o conjunto', campaign: 'ao criar a campanha', logo: 'ao enviar o logo' };
+  function friendlyError(raw, stage){
+    const text = String(raw || '');
+    // already a readable Portuguese sentence from our own code: keep it
+    if (/[ãõáéíóúç]/i.test(text) && !/nb |http|->|undefined/i.test(text)) return text;
+    const t = text.toLowerCase();
+    const where = FRIENDLY_WHERE[stage] || '';
+    if (/502|503|504|non-json|gateway|timeout|timed out|unavailable|overloaded/.test(t)) return 'A NewsBreak falhou por um instante ' + (where || 'agora') + '. Tente de novo.';
+    if (/failed to fetch|networkerror|load failed|network/.test(t)) return 'Sem conexão com o servidor. Confira a internet e tente de novo.';
+    if (/unexpected token|json/.test(t)) return 'O servidor respondeu algo inesperado ' + (where || '') + '. Tente de novo.';
+    if (/401|403|unauthorized|forbidden|permission|token|access/.test(t)) return 'A NewsBreak negou o acesso desta conta. O token da conta pode ter expirado.';
+    if (/quota|rate limit|too many|throttl/.test(t)) return 'Muitos pedidos seguidos pra NewsBreak. Espere um pouco e tente de novo.';
+    if (/library_item_not_found|not found/.test(t)) return 'Esse item não foi encontrado (o criativo pode ter saído da galeria).';
+    if (/too large|file size|exceed|size limit|too big/.test(t)) return 'O arquivo do criativo é grande demais pra NewsBreak.';
+    if (/format|mime|unsupported|content.?type|codec|aspect|resolution|dimension/.test(t)) return 'A NewsBreak não aceitou o formato/tamanho desse criativo.';
+    if (/budget|bid/.test(t)) return 'A NewsBreak não aceitou o orçamento ou o lance informado.';
+    if (/starttime|endtime|start time|end time|schedule/.test(t)) return 'A NewsBreak não aceitou a data/hora de início ou fim.';
+    if (/tracking/.test(t)) return 'Não achei o tracking id dessa conta de anúncios.';
+    if (/duplicate|already exist/.test(t)) return 'Já existe algo com esse nome na conta.';
+    if (/name length|name must|name is/.test(t)) return 'A NewsBreak não aceitou o nome (muito curto ou muito longo; mínimo 3 caracteres).';
+    if (/clickthrough|click through|url|link/.test(t)) return 'A NewsBreak não aceitou o link do anúncio.';
+    if (/celebrit|policy|violation/.test(t)) return 'A NewsBreak barrou o conteúdo por política de anúncios.';
+    if (/headline|description|invalid|must be/.test(t)) return 'A NewsBreak não aceitou o texto (título ou descrição fora do permitido).';
+    return 'Não consegui concluir' + (where ? ' ' + where : '') + '. Tente de novo; se repetir, me avise.';
+  }
+  const rejFriendly = friendlyError;
+
+  function rejLog(msg, cls, rawDetail){
+    const el = document.getElementById('rejLog');
+    const div = document.createElement('div'); if (cls) div.className = cls; div.textContent = msg;
+    if (rawDetail) div.title = rawDetail;
+    el.appendChild(div); el.scrollTop = el.scrollHeight;
+  }
+
+  async function rejApplyAll(){
+    const { ads, h, d, b, err } = rejPlan();
+    if (err || !ads.length || rejBusy) return;
+    rejBusy = true; renderRejSummary();
+    document.getElementById('rejLog').innerHTML = '';
+    const turnOn = false;
+    const post = (url, body) => fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY }, body: JSON.stringify(body) }).then(r => r.json());
+    const base = 'https://newbreak-costs-api.prof-leosantana.workers.dev';
+    let okCount = 0; const done = new Set(); const upCache = {};
+    for (let i = 0; i < ads.length; i++) {
+      const ad = ads[i];
+      const tag = '[' + ad.name + ' · ' + ad.adAccountName + '] ';
+      try {
+        let assetUrl = ad.assetUrl, type = ad.creativeType;
+        if (rejPickIds.length) {
+          const libId = rejPickIds.length === 1 ? rejPickIds[0] : rejPickIds[i];
+          const lib = libraryItems.find(x => x.id === libId);
+          if (!lib) throw new Error('criativo da galeria não encontrado');
+          const ck = ad.adAccountId + ':' + libId;
+          if (!upCache[ck]) {
+            rejLog(tag + 'Enviando criativo "' + lib.name + '"…');
+            const up = await post(base + '/nb/upload-asset', { accountKey: ad.accountKey, adAccountId: ad.adAccountId, libraryId: libId, mediaName: lib.name });
+            if (up.error) { const er = new Error(up.detail || up.error); er.stage = 'upload'; throw er; }
+            upCache[ck] = up.asset.assetUrl;
+          }
+          assetUrl = upCache[ck];
+          type = (lib.contentType || '').indexOf('video') === 0 ? 'VIDEO' : 'IMAGE';
+        }
+        const creative = {
+          type, assetUrl,
+          headline: h || ad.headline, description: d || ad.description, brandName: b || ad.brandName,
+          callToAction: ad.callToAction, clickThroughUrl: ad.clickThroughUrl,
+          ...(ad.logoUrl ? { logoUrl: ad.logoUrl } : {}),
+        };
+        rejLog(tag + 'Atualizando anúncio…');
+        const res = await post(base + '/nb/ad-update', { accountKey: ad.accountKey, id: ad.id, fields: { creative } });
+        if (res.error) { const er = new Error(res.detail || res.error); er.stage = 'update'; throw er; }
+        // NB answers the update with the OLD snapshot of the ad, so the response can't confirm the change; confirmed below from a fresh read.
+        if (turnOn) { await setEntityStatus(ad.accountKey, 'ad', ad.id, 'ON'); }
+        rejLog(tag + 'Enviado pra NewsBreak.', 'ok');
+        okCount++; done.add(ad.id);
+      } catch (e) {
+        rejLog(tag + rejFriendly(e.message, e.stage), 'err', e.message);
+      }
+    }
+    if (done.size) {
+      rejLog('Confirmando na NewsBreak…');
+      for (let k = 0; k < 3; k++) {
+        await new Promise(r => setTimeout(r, 2500));
+        await loadLiveCampanhas();
+        if (![...done].some(id => rejAds.some(a => a.id === id))) break;
+      }
+      ads.filter(a => done.has(a.id)).forEach(a => {
+        const still = rejAds.some(x => x.id === a.id);
+        rejLog('[' + a.name + '] ' + (still ? 'ainda aparece como recusado — a NewsBreak pode levar alguns segundos; se continuar, me avise.' : 'em análise na NewsBreak ✓'), still ? '' : 'ok');
+      });
+    }
+    rejBusy = false;
+    done.forEach(id => rejSelected.delete(id));
+    rejLog(okCount + ' de ' + ads.length + ' enviados.' + (okCount < ads.length ? ' Os que falharam continuam selecionados — corrija e aplique de novo.' : ''), okCount === ads.length ? 'ok' : 'err');
+    renderRejSummary();
+    document.getElementById('rejSummary').textContent = okCount === ads.length ? 'Concluído — os anúncios foram reenviados pra análise da NewsBreak.' : document.getElementById('rejSummary').textContent;
+    setTimeout(() => loadRejeicoes(), 1500);
+  }
+  document.getElementById('rejApply').addEventListener('click', rejApplyAll);
+  // ---------- /Rejeições ----------
+
   renderAll();
+  renderRejeicoes();
+  if (view === 'rejeicoes') loadRejeicoes();
   setInterval(renderLive, 30000);
 
   document.getElementById('syncNowBtn').addEventListener('click', () => {
@@ -2873,7 +3276,7 @@
     fetch(DATA_API, {cache:'no-store'}).then(r => r.json()).then(json => {
       generatedAt = json.generatedAt;
       ACCOUNTS.forEach(a => { data[a.key] = json.accounts[a.key] || {}; });
-      campaigns = json.campaigns || [];
+      if ((json.campaigns || []).length || !campaigns.length) campaigns = json.campaigns || [];
       subAccounts = json.subAccounts || {};
       renderAll();
     }).catch(() => {
@@ -2912,6 +3315,8 @@
       } else if (json.campaigns) {
         campaigns = json.campaigns;
       }
+      rejLiveLoaded = true;
+      rejRecompute();
       const active = document.activeElement;
       if (active && active.matches && active.matches('[data-adset-budget], #campAccSel')) return;
       renderCampanhas();
@@ -2919,7 +3324,6 @@
   }
 
   // ---- Criar Campanha ----
-  let libraryItems = [];
   let selectedLogoLibraryId = null;
   let copyPresets = [];
   let brandPresets = [];
@@ -4649,12 +5053,13 @@ function ccPreviewLines(adsets, nameOf){
 
   let ccErrorCount = 0;
 
-  function ccLog(msg, cls){
+  function ccLog(msg, cls, rawDetail){
     document.getElementById('ccProgressWrap').hidden = false;
     const el = document.getElementById('ccLog');
     const line = document.createElement('div');
     if (cls) line.className = cls;
     line.textContent = msg;
+    if (rawDetail) line.title = rawDetail;
     el.appendChild(line);
     el.scrollTop = el.scrollHeight;
 
@@ -4839,7 +5244,7 @@ function ccPreviewLines(adsets, nameOf){
       if (!run.campaignId) {
         ccLog(prefix + 'Criando campanha…');
         const campResp = await post(NB_CAMPAIGN_API, { accountKey: acc.accountKey, adAccountId: acc.id, name: shared.name, objective: 'WEB_CONVERSION', status: 'ON' });
-        if (campResp.error) throw new Error(campResp.detail || campResp.error);
+        if (campResp.error) { const er = new Error(campResp.detail || campResp.error); er.stage = 'campaign'; throw er; }
         run.campaignId = campResp.campaign.id;
         ccLog(prefix + 'Campanha criada (id ' + run.campaignId + ').', 'ok');
         step();
@@ -4875,13 +5280,14 @@ function ccPreviewLines(adsets, nameOf){
           try {
             ccLog(aPrefix + 'Criando conjunto de anúncios…');
             const adSetResp = await post(NB_ADSET_API, buildAdSetBody(as.name));
-            if (adSetResp.error) throw new Error(adSetResp.detail || adSetResp.error);
+            if (adSetResp.error) { const er = new Error(adSetResp.detail || adSetResp.error); er.stage = 'adset'; throw er; }
             ast.id = adSetResp.adSet.id;
             ccLog(aPrefix + 'Conjunto criado (id ' + ast.id + ').', 'ok');
             step();
           } catch (err) {
-            ccLog(aPrefix + 'Erro ao criar o conjunto: ' + err.message, 'err');
-            as.ads.forEach((c, ai) => { const cs = run.cstate[si + '.' + ai]; cs.status = 'error'; cs.error = 'conjunto não criado: ' + err.message; });
+            const fe = friendlyError(err.message, err.stage || 'adset');
+            ccLog(aPrefix + fe, 'err', err.message);
+            as.ads.forEach((c, ai) => { const cs = run.cstate[si + '.' + ai]; cs.status = 'error'; cs.error = 'conjunto não criado: ' + fe; });
             continue;
           }
         }
@@ -4902,7 +5308,7 @@ function ccPreviewLines(adsets, nameOf){
               } else {
                 ccLog(cPrefix + 'Enviando criativo…');
                 const uploadResp = await post(NB_UPLOAD_ASSET_API, { accountKey: acc.accountKey, adAccountId: acc.id, libraryId: creative.libraryId, mediaName: creative.name });
-                if (uploadResp.error) throw new Error(uploadResp.detail || uploadResp.error);
+                if (uploadResp.error) { const er = new Error(uploadResp.detail || uploadResp.error); er.stage = 'upload'; throw er; }
                 cs.assetUrl = uploadResp.asset.assetUrl;
                 ccAssetCache[cacheKey] = cs.assetUrl;
                 ccLog(cPrefix + 'Criativo enviado.', 'ok');
@@ -4920,14 +5326,14 @@ function ccPreviewLines(adsets, nameOf){
             };
             ccLog(cPrefix + 'Criando anúncio…');
             const adResp = await post(NB_AD_API, adBody);
-            if (adResp.error) throw new Error(adResp.detail || adResp.error);
+            if (adResp.error) { const er = new Error(adResp.detail || adResp.error); er.stage = 'ad'; throw er; }
             ccLog(cPrefix + 'Anúncio criado (id ' + adResp.ad.id + '). Pronto.', 'ok');
             cs.status = 'ok';
             step();
           } catch (err) {
             cs.status = 'error';
-            cs.error = err.message;
-            ccLog(cPrefix + 'Erro: ' + err.message, 'err');
+            cs.error = friendlyError(err.message, err.stage);
+            ccLog(cPrefix + cs.error, 'err', err.message);
           }
         }
       }
@@ -4936,14 +5342,15 @@ function ccPreviewLines(adsets, nameOf){
       const failedAds = keys.filter(k => run.cstate[k].status !== 'ok');
       if (failedAds.length) {
         run.status = 'error';
-        run.error = failedAds.length + ' de ' + keys.length + ' anúncio(s) falharam';
+        const firstWhy = run.cstate[failedAds[0]].error;
+        run.error = failedAds.length + ' de ' + keys.length + ' anúncio(s) falharam' + (firstWhy ? ' — ' + firstWhy : '');
       } else {
         run.status = 'ok';
       }
     } catch (err) {
       run.status = 'error';
-      run.error = err.message;
-      ccLog(prefix + 'Erro: ' + err.message, 'err');
+      run.error = friendlyError(err.message, err.stage);
+      ccLog(prefix + run.error, 'err', err.message);
     }
     renderCcRuns();
   }
@@ -5028,18 +5435,24 @@ function ccPreviewLines(adsets, nameOf){
     await ccRunAll(ccRuns);
   });
 
-  function loadAccountSettings(){
-    return fetch(ACCOUNT_SETTINGS_API, {cache:'no-store'}).then(r => r.json()).then(json => {
+  // A failed read (e.g. the Worker restarting for a second) must never leave the account list empty: retry.
+  function retryLater(fn, attempt){
+    return attempt < 8 ? new Promise(res => setTimeout(res, 800 * (attempt + 1))).then(() => fn(attempt + 1)) : undefined;
+  }
+  function loadAccountSettings(attempt = 0){
+    return fetch(ACCOUNT_SETTINGS_API, {cache:'no-store'}).then(r => { if (!r.ok) throw new Error('http ' + r.status); return r.json(); }).then(json => {
+      if (!json || typeof json.settings !== 'object') throw new Error('bad payload');
       accountSettings = json.settings || {};
-    }).catch(() => {});
+    }).catch(() => retryLater(loadAccountSettings, attempt));
   }
 
-  function loadCustomAccounts(){
-    return fetch(ACCOUNTS_API, {cache:'no-store'}).then(r => r.json()).then(json => {
-      customAccounts = json.accounts || [];
+  function loadCustomAccounts(attempt = 0){
+    return fetch(ACCOUNTS_API, {cache:'no-store'}).then(r => { if (!r.ok) throw new Error('http ' + r.status); return r.json(); }).then(json => {
+      if (!json || !Array.isArray(json.accounts)) throw new Error('bad payload');
+      customAccounts = json.accounts;
       ACCOUNTS = STATIC_ACCOUNTS.concat(customAccounts);
       ensureDataKeys();
-    }).catch(() => {});
+    }).catch(() => retryLater(loadCustomAccounts, attempt));
   }
 
   function renderAccountsList(){
@@ -5210,7 +5623,16 @@ function ccPreviewLines(adsets, nameOf){
   setInterval(loadCosts, 30000);
   setInterval(loadVturb, 15000);
   setInterval(loadLivePainel, 20000);
-  setInterval(loadLiveCampanhas, 20000);
+  setInterval(loadLiveCampanhas, 10000);
+  setInterval(() => {
+    if (customAccounts.length) return;
+    loadCustomAccounts().then(() => {
+      if (!customAccounts.length) return;
+      loadAccountSettings().then(() => { renderAccountsList(); loadData(); loadLivePainel(); loadLiveCampanhas(); renderAll(); });
+    });
+  }, 15000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) loadLiveCampanhas(); });
+  window.addEventListener('focus', () => loadLiveCampanhas());
   setInterval(loadMapaVendas, 5 * 60 * 1000);
 })();
 </script>
