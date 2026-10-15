@@ -339,9 +339,6 @@
   .step-title{font-size:16px; font-weight:700; letter-spacing:-.005em;}
   .step-desc{font-size:12px; color:var(--muted); text-align:right; max-width:320px;}
   .step-desc.cc-note, .cc-note{display:block; max-width:none; width:100%; text-align:justify; text-justify:inter-word; font-size:12.5px; line-height:1.55; color:var(--muted);}
-  .cc-name-preview{font-size:12.5px; line-height:1.6; color:var(--muted); border:1px dashed var(--line); border-radius:var(--radius-sm); padding:10px 12px; text-align:justify;}
-  .cc-name-preview b{color:var(--ink); font-weight:600;}
-  .cc-name-preview code{font-family:ui-monospace,Menlo,monospace; font-size:12px; color:var(--ink); word-break:break-all;}
 
   .gallery-toolbar{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:0 18px 14px; flex-wrap:wrap;}
   .gallery-breadcrumb{font-size:13.5px; color:var(--muted); display:flex; align-items:center; gap:6px; font-weight:600;}
@@ -399,6 +396,8 @@
   .cc-repeat input{width:76px; padding:8px 10px; font-size:14px;}
   .pill:disabled{opacity:.35; cursor:not-allowed;}
   .cc-struct-row{display:flex; gap:14px; align-items:flex-end; flex-wrap:wrap;}
+  .cc-quick-inline{padding-bottom:8px; margin:0;}
+  .cc-ads-note-wrap{padding:0 18px 10px;}
   .cc-struct-num{display:flex; flex-direction:column; gap:4px; font-size:11px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; color:var(--muted);}
   .cc-struct-num input{width:96px; padding:9px 10px; font-size:14px; text-transform:none; letter-spacing:0;}
   .form-field .cc-mirror, .cc-mirror{display:flex; flex-direction:row; align-items:center; gap:8px; font-size:13px; font-weight:600; color:var(--ink); text-transform:none; letter-spacing:0; padding-bottom:8px; cursor:pointer;}
@@ -1301,7 +1300,7 @@
         <div class="criar-main">
           <section class="panel" id="ccNichePanel">
             <div class="step-head">
-              <div class="step-head-left"><span class="step-title">Nicho</span></div>
+              <div class="step-head-left"><span class="step-num">1</span><span class="step-title">Nicho</span></div>
               <span class="step-desc">escolha o nicho — a configuração vem presetada</span>
             </div>
             <div class="form-grid">
@@ -1318,7 +1317,7 @@
 
           <section class="panel">
             <div class="step-head">
-              <div class="step-head-left"><span class="step-num">1</span><span class="step-title">Conta(s)</span></div>
+              <div class="step-head-left"><span class="step-num">2</span><span class="step-title">Conta(s)</span></div>
               <span class="step-desc">escolha a conta que vai rodar essa campanha</span>
             </div>
             <div class="account-select" id="accountSelectWrap">
@@ -1331,18 +1330,11 @@
                 <button type="button" id="accountSelectOkBtn">OK</button>
               </div>
             </div>
-            <div class="form-grid">
-              <div class="form-field span2" id="ccNameFieldWrap">
-                <label for="ccName">Nome da campanha</label>
-                <input type="text" id="ccName" placeholder="Ex: TROYA-177 - 28/09 - 1-3-1">
-              </div>
-              <div class="form-field span2 cell-muted" id="ccMultiAccountNote" hidden>Várias contas marcadas — o nome de cada campanha é editado no bloco de cada conta, no passo 5.</div>
-            </div>
           </section>
 
           <section class="panel">
             <div class="step-head">
-              <div class="step-head-left"><span class="step-num">2</span><span class="step-title">Orçamento e agendamento</span></div>
+              <div class="step-head-left"><span class="step-num">3</span><span class="step-title">Orçamento e agendamento</span></div>
               <span class="step-desc"></span>
             </div>
             <div class="form-grid">
@@ -1377,7 +1369,7 @@
 
           <section class="panel">
             <div class="step-head">
-              <div class="step-head-left"><span class="step-num">3</span><span class="step-title">Segmentação</span></div>
+              <div class="step-head-left"><span class="step-num">4</span><span class="step-title">Segmentação</span></div>
               <span class="step-desc"></span>
             </div>
             <div class="form-grid">
@@ -1407,7 +1399,7 @@
 
           <section class="panel">
             <div class="step-head">
-              <div class="step-head-left"><span class="step-num">4</span><span class="step-title">Marca &amp; logo padrão</span></div>
+              <div class="step-head-left"><span class="step-num">5</span><span class="step-title">Marca &amp; logo padrão</span></div>
             </div>
             <div class="form-grid">
               <div class="form-field">
@@ -1431,33 +1423,27 @@
 
           <section class="panel">
             <div class="step-head">
-              <div class="step-head-left"><span class="step-num">5</span><span class="step-title">Anúncio</span></div>
+              <div class="step-head-left"><span class="step-num">6</span><span class="step-title">Anúncio</span></div>
             </div>
             <div class="form-grid">
-              <div class="form-field span2">
-                <label>Nicho — define quais headlines e criativos aparecem abaixo</label>
-                <span class="cell-muted" style="font-size:13px;">Escolhido no topo da página: <b id="ccNicheEcho" style="color:var(--ink);">nenhum</b></span>
-              </div>
               <div class="form-field span2">
                 <label>Estrutura da campanha</label>
                 <div class="cc-struct-row">
                   <label class="cc-struct-num">Campanhas <input type="number" id="ccC" min="1" max="20" value="1"></label>
                   <label class="cc-struct-num">Conjuntos por campanha <input type="number" id="ccS" min="1" max="30" value="1"></label>
                   <label class="cc-mirror"><input type="checkbox" id="ccMirror" checked> Campanhas espelho (mesmos anúncios)</label>
+                  <div class="pill-row cc-quick-inline" id="ccStructureQuick"></div>
                 </div>
-                <div class="pill-row" id="ccStructureQuick" style="margin-top:8px;"></div>
                 <span class="cell-muted cc-note" id="ccStructureHint" style="margin-top:6px;"></span>
               </div>
+              <div class="form-field span2" id="ccNameFieldWrap">
+                <label for="ccName">Nome da campanha</label>
+                <input type="text" id="ccName" placeholder="Ex: TROYA-177 - 28/09 - 1-3-1">
+              </div>
+              <div class="form-field span2 cell-muted" id="ccMultiAccountNote" hidden>Várias contas marcadas — o nome de cada campanha é editado no bloco de cada conta, logo abaixo.</div>
               <div class="form-field span2" id="ccAccountBlocksWrap" hidden>
                 <label>Nome da campanha em cada conta (a estrutura e os anúncios valem iguais pra todas as contas marcadas)</label>
                 <div id="ccAccountBlocks" class="cc-account-blocks"></div>
-              </div>
-              <div class="form-field span2" id="ccNamePreviewWrap" hidden>
-                <label>Como os nomes vão ficar (1ª conta)</label>
-                <div class="cc-name-preview" id="ccNamePreview"></div>
-              </div>
-              <div class="form-field span2" id="ccSingleCreativeNote">
-                <span class="step-desc cc-note">Anúncios: clique no anúncio (ou arraste) pra colocar na campanha ativa, na lateral. Dá pra repetir o mesmo anúncio. 1 anúncio vai em todos os conjuntos; vários anúncios se distribuem entre os conjuntos.</span>
               </div>
               <div class="form-field span2">
                 <label for="ccHeadline">Título</label>
@@ -1478,6 +1464,7 @@
               <div class="step-head-left"><span class="step-title" style="font-size:13px;">Imagem do anúncio</span></div>
               <span class="step-desc">digite o nome do anúncio pra achar na galeria — nada é exibido até você digitar. Suba criativos novos em "Galeria de ads", no menu lateral</span>
             </div>
+            <div class="cc-ads-note-wrap" id="ccSingleCreativeNote"><span class="step-desc cc-note">Anúncios: clique no anúncio (ou arraste) pra colocar na campanha ativa, na lateral. Dá pra repetir o mesmo anúncio. 1 anúncio vai em todos os conjuntos; vários anúncios se distribuem entre os conjuntos.</span></div>
             <div class="creative-search">
               <input type="text" id="mediaSearchInput" list="mediaNamesList" placeholder="Digite o nome/número do anúncio…">
               <datalist id="mediaNamesList"></datalist>
@@ -4102,7 +4089,7 @@ function ccPreviewLines(adsets, nameOf){
     return ccSuffixFor(ccC(), ccS(), ccDistribute(card.ads, ccS(), card.allInAll));
   }
 
-  const CC_QUICK = [[1, 1], [1, 3], [3, 1], [3, 3]];
+  const CC_QUICK = [[1, 3], [1, 1], [3, 1]];
   function renderStructureQuick(){
     const C = ccC(), S = ccS();
     const el = document.getElementById('ccStructureQuick');
@@ -4193,10 +4180,7 @@ function ccPreviewLines(adsets, nameOf){
 
   function prefillCampaignName(account){
     const nameInput = document.getElementById('ccName');
-    const structure = ccSuffix();
     nameInput.value = buildDefaultCampaignName(account);
-    nameInput.focus();
-    nameInput.setSelectionRange(nameInput.value.length - structure.length, nameInput.value.length);
   }
 
   function updateMultiModeUI(){
@@ -4522,35 +4506,7 @@ function ccPreviewLines(adsets, nameOf){
     }));
   }
 
-  function renderCcNamePreview(){
-    const wrap = document.getElementById('ccNamePreviewWrap');
-    const el = document.getElementById('ccNamePreview');
-    if (!wrap || !el) return;
-    const firstId = selectedSubAccountIds[0];
-    const multi = selectedSubAccountIds.length > 1;
-    const base = (multi ? ((accountCampaigns[firstId] || {}).name || '') : document.getElementById('ccName').value).trim();
-    if (!base) { wrap.hidden = true; return; }
-    wrap.hidden = false;
-    const esc = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;');
-    const plan = ccPlanFor(base);
-    const C = plan.length;
-    const maxC = 4, maxS = 4;
-    const lines = [];
-    plan.slice(0, maxC).forEach(c => {
-      lines.push('<div><b>Campanha:</b> <code>' + esc(c.campName) + '</code></div>');
-      if (!c.adsets.length) lines.push('<div style="padding-left:16px;"><i>Conjuntos: coloque anúncios no cartão da campanha pra ver os nomes.</i></div>');
-      c.adsets.slice(0, maxS).forEach(a => lines.push('<div style="padding-left:16px;"><b>Conjunto:</b> <code>' + esc(a.name) + '</code></div>'));
-      if (c.adsets.length > maxS) lines.push('<div style="padding-left:16px;">… +' + (c.adsets.length - maxS) + ' conjuntos</div>');
-    });
-    if (C > maxC) lines.push('<div>… +' + (C - maxC) + ' campanhas</div>');
-    const why = [];
-    if (C > 1) why.push('Com mais de uma campanha, o nome que você digitou ganha <b>- 01, - 02…</b> no final (é o que diferencia uma da outra; o campo acima não mostra isso).');
-    if (ccS() > 1) why.push('Conjuntos levam o nome da campanha + o <b>criativo</b> (se o mesmo criativo se repete, entra <b>#1, #2…</b>) ou <b>CJ01, CJ02…</b> quando há vários anúncios por conjunto.');
-    el.innerHTML = lines.join('') + (why.length ? '<div style="margin-top:8px;">' + why.join(' ') + '</div>' : '');
-  }
-
   function renderCcSummary(){
-    renderCcNamePreview();
     const accounts = allSubAccounts.filter(a => selectedSubAccountIds.indexOf(a.id) !== -1);
     document.getElementById('ccSumAccounts').textContent = accounts.length
       ? accounts.map(a => subAccountLabel(a)).join(', ')
