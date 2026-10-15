@@ -191,6 +191,8 @@
   .media-grid-note-row .media-grid-note{padding-right:0;}
   .select-all-btn{border:1px solid var(--line); background:var(--surface-raised); color:var(--ink); font:inherit; font-weight:600; font-size:11.5px; padding:6px 13px; border-radius:var(--radius-xs); cursor:pointer; flex:none; white-space:nowrap;}
   .select-all-btn:hover{border-color:var(--accent);}
+  .select-all-group{display:flex; gap:8px; flex:none; flex-wrap:wrap; justify-content:flex-end;}
+  .select-all-btn.danger:hover{border-color:var(--bad); color:var(--bad);}
   .cc-selected-preview{display:grid; grid-template-columns:repeat(auto-fill,minmax(70px,1fr)); gap:7px; align-items:start;}
   .cc-selected-preview .media-item{border-width:1px; aspect-ratio:auto; height:auto; display:block;}
   .cc-selected-preview .media-item img, .cc-selected-preview .media-item video{width:100%; height:auto; max-height:200px; object-fit:contain; display:block;}
@@ -1451,7 +1453,7 @@
             </div>
             <div class="media-grid-note-row">
               <div class="media-grid-note" id="mediaGridNote"></div>
-              <button type="button" id="mediaSelectAllBtn" class="select-all-btn" hidden></button>
+              <span class="select-all-group"><button type="button" id="mediaRemoveAllBtn" class="select-all-btn danger" hidden></button><button type="button" id="mediaSelectAllBtn" class="select-all-btn" hidden></button></span>
             </div>
             <div class="media-grid" id="mediaGrid"></div>
           </section>
@@ -3529,6 +3531,8 @@
     const grid = document.getElementById('mediaGrid');
     const note = document.getElementById('mediaGridNote');
     const selectAllBtn = document.getElementById('mediaSelectAllBtn');
+    const removeAllBtn = document.getElementById('mediaRemoveAllBtn');
+    removeAllBtn.hidden = true;
     if (!selectedNiche) {
       note.textContent = 'selecione um nicho primeiro';
       grid.innerHTML = '';
@@ -3554,6 +3558,16 @@
     selectAllBtn.hidden = false;
     selectAllBtn.textContent = 'Adicionar todos (' + shown.length + ')';
     selectAllBtn.onclick = () => { shown.forEach(it => ccCards[ccActiveCard].ads.push(it.id)); ccStructureChanged(); };
+    const shownIds = new Set(shown.map(it => it.id));
+    const inCard = ccCards[ccActiveCard].ads.filter(id => shownIds.has(id)).length;
+    removeAllBtn.hidden = !inCard;
+    removeAllBtn.textContent = 'Remover todos (' + inCard + ')';
+    removeAllBtn.onclick = () => {
+      const card = ccCards[ccActiveCard];
+      card.ads = card.ads.filter(id => !shownIds.has(id));
+      if (!card.ads.length) card.allInAll = false;
+      ccStructureChanged();
+    };
     grid.innerHTML = shown.map(it => mediaItemHtml(it, usedIds)).join('');
     grid.querySelectorAll('.media-item').forEach(el => {
       const n = ccAdCount(el.dataset.id, ccActiveCard);
