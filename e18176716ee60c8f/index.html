@@ -3875,6 +3875,16 @@
     return selectedSubAccountIds.length ? [selectedCreativeIds.length] : [];
   }
 
+  // Name ending that mirrors the structure: campaigns-adsets-ads (e.g. 1-3-1, 1-1-3, 3-1-1).
+  function ccSuffix(){
+    const plan = ccPlan();
+    const accounts = Math.max(1, selectedSubAccountIds.length);
+    if (!plan.ads) return CC_STRUCTURES[ccStructure].suffix;
+    if (ccStructure === 'nCampaigns') return Math.round(plan.campaigns / accounts) + '-1-1';
+    if (ccStructure === 'oneAdset') return '1-1-' + Math.round(plan.ads / accounts);
+    return '1-' + Math.round(plan.adsets / accounts) + '-1';
+  }
+
   function ccRepeatCount(){
     if (ccStructure !== 'perCreative' && ccStructure !== 'nCampaigns') return 1;
     return Math.max(1, Math.min(20, parseInt(document.getElementById('ccRepeat').value, 10) || 1));
@@ -3909,7 +3919,7 @@
   }
 
   function applyStructureToNames(){
-    const suffix = CC_STRUCTURES[ccStructure].suffix;
+    const suffix = ccSuffix();
     const swap = (v) => /(^|\s)\d{1,2}-\d{1,2}-\d{1,2}$/.test(v) ? v.replace(/\d{1,2}-\d{1,2}-\d{1,2}$/, suffix) : v;
     const nameInput = document.getElementById('ccName');
     nameInput.value = swap(nameInput.value);
@@ -3921,12 +3931,12 @@
     const label = subAccountCleanName(account).toUpperCase().replace(/[^A-Z0-9]/g, '');
     const suffix = account.id.slice(-3);
     const dateStr = fmtDateShort(todayKeyBR());
-    return label + '-' + suffix + ' - ' + dateStr + ' - ' + CC_STRUCTURES[ccStructure].suffix;
+    return label + '-' + suffix + ' - ' + dateStr + ' - ' + ccSuffix();
   }
 
   function prefillCampaignName(account){
     const nameInput = document.getElementById('ccName');
-    const structure = CC_STRUCTURES[ccStructure].suffix;
+    const structure = ccSuffix();
     nameInput.value = buildDefaultCampaignName(account);
     nameInput.focus();
     nameInput.setSelectionRange(nameInput.value.length - structure.length, nameInput.value.length);
@@ -4219,7 +4229,7 @@
     }));
   }
 
-  document.getElementById('ccRepeat').addEventListener('input', () => renderCcSummary());
+  document.getElementById('ccRepeat').addEventListener('input', () => { applyStructureToNames(); renderCcSummary(); });
 
   function initTargetingPills(){
     renderPillGroup('ccGender', [
