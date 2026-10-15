@@ -643,6 +643,7 @@
     <div class="sidenav-group-label">Tráfego</div>
     <button class="nav-item" data-view="painel"><span class="ic">▦</span>Dashboard</button>
     <button class="nav-item" data-view="criar"><span class="ic">✚</span>Criar Campanha</button>
+    <button class="nav-item" data-view="campanhas"><span class="ic">▶</span>Campanhas</button>
     <div class="sidenav-group-label">Financeiro</div>
     <button class="nav-item" data-view="dre"><span class="ic">▤</span>DRE Mensal</button>
     <button class="nav-item" data-view="custos"><span class="ic">$</span>Custos Fixos</button>
@@ -651,7 +652,8 @@
     <button class="nav-item" data-view="links"><span class="ic">⛓</span>Links das contas</button>
     <button class="nav-item" data-view="galeria"><span class="ic">▣</span>Galeria de ads</button>
     <div class="sidenav-group-label">Acompanhamento</div>
-    <button class="nav-item" data-view="campanhas"><span class="ic">▶</span>Campanhas</button>
+    <button class="nav-item" data-view="rejeicoes"><span class="ic">⊘</span>Rejeições</button>
+    <button class="nav-item" data-view="regras"><span class="ic">☰</span>Regras</button>
     <button class="nav-item" data-view="mapa"><span class="ic">◈</span>Mapa de Vendas</button>
     <button class="nav-item" data-view="vturb"><span class="ic">◉</span>VSL</button>
     <div class="sidenav-group-label">Configurações</div>
@@ -1537,6 +1539,24 @@
         </section>
     </div>
 
+    <div id="rejeicoesView" hidden>
+        <section class="panel">
+          <div class="step-head">
+            <div class="step-head-left"><span class="step-title">Rejeições</span></div>
+          </div>
+          <div class="empty-state">Em construção.</div>
+        </section>
+    </div>
+
+    <div id="regrasView" hidden>
+        <section class="panel">
+          <div class="step-head">
+            <div class="step-head-left"><span class="step-title">Regras</span></div>
+          </div>
+          <div class="empty-state">Em construção.</div>
+        </section>
+    </div>
+
     <div id="galeriaView" hidden>
         <section class="panel">
           <div class="step-head">
@@ -1976,6 +1996,8 @@
     document.getElementById('criarView').hidden = view !== 'criar';
     document.getElementById('galeriaView').hidden = view !== 'galeria';
     document.getElementById('linksView').hidden = view !== 'links';
+    document.getElementById('rejeicoesView').hidden = view !== 'rejeicoes';
+    document.getElementById('regrasView').hidden = view !== 'regras';
     document.getElementById('contasView').hidden = view !== 'contas';
     document.getElementById('mainContent').classList.toggle('wide', view === 'criar' || view === 'galeria');
   }
