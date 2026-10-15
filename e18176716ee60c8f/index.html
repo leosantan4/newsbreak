@@ -391,6 +391,7 @@
   .cc-repeat{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:10px;}
   .cc-repeat label{font-size:11px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; color:var(--muted);}
   .cc-repeat input{width:76px; padding:8px 10px; font-size:14px;}
+  .pill:disabled{opacity:.35; cursor:not-allowed;}
   .gallery-breadcrumb{flex-wrap:wrap;}
   #galleryGrid{position:relative; user-select:none; -webkit-user-select:none;}
   .gallery-marquee{position:absolute; border:1px solid var(--ink); background:color-mix(in srgb, var(--ink) 10%, transparent); pointer-events:none; z-index:5; border-radius:3px;}
@@ -4278,7 +4279,9 @@
     }).join('');
     el.querySelectorAll('button').forEach(btn => btn.addEventListener('click', () => {
       startDaySel = parseInt(btn.dataset.dayOffset, 10);
+      if (endDaySel !== null && endDaySel < startDaySel) endDaySel = startDaySel;
       renderStartDayPills();
+      renderEndDayPills();
       renderCcSummary();
     }));
   }
@@ -4294,9 +4297,10 @@
         return { offset: i, label: i < labels.length ? labels[i] : (wd + ' ' + short) };
       })
     );
-    el.innerHTML = opts.map(o =>
-      '<button type="button" class="pill' + (endDaySel === o.offset ? ' active' : '') + '" data-day-offset="' + (o.offset === null ? '' : o.offset) + '">' + o.label + '</button>'
-    ).join('');
+    el.innerHTML = opts.map(o => {
+      const before = o.offset !== null && o.offset < startDaySel;
+      return '<button type="button" class="pill' + (endDaySel === o.offset ? ' active' : '') + '" data-day-offset="' + (o.offset === null ? '' : o.offset) + '"' + (before ? ' disabled title="Antes do dia de início"' : '') + '>' + o.label + '</button>';
+    }).join('');
     el.querySelectorAll('button').forEach(btn => btn.addEventListener('click', () => {
       endDaySel = btn.dataset.dayOffset === '' ? null : parseInt(btn.dataset.dayOffset, 10);
       document.getElementById('ccEndTime').disabled = endDaySel === null;
