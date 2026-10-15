@@ -315,6 +315,10 @@ async function nbBuildCampaignsForAccount(token, accountKey, adAccountId, adAcco
           return {
             id: ad.id, name: ad.name, status: ad.status, onlineStatus: ad.onlineStatus, auditStatus: ad.auditStatus,
             creativeType: ad.creative && ad.creative.type, assetUrl: content.assetUrl, headline: content.headline,
+            ...(ad.auditStatus === "REJECTED" ? {
+              statusTxt: ad.statusTxt || "", description: content.description, brandName: content.brandName,
+              callToAction: content.callToAction, clickThroughUrl: content.clickThroughUrl, logoUrl: content.logoUrl,
+            } : {}),
             ...nbMetricsFor(adMetrics, ad.id),
           };
         }),
@@ -438,7 +442,7 @@ async function computeLiveCampanhas(env) {
   const custom = await loadCustomAccounts(env);
   const perAccount = await Promise.all(
     tokenEntries.map(async ([key, token]) => {
-      try {
+      const attempt = async () => {
         const manual = custom[key] && custom[key].manualAccounts;
         const extra = ["IMPRESSION"];
         const [adAccounts, campaignRows, adsetRows, adRows] = await Promise.all([
@@ -461,9 +465,17 @@ async function computeLiveCampanhas(env) {
           )
         );
         return perAdAccount.flat();
+      };
+      try {
+        return await attempt();
       } catch (e) {
-        failedAccounts.push(key);
-        return [];
+        await new Promise((r) => setTimeout(r, 500));
+        try {
+          return await attempt();
+        } catch (e2) {
+          failedAccounts.push(key);
+          return [];
+        }
       }
     })
   );
@@ -768,23 +780,31 @@ function stripMetadataBytes(bytes, contentType) {
 }
 
 async function nbUploadAsset(token, { adAccountId, bytes, filename, contentType, mediaName }) {
-  const form = new FormData();
-  form.append("asset", new Blob([bytes], { type: contentType }), filename);
-  form.append("adAccountId", adAccountId);
-  if (mediaName) {
-    form.append("saveToMediaLibrary", "true");
-    form.append("mediaName", mediaName);
+  // NewsBreak sometimes answers with a gateway error (502 / non-JSON) for a perfectly good upload:
+  // retry those transport failures (not real NB errors) a couple of times, rebuilding the form each time.
+  let lastErr;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const form = new FormData();
+    form.append("asset", new Blob([bytes], { type: contentType }), filename);
+    form.append("adAccountId", adAccountId);
+    if (mediaName) {
+      form.append("saveToMediaLibrary", "true");
+      form.append("mediaName", mediaName);
+    }
+    try {
+      return await nbApi(token, "ad/uploadAssets", { method: "POST", body: form });
+    } catch (e) {
+      // NewsBreak rejects re-uploading identical content to the same ad account,
+      // but still hands back the existing asset's url/id in the error payload —
+      // reuse it instead of failing, since the user legitimately reuses creatives.
+      const existing = e.nbRaw && e.nbRaw.data;
+      if (existing && existing.assetUrl) return existing;
+      if (e.nbRaw) throw e; // a real NB answer: don't retry
+      lastErr = e;
+      await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
+    }
   }
-  try {
-    return await nbApi(token, "ad/uploadAssets", { method: "POST", body: form });
-  } catch (e) {
-    // NewsBreak rejects re-uploading identical content to the same ad account,
-    // but still hands back the existing asset's url/id in the error payload —
-    // reuse it instead of failing, since the user legitimately reuses creatives.
-    const existing = e.nbRaw && e.nbRaw.data;
-    if (existing && existing.assetUrl) return existing;
-    throw e;
-  }
+  throw lastErr;
 }
 
 async function triggerSync(env) {
@@ -815,7 +835,111 @@ async function triggerSync(env) {
   return { ok: true };
 }
 
+// ---- Push alerts for rejected ads (Pushcut). Inert unless the secret PUSHCUT_URL is set on the Worker. ----
+function pushReason(txt) {
+  const raw = String(txt || "").trim();
+  const t = raw.toLowerCase();
+  if (!raw) return "motivo não informado";
+  if (/celebrit/.test(t)) return "uso de celebridade";
+  if (/sexual|adult|nudity|nude/.test(t)) return "conteúdo sexual/adulto";
+  if (/before.{0,12}after/.test(t)) return "antes e depois";
+  if (/miracle|cure|medical|health claim|weight loss/.test(t)) return "alegação de saúde";
+  if (/misleading|deceptive|clickbait|sensational/.test(t)) return "enganoso/sensacionalista";
+  if (/landing page|website|destination/.test(t)) return "página de destino";
+  if (/trademark|copyright/.test(t)) return "marca/direitos autorais";
+  const clean = raw.replace(/^violation of advertising policy\s*[-–:]\s*/i, "").split(/(?<=[.!?])\s/)[0];
+  return clean.length > 80 ? clean.slice(0, 77) + "…" : clean;
+}
+
+// campaign ON + ad set ON + ad ON + REJECTED (same rule as the Rejeições tab)
+function rejectedActiveAds(data) {
+  const out = [];
+  for (const c of (data && data.campaigns) || []) {
+    if (c.status !== "ON") continue;
+    for (const s of c.adSets || []) {
+      if (s.status !== "ON") continue;
+      for (const ad of s.ads || []) {
+        if (ad.auditStatus === "REJECTED" && ad.status === "ON") {
+          out.push({ id: ad.id, name: ad.name, acc: c.accountKey, account: c.adAccountName || c.accountKey, reason: pushReason(ad.statusTxt) });
+        }
+      }
+    }
+  }
+  return out;
+}
+
+async function sendPush(env, title, text) {
+  if (!env.PUSHCUT_URL) return { ok: false, error: "not_configured" };
+  try {
+    const resp = await fetch(env.PUSHCUT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title, text }),
+    });
+    const result = { ok: resp.ok, status: resp.status };
+    await env.COSTS_KV.put("push_last", JSON.stringify({ at: Date.now(), title, ...result }));
+    return result;
+  } catch (e) {
+    const result = { ok: false, error: "network" };
+    await env.COSTS_KV.put("push_last", JSON.stringify({ at: Date.now(), title, ...result }));
+    return result;
+  }
+}
+
+// First alert right away; then a reminder every PUSH_REPEAT_MIN minutes (default 30) while it stays rejected + active.
+async function pushRejectedAlerts(env, data) {
+  if (!env.PUSHCUT_URL) return;
+  const repeatMs = Math.max(5, Number(env.PUSH_REPEAT_MIN) || 30) * 60 * 1000;
+  const now = Date.now();
+  const raw = await env.COSTS_KV.get("push_state");
+  const state = raw ? JSON.parse(raw) : {};
+  const active = rejectedActiveAds(data);
+  const failed = new Set((data && data.failedAccounts) || []);
+  const next = {};
+  for (const [id, st] of Object.entries(state)) { if (st && st.acc && failed.has(st.acc)) next[id] = st; } // account unreadable now: keep what we knew
+  const fresh = [];
+  const reminders = [];
+  for (const ad of active) {
+    const prev = state[ad.id];
+    if (!prev) { fresh.push(ad); next[ad.id] = { first: now, last: now, acc: ad.acc }; }
+    else if (now - prev.last >= repeatMs) { reminders.push(ad); next[ad.id] = { first: prev.first, last: now, acc: ad.acc }; }
+    else next[ad.id] = { ...prev, acc: ad.acc };
+  }
+  const line = (a) => a.account + " · " + a.name + " — " + a.reason;
+  let sentOk = true;
+  if (fresh.length) {
+    const r = await sendPush(env, (fresh.length > 1 ? "Anúncios recusados (" + fresh.length + ")" : "Anúncio recusado"), fresh.slice(0, 6).map(line).join("\n"));
+    sentOk = sentOk && r.ok;
+    if (!r.ok) fresh.forEach((a) => { delete next[a.id]; }); // try again next minute
+  }
+  if (reminders.length) {
+    const r = await sendPush(env, "Ainda recusado" + (reminders.length > 1 ? "s (" + reminders.length + ")" : ""), reminders.slice(0, 6).map(line).join("\n"));
+    if (!r.ok) reminders.forEach((a) => { next[a.id] = state[a.id]; });
+  }
+  await env.COSTS_KV.put("push_state", JSON.stringify(next)); // ads that left the list are forgotten, so a new rejection alerts again
+}
+
 export default {
+  // Cron (every minute): keeps the live campaigns snapshot warm, so the page never waits on a cold read.
+  async scheduled(event, env, ctx) {
+    // the old */30 trigger on this Worker never had a handler; only the every-minute one does the work
+    if (event && event.cron && event.cron !== "* * * * *") return;
+    ctx.waitUntil((async () => {
+      const started = Date.now();
+      let note = "ok";
+      try {
+        const data = await computeLiveCampanhas(env);
+        if (data) {
+          await env.COSTS_KV.put("live_campanhas", JSON.stringify({ ts: Date.now(), data }));
+          try { await pushRejectedAlerts(env, data); } catch (e) { note = "push_error:" + String((e && e.message) || e); }
+          if ((data.failedAccounts || []).length) note = "ok; failedAccounts:" + data.failedAccounts.join(",");
+        }
+      } catch (e) {
+        note = "error:" + String((e && e.message) || e);
+      }
+      await env.COSTS_KV.put("cron_heartbeat", JSON.stringify({ at: started, ms: Date.now() - started, note }));
+    })());
+  },
   async fetch(request, env) {
     const origin = env.ALLOWED_ORIGIN;
     const url = new URL(request.url);
@@ -856,7 +980,7 @@ export default {
 
     if (url.pathname === "/live/campanhas" && request.method === "GET") {
       try {
-        const data = await getCached(env, "live_campanhas", 25, () => computeLiveCampanhas(env));
+        const data = await getCached(env, "live_campanhas", 10, () => computeLiveCampanhas(env));
         return json(data, 200, origin);
       } catch (e) {
         return json({ error: "live_campanhas_failed" }, 502, origin);
@@ -1455,6 +1579,32 @@ export default {
       }
     }
 
+    if (url.pathname === "/nb/ad-update" && request.method === "POST") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      let body;
+      try { body = await request.json(); } catch { return json({ error: "invalid_json" }, 400, origin); }
+      const { accountKey, id, fields } = body;
+      if (!id || !fields || typeof fields !== "object") return json({ error: "invalid_body" }, 400, origin);
+      try {
+        const token = await tokenForAccountKey(env, accountKey);
+        let out;
+        for (let attempt = 0; ; attempt++) {
+          try {
+            out = await nbApi(token, `ad/update/${id}`, { method: "PUT", body: JSON.stringify(fields) });
+            break;
+          } catch (err) {
+            if (err.nbRaw || attempt >= 2) throw err;
+            await new Promise((r) => setTimeout(r, 1200 * (attempt + 1)));
+          }
+        }
+        await env.COSTS_KV.delete("live_campanhas");
+        return json({ ok: true, ad: out }, 200, origin);
+      } catch (e) {
+        return json({ error: "nb_ad_update_failed", detail: String(e.message || e), nb: e.nbRaw || null }, 502, origin);
+      }
+    }
+
     if (url.pathname === "/nb/ad" && request.method === "POST") {
       const key = request.headers.get("X-Access-Key");
       if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
@@ -1468,6 +1618,13 @@ export default {
       } catch (e) {
         return json({ error: "nb_create_ad_failed", detail: String(e.message || e) }, 502, origin);
       }
+    }
+
+    if (url.pathname === "/push-test" && request.method === "POST") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      const r = await sendPush(env, "Teste do aviso", "Se você viu isso, o aviso de anúncio recusado está funcionando.");
+      return json(r, 200, origin);
     }
 
     if (url.pathname === "/sync-now" && request.method === "POST") {
