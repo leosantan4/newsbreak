@@ -2075,7 +2075,7 @@
     const label = metric === 'cost' ? 'Gasto' : 'Faturamento';
     const periodLabel = (PERIODS.find(p => p.key === period) || {}).label || '';
     document.getElementById('chartTitle').textContent = label + ' — ' + periodLabel;
-    document.getElementById('chartRange').textContent = dates.length ? (fmtDateChart(dates[0]) + ' – ' + fmtDateChart(dates[dates.length-1])) : '';
+    document.getElementById('chartRange').textContent = dates.length ? (dates.length === 1 ? fmtDateChart(dates[0]) : fmtDateChart(dates[0]) + ' – ' + fmtDateChart(dates[dates.length-1])) : '';
     const wrap = document.getElementById('chartWrap');
     if (!dates.length){ wrap.innerHTML = '<div class="empty-state">Sem dados ainda.</div>'; document.getElementById('chartStats').innerHTML=''; return; }
 
