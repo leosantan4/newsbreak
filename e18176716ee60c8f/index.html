@@ -388,6 +388,9 @@
   .plat-sub{display:flex; gap:6px; flex-wrap:wrap; padding-left:32px;}
   .plat-or{display:flex; align-items:center; gap:10px; color:var(--muted); font-size:12px; margin:2px 0;}
   .plat-or::before, .plat-or::after{content:""; flex:1; height:1px; background:var(--line);}
+  .cc-repeat{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:10px;}
+  .cc-repeat label{font-size:11px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; color:var(--muted);}
+  .cc-repeat input{width:76px; padding:8px 10px; font-size:14px;}
   .gallery-breadcrumb{flex-wrap:wrap;}
   #galleryGrid{position:relative; user-select:none; -webkit-user-select:none;}
   .gallery-marquee{position:absolute; border:1px solid var(--ink); background:color-mix(in srgb, var(--ink) 10%, transparent); pointer-events:none; z-index:5; border-radius:3px;}
@@ -1368,6 +1371,11 @@
                 <label>Estrutura da campanha</label>
                 <div class="pill-row" id="ccStructurePills"></div>
                 <span class="cell-muted" id="ccStructureHint" style="font-size:12px; margin-top:6px;"></span>
+                <div class="cc-repeat" id="ccRepeatWrap">
+                  <label for="ccRepeat">Conjuntos por criativo</label>
+                  <input type="number" id="ccRepeat" min="1" max="20" value="1">
+                  <span class="cell-muted" style="font-size:12px;">repete o mesmo criativo em N conjuntos (ex: 1 criativo × 3 = 1-3-1)</span>
+                </div>
               </div>
               <div class="form-field span2" id="ccAccountBlocksWrap" hidden>
                 <label>Campanhas por conta — edite o nome de cada uma (os criativos são arrastados pro card "Anúncios por conta", na lateral)</label>
@@ -3866,14 +3874,19 @@
     return selectedSubAccountIds.length ? [selectedCreativeIds.length] : [];
   }
 
+  function ccRepeatCount(){
+    if (ccStructure !== 'perCreative') return 1;
+    return Math.max(1, Math.min(20, parseInt(document.getElementById('ccRepeat').value, 10) || 1));
+  }
+
   function ccPlan(){
     const per = ccCreativeCounts();
     const creatives = per.reduce((a, b) => a + b, 0);
     let campaigns, adsets;
     if (ccStructure === 'nCampaigns') { campaigns = creatives; adsets = creatives; }
     else if (ccStructure === 'oneAdset') { campaigns = per.filter(n => n > 0).length; adsets = campaigns; }
-    else { campaigns = per.filter(n => n > 0).length; adsets = creatives; }
-    return { campaigns, adsets, ads: creatives };
+    else { campaigns = per.filter(n => n > 0).length; adsets = creatives * ccRepeatCount(); }
+    return { campaigns, adsets, ads: ccStructure === 'perCreative' ? adsets : creatives };
   }
 
   function renderStructurePills(){
@@ -3882,6 +3895,7 @@
       '<button type="button" class="pill' + (k === ccStructure ? ' active' : '') + '" data-structure="' + k + '">' + CC_STRUCTURES[k].label + '</button>'
     ).join('');
     document.getElementById('ccStructureHint').textContent = CC_STRUCTURES[ccStructure].hint;
+    document.getElementById('ccRepeatWrap').hidden = ccStructure !== 'perCreative';
     el.querySelectorAll('[data-structure]').forEach(btn => btn.addEventListener('click', () => {
       ccStructure = btn.dataset.structure;
       savePref('ccStructure', ccStructure);
@@ -4202,6 +4216,8 @@
     }));
   }
 
+  document.getElementById('ccRepeat').addEventListener('input', () => renderCcSummary());
+
   function initTargetingPills(){
     renderPillGroup('ccGender', [
       { value: 'all', label: 'Todos' }, { value: 'male', label: 'Masculino' },
@@ -4361,6 +4377,7 @@
 
     const missing = [];
     if (platformProblem()) missing.push('plataforma: Newsletter sozinha não é suportada');
+    if (endDaySel !== null && laWallTimeToEpoch(shiftDateKey(todayKeyBR(), endDaySel), document.getElementById('ccEndTime').value || '23:59') <= laWallTimeToEpoch(shiftDateKey(todayKeyBR(), startDaySel), document.getElementById('ccStartTime').value || '05:00')) missing.push('o término precisa ser depois do início');
     if (endDaySel !== null && laWallTimeToEpoch(shiftDateKey(todayKeyBR(), endDaySel), document.getElementById('ccEndTime').value || '23:59') <= Math.floor(Date.now() / 1000)) missing.push('o término já passou (a campanha seria encerrada na hora)');
     if (!accounts.length) missing.push('marque pelo menos uma conta');
     if (!document.getElementById('ccHeadline').value.trim()) missing.push('título');
@@ -4504,7 +4521,7 @@
       total: (shared.logoLibraryId ? 1 : 0) + 1 + 1 + (shared.mode === 'oneAdset' ? 1 + shared.creatives.length * 2 : shared.creatives.length * 3),
       logoDone: false, logoUrl: null, trackingId: null, campaignId: null, adSetId: null, cstate: {},
     };
-    shared.creatives.forEach(c => { run.cstate[c.libraryId] = { status: 'pending', error: null, assetUrl: null, adSetId: null }; });
+    shared.creatives.forEach(c => { run.cstate[c.key || c.libraryId] = { status: 'pending', error: null, assetUrl: null, adSetId: null }; });
     return run;
   }
 
@@ -4521,7 +4538,7 @@
     list.innerHTML = ccRuns.map((run, i) => {
       const pct = run.total ? Math.round(run.done / run.total * 100) : 0;
       const chips = run.shared.creatives.length > 1 || run.status === 'error'
-        ? run.shared.creatives.map(c => '<span class="cc-cstate ' + run.cstate[c.libraryId].status + '" title="' + ccEsc(run.cstate[c.libraryId].error || '') + '">' + ccEsc(c.name) + '</span>').join('')
+        ? run.shared.creatives.map(c => '<span class="cc-cstate ' + run.cstate[c.key || c.libraryId].status + '" title="' + ccEsc(run.cstate[c.key || c.libraryId].error || '') + '">' + ccEsc(c.name) + (c.repeatTotal > 1 ? ' #' + c.repeatIndex : '') + '</span>').join('')
         : '';
       const retry = run.status === 'error'
         ? '<button type="button" class="cc-run-retry" data-run-retry="' + i + '"' + (ccRunning ? ' disabled' : '') + '>Reenviar</button>'
@@ -4623,25 +4640,32 @@
       }
 
       for (const creative of shared.creatives) {
-        const cs = run.cstate[creative.libraryId];
+        const cs = run.cstate[creative.key || creative.libraryId];
         if (shared.mode === 'oneAdset') cs.adSetId = run.adSetId;
         if (cs.status === 'ok') continue;
         cs.status = 'running';
         cs.error = null;
         renderCcRuns();
-        const cPrefix = prefix + '[' + creative.name + '] ';
+        const cPrefix = prefix + '[' + creative.name + (creative.repeatTotal > 1 ? ' #' + creative.repeatIndex : '') + '] ';
         try {
           if (!cs.assetUrl) {
-            ccLog(cPrefix + 'Enviando criativo…');
-            const uploadResp = await post(NB_UPLOAD_ASSET_API, { accountKey: acc.accountKey, adAccountId: acc.id, libraryId: creative.libraryId, mediaName: creative.name });
-            if (uploadResp.error) throw new Error(uploadResp.detail || uploadResp.error);
-            cs.assetUrl = uploadResp.asset.assetUrl;
-            ccLog(cPrefix + 'Criativo enviado.', 'ok');
-            step();
+            run.assetByLib = run.assetByLib || {};
+            if (run.assetByLib[creative.libraryId]) {
+              cs.assetUrl = run.assetByLib[creative.libraryId];
+              step();
+            } else {
+              ccLog(cPrefix + 'Enviando criativo…');
+              const uploadResp = await post(NB_UPLOAD_ASSET_API, { accountKey: acc.accountKey, adAccountId: acc.id, libraryId: creative.libraryId, mediaName: creative.name });
+              if (uploadResp.error) throw new Error(uploadResp.detail || uploadResp.error);
+              cs.assetUrl = uploadResp.asset.assetUrl;
+              run.assetByLib[creative.libraryId] = cs.assetUrl;
+              ccLog(cPrefix + 'Criativo enviado.', 'ok');
+              step();
+            }
           }
 
           if (!cs.adSetId) {
-            const adSetBody = buildAdSetBody(shared.mode === 'nCampaigns' ? shared.name : shared.name + ' - ' + creative.name);
+            const adSetBody = buildAdSetBody(shared.mode === 'nCampaigns' ? shared.name : shared.name + ' - ' + creative.name + (creative.repeatTotal > 1 ? ' #' + creative.repeatIndex : ''));
             ccLog(cPrefix + 'Criando conjunto de anúncios…');
             const adSetResp = await post(NB_ADSET_API, adSetBody);
             if (adSetResp.error) throw new Error(adSetResp.detail || adSetResp.error);
@@ -4672,7 +4696,7 @@
         }
       }
 
-      const failedCreatives = shared.creatives.filter(c => run.cstate[c.libraryId].status !== 'ok');
+      const failedCreatives = shared.creatives.filter(c => run.cstate[c.key || c.libraryId].status !== 'ok');
       if (failedCreatives.length) {
         run.status = 'error';
         run.error = failedCreatives.length + ' de ' + shared.creatives.length + ' criativo(s) falharam';
@@ -4774,6 +4798,11 @@
     runs.forEach(({ acc, shared }) => {
       if (ccStructure === 'nCampaigns') {
         shared.creatives.forEach(c => expanded.push({ acc, shared: { ...shared, mode: 'nCampaigns', name: shared.name + ' - ' + c.name, creatives: [c] } }));
+      } else if (ccStructure === 'perCreative' && ccRepeatCount() > 1) {
+        const times = ccRepeatCount();
+        const repeated = [];
+        shared.creatives.forEach(c => { for (let k = 1; k <= times; k++) repeated.push({ ...c, key: c.libraryId + '#' + k, repeatIndex: k, repeatTotal: times }); });
+        expanded.push({ acc, shared: { ...shared, mode: ccStructure, creatives: repeated } });
       } else {
         expanded.push({ acc, shared: { ...shared, mode: ccStructure } });
       }
