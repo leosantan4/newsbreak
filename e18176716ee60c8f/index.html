@@ -679,7 +679,7 @@
 <body>
 <div class="shell">
   <nav class="sidenav" id="sidenav">
-    <div class="sidenav-brand"><span>RASTRO</span></div>
+    <div class="sidenav-brand"><button type="button" class="menu-btn" id="navToggleBtn" aria-label="Menu" title="Menu"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button><span>RASTRO</span></div>
     <div class="sidenav-group-label">Tráfego</div>
     <button class="nav-item" data-view="painel"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg></span>Dashboard</button>
     <button class="nav-item" data-view="criar"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg></span>Criar Campanha</button>
@@ -750,7 +750,7 @@
   <main class="content" id="mainContent">
     <header>
       <div class="header-left">
-        <button type="button" class="menu-btn" id="menuBtn" aria-label="Menu" title="Menu">
+        <button type="button" class="menu-btn menu-btn-mobile" id="menuBtn" aria-label="Menu" title="Menu">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
         </button>
         <h1 id="pageTitle">NewsBreak</h1>
@@ -986,6 +986,24 @@
     .nav-item .ic{width:18px; font-size:0;}
     .theme-toggle button{width:26px; height:26px;}
     .bell-btn{width:34px; height:34px;}
+  }
+
+  /* ===== Menu toggle lives in the sidebar; collapsed = narrow icon rail (desktop) ===== */
+  .sidenav-brand{display:flex; align-items:center; justify-content:flex-start; gap:10px; padding:2px 6px 18px 4px;}
+  .sidenav-brand .menu-btn{width:34px; height:34px;}
+  .menu-btn-mobile{display:none;}
+  @media (min-width:721px){
+    .shell.nav-collapsed .sidenav{display:flex; flex:0 0 64px; width:64px; padding:14px 8px 0; align-items:center;}
+    .shell.nav-collapsed .sidenav-brand{padding:0 0 14px; justify-content:center;}
+    .shell.nav-collapsed .sidenav-brand span{display:none;}
+    .shell.nav-collapsed .sidenav-group-label{font-size:0; width:22px; height:1px; padding:0; margin:8px 0; background:var(--line);}
+    .shell.nav-collapsed .nav-item{width:40px; height:40px; padding:0; justify-content:center; gap:0; font-size:0; position:relative; flex:none;}
+    .shell.nav-collapsed .nav-badge{position:absolute; top:3px; right:3px; min-width:14px; height:14px; padding:0 3px; font-size:9px; margin:0;}
+    .shell.nav-collapsed .theme-toggle{flex-direction:column; align-self:stretch; align-items:center; margin:auto -8px 0; padding:10px 0;}
+  }
+  @media (max-width:720px){
+    .menu-btn-mobile{display:flex;}
+    .sidenav-brand{padding:4px 10px 18px;}
   }
 </style>
 </defs>
@@ -1840,10 +1858,13 @@
     navShell.classList.toggle('nav-open', o);
     document.body.classList.toggle('nav-locked', o && navMobile.matches);
   }
-  document.getElementById('menuBtn').addEventListener('click', () => {
+  function toggleNav(){
     if (navMobile.matches) setNavOpen(!navShell.classList.contains('nav-open'));
     else applyNavCollapsed(!navShell.classList.contains('nav-collapsed'));
-  });
+  }
+  document.getElementById('menuBtn').addEventListener('click', toggleNav);
+  document.getElementById('navToggleBtn').addEventListener('click', toggleNav);
+  document.querySelectorAll('.nav-item').forEach(b => { b.title = b.textContent.trim().replace(/\d+$/, ''); }); // tooltip when the menu is a narrow rail
   document.getElementById('navOverlay').addEventListener('click', () => setNavOpen(false));
   document.querySelectorAll('.nav-item').forEach(b => b.addEventListener('click', () => { if (navMobile.matches) setNavOpen(false); }));
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') setNavOpen(false); });
