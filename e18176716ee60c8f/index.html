@@ -1005,6 +1005,15 @@
     .menu-btn-mobile{display:flex;}
     .sidenav-brand{padding:4px 10px 18px;}
   }
+
+  /* ===== Sino no canto superior direito, na linha do título (celular) ===== */
+  @media (max-width:720px){
+    header{flex-direction:row; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px 8px;}
+    .header-left{flex:1 1 auto; min-width:0;}
+    .panel-head-right{display:contents;}
+    .bell-wrap{order:2; margin-left:auto;}
+    .live-pill{order:3; flex:1 1 100%; min-width:0;}
+  }
 </style>
 </defs>
 
