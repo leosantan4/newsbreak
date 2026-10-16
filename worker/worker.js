@@ -31,6 +31,24 @@ async function saveTopups(env, topups) {
   await env.COSTS_KV.put("topups", JSON.stringify(topups));
 }
 
+// ---- Integrations: API keys pasted in the app (KV) override the server secrets of the same name. ----
+const INTEGRATIONS = [
+  { key: "VTURB_API_TOKEN", label: "Vturb", hint: "Token da API do Vturb" },
+  { key: "REDTRACK_API_KEY", label: "RedTrack", hint: "API key do RedTrack (plataforma de vendas)" },
+];
+async function loadIntegrations(env) {
+  const raw = await env.COSTS_KV.get("integrations");
+  if (!raw) return {};
+  try { return JSON.parse(raw); } catch { return {}; }
+}
+// env with the in-app keys layered on top (falls back to the Cloudflare secret when the app has none)
+async function keyedEnv(env) {
+  const saved = await loadIntegrations(env);
+  const e = Object.create(env);
+  for (const i of INTEGRATIONS) if (saved[i.key] && saved[i.key].value) e[i.key] = saved[i.key].value;
+  return e;
+}
+
 const VTURB_BASE = "https://analytics.vturb.net";
 const VTURB_PLAYER_ID = "6a83665cf9bdc38fd3f3718a"; // HONEY - RITUAL GATES- DICAPRIO - [42:02] - EM USO
 const VTURB_VIDEO_DURATION = 3388;
@@ -868,27 +886,57 @@ function rejectedActiveAds(data) {
   return out;
 }
 
-async function sendPush(env, title, text) {
-  if (!env.PUSHCUT_URL) return { ok: false, error: "not_configured" };
+// ---- Push recipients: the server default (secret PUSHCUT_URL) + people who paste their own Pushcut URL in the app. ----
+const PUSH_TYPES = ["rejections", "rules"];
+async function loadRecipients(env) {
+  const raw = await env.COSTS_KV.get("push_recipients");
+  if (!raw) return [];
+  try { return JSON.parse(raw); } catch { return []; }
+}
+function validPushUrl(u) {
+  try { const x = new URL(String(u)); return x.protocol === "https:" && x.hostname === "api.pushcut.io" && x.pathname.length > 8; } catch { return false; }
+}
+function maskPushUrl(u) {
   try {
-    const resp = await fetch(env.PUSHCUT_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, text }),
-    });
-    const result = { ok: resp.ok, status: resp.status };
-    await env.COSTS_KV.put("push_last", JSON.stringify({ at: Date.now(), title, ...result }));
-    return result;
-  } catch (e) {
-    const result = { ok: false, error: "network" };
-    await env.COSTS_KV.put("push_last", JSON.stringify({ at: Date.now(), title, ...result }));
-    return result;
+    const x = new URL(u);
+    const seg = x.pathname.split("/").filter(Boolean);
+    if (seg.length) seg[0] = "••••••";
+    return x.origin + "/" + seg.join("/");
+  } catch { return "••••••"; }
+}
+function recipientWants(r, type) {
+  if (r.enabled === false) return false;
+  const t = r.types || {};
+  return type === "test" ? true : t[type] !== false;
+}
+async function pushTargets(env, type, onlyId) {
+  const out = [];
+  if (env.PUSHCUT_URL && (!onlyId || onlyId === "default")) out.push({ id: "default", url: env.PUSHCUT_URL });
+  for (const r of await loadRecipients(env)) {
+    if (onlyId) { if (r.id === onlyId) out.push({ id: r.id, url: r.url }); }
+    else if (recipientWants(r, type)) out.push({ id: r.id, url: r.url });
   }
+  return out;
+}
+
+async function sendPush(env, title, text, type, onlyId) {
+  const targets = await pushTargets(env, type || "test", onlyId);
+  if (!targets.length) return { ok: false, error: "not_configured" };
+  const results = await Promise.all(targets.map(async (t) => {
+    try {
+      const resp = await fetch(t.url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title, text }) });
+      return { id: t.id, ok: resp.ok, status: resp.status };
+    } catch (e) { return { id: t.id, ok: false, error: "network" }; }
+  }));
+  const okCount = results.filter((r) => r.ok).length;
+  const result = { ok: okCount > 0, sent: okCount, failed: results.length - okCount, status: (results.find((r) => !r.ok) || results[0]).status };
+  await env.COSTS_KV.put("push_last", JSON.stringify({ at: Date.now(), title, ...result }));
+  return result;
 }
 
 // First alert right away; then a reminder every PUSH_REPEAT_MIN minutes (default 30) while it stays rejected + active.
 async function pushRejectedAlerts(env, data) {
-  if (!env.PUSHCUT_URL) return;
+  if (!(await pushTargets(env, "rejections")).length) return;
   const repeatMs = Math.max(5, Number(env.PUSH_REPEAT_MIN) || 30) * 60 * 1000;
   const now = Date.now();
   const raw = await env.COSTS_KV.get("push_state");
@@ -908,15 +956,205 @@ async function pushRejectedAlerts(env, data) {
   const line = (a) => a.account + " · " + a.name + " — " + a.reason;
   let sentOk = true;
   if (fresh.length) {
-    const r = await sendPush(env, (fresh.length > 1 ? "Anúncios recusados (" + fresh.length + ")" : "Anúncio recusado"), fresh.slice(0, 6).map(line).join("\n"));
+    const r = await sendPush(env, (fresh.length > 1 ? "Anúncios recusados (" + fresh.length + ")" : "Anúncio recusado"), fresh.slice(0, 6).map(line).join("\n"), "rejections");
     sentOk = sentOk && r.ok;
     if (!r.ok) fresh.forEach((a) => { delete next[a.id]; }); // try again next minute
   }
   if (reminders.length) {
-    const r = await sendPush(env, "Ainda recusado" + (reminders.length > 1 ? "s (" + reminders.length + ")" : ""), reminders.slice(0, 6).map(line).join("\n"));
+    const r = await sendPush(env, "Ainda recusado" + (reminders.length > 1 ? "s (" + reminders.length + ")" : ""), reminders.slice(0, 6).map(line).join("\n"), "rejections");
     if (!r.ok) reminders.forEach((a) => { next[a.id] = state[a.id]; });
   }
   await env.COSTS_KV.put("push_state", JSON.stringify(next)); // ads that left the list are forgotten, so a new rejection alerts again
+}
+
+// ---------------------------------------------------------------------------------------------
+// Rules engine: evaluates every AD SET (never the campaign) on lifetime (last 30 days) metrics and acts.
+// Metrics: cost ($), ic (initiate_checkout count), sales (complete_payment count), cpic (cost / ic).
+// ---------------------------------------------------------------------------------------------
+const RULE_METRICS = ["cost", "ic", "sales", "cpic", "cpc", "cpm", "ctr", "clicks", "impressions", "cpa", "roas", "revenue"];
+const RULE_OPS = [">", ">=", "<", "<=", "="];
+const RULE_ACTIONS = ["pause_adset", "set_budget", "notify"];
+const DEFAULT_RULES = [
+  { id: "r1", name: "Gasto > $50 sem checkout", enabled: true, scope: {}, margin: 5, action: { type: "pause_adset" },
+    conditions: [{ metric: "cost", op: ">", value: 50 }, { metric: "ic", op: "<", value: 1 }] },
+  { id: "r2", name: "Gasto ≥ $100, IC ≤ 1, sem venda", enabled: true, scope: {}, margin: 5, action: { type: "pause_adset" },
+    conditions: [{ metric: "cost", op: ">=", value: 100 }, { metric: "ic", op: "<=", value: 1 }, { metric: "sales", op: "=", value: 0 }] },
+  { id: "r3", name: "Gasto ≥ $150 sem venda", enabled: true, scope: {}, margin: 5, action: { type: "pause_adset" },
+    conditions: [{ metric: "cost", op: ">=", value: 150 }, { metric: "sales", op: "=", value: 0 }] },
+  { id: "r5", name: "Gasto ≥ $350, 1 venda, custo/IC ≥ $75", enabled: true, scope: {}, margin: 0, action: { type: "pause_adset" },
+    conditions: [{ metric: "cost", op: ">=", value: 350 }, { metric: "sales", op: "=", value: 1 }, { metric: "cpic", op: ">=", value: 75 }] },
+  { id: "r4", name: "Escalar: gasto ≥ $10 com checkout e venda → orçamento $1000", enabled: true, scope: {}, margin: 0, action: { type: "set_budget", budget: 1000 },
+    conditions: [{ metric: "cost", op: ">=", value: 10 }, { metric: "ic", op: ">=", value: 1 }, { metric: "sales", op: ">=", value: 1 }] },
+];
+
+async function loadRules(env) {
+  const raw = await env.COSTS_KV.get("rules");
+  if (raw) { try { return JSON.parse(raw); } catch {} }
+  await env.COSTS_KV.put("rules", JSON.stringify(DEFAULT_RULES));
+  return DEFAULT_RULES.map((r) => ({ ...r }));
+}
+async function saveRules(env, rules) { await env.COSTS_KV.put("rules", JSON.stringify(rules)); }
+
+function cleanRule(b, existingId) {
+  const name = String((b && b.name) || "").trim().slice(0, 120);
+  if (!name) return { error: "name_required" };
+  const conditions = Array.isArray(b.conditions) ? b.conditions : [];
+  if (!conditions.length || conditions.length > 8) return { error: "conditions_invalid" };
+  const cleanConds = [];
+  for (const c of conditions) {
+    if (!c || RULE_METRICS.indexOf(c.metric) === -1 || RULE_OPS.indexOf(c.op) === -1 || !isFinite(Number(c.value))) return { error: "condition_invalid" };
+    cleanConds.push({ metric: c.metric, op: c.op, value: Number(c.value), join: c.join === "or" ? "or" : "and" });
+  }
+  const a = b.action || {};
+  if (RULE_ACTIONS.indexOf(a.type) === -1) return { error: "action_invalid" };
+  const action = { type: a.type };
+  if (a.type === "set_budget") {
+    const bud = Number(a.budget);
+    if (!isFinite(bud) || bud < 1 || bud > 100000) return { error: "budget_invalid" };
+    action.budget = bud;
+  }
+  const s = b.scope || {};
+  const scope = {};
+  for (const k of ["accountKey", "adAccountId", "campaignId", "niche"]) if (s[k]) scope[k] = String(s[k]).slice(0, 80);
+  for (const k of ["adAccountIds", "campaignIds", "niches"]) {
+    if (Array.isArray(s[k]) && s[k].length) scope[k] = s[k].slice(0, 100).map((x) => String(x).slice(0, 120));
+  }
+  const margin = Math.max(0, Math.min(50, Number(b.margin) || 0));
+  return { rule: { id: existingId || String(b.id || crypto.randomUUID()).slice(0, 60), name, enabled: b.enabled !== false, scope, margin, action, notify: b.notify !== false, conditions: cleanConds } };
+}
+
+function nicheOfName(name) {
+  const m = String(name || "").split(" - ")[0].trim().toUpperCase();
+  return m;
+}
+
+function ruleScopeOk(scope, ctx) {
+  if (!scope) return true;
+  if (scope.accountKey && scope.accountKey !== ctx.accountKey) return false;
+  if (scope.adAccountId && scope.adAccountId !== ctx.adAccountId) return false;
+  if (Array.isArray(scope.adAccountIds) && scope.adAccountIds.length && scope.adAccountIds.indexOf(ctx.adAccountId) === -1) return false;
+  if (scope.campaignId && scope.campaignId !== ctx.campaignId) return false;
+  if (scope.niche && String(scope.niche).toUpperCase() !== nicheOfName(ctx.campaignName)) return false;
+  if (Array.isArray(scope.campaignIds) && scope.campaignIds.length && scope.campaignIds.indexOf(ctx.campaignId) === -1) return false;
+  if (Array.isArray(scope.niches) && scope.niches.length && scope.niches.map((n) => String(n).toUpperCase()).indexOf(nicheOfName(ctx.campaignName)) === -1) return false;
+  return true;
+}
+
+function ruleMetric(m, mt) {
+  if (m === "cost") return mt.cost;
+  if (m === "ic") return mt.ic;
+  if (m === "sales") return mt.venda;
+  if (m === "cpic") return mt.ic > 0 ? mt.cost / mt.ic : null;
+  if (m === "cpc") return mt.click > 0 ? mt.cost / mt.click : null;
+  if (m === "cpm") return mt.impression > 0 ? (mt.cost / mt.impression) * 1000 : null;
+  if (m === "ctr") return mt.impression > 0 ? (mt.click / mt.impression) * 100 : null;
+  if (m === "clicks") return mt.click || 0;
+  if (m === "impressions") return mt.impression || 0;
+  if (m === "cpa") return mt.venda > 0 ? mt.cost / mt.venda : null;
+  if (m === "roas") return mt.cost > 0 ? (mt.faturamento || 0) / mt.cost : null;
+  if (m === "revenue") return mt.faturamento || 0;
+  return null;
+}
+
+function condOk(c, mt, margin) {
+  const v = ruleMetric(c.metric, mt);
+  if (v == null) return false;
+  let th = Number(c.value);
+  if (c.metric === "cost" && (c.op === ">" || c.op === ">=")) th -= Number(margin) || 0; // act early: the NB numbers lag
+  return c.op === ">" ? v > th : c.op === ">=" ? v >= th : c.op === "<" ? v < th : c.op === "<=" ? v <= th : Math.abs(v - th) < 0.005;
+}
+
+// Conditions are chained with E (and) / OU (or); AND binds tighter than OR: "A E B OU C" = (A and B) or C.
+function ruleMatches(rule, mt) {
+  const groups = [];
+  rule.conditions.forEach((c, i) => {
+    if (i === 0 || c.join === "or") groups.push([c]); else groups[groups.length - 1].push(c);
+  });
+  return groups.some((g) => g.every((c) => condOk(c, mt, rule.margin)));
+}
+
+// Lifetime (last 30 days) metrics per ad set, per account key.
+async function fetchLifetimeAdsetMetrics(env, errs) {
+  const out = {};
+  const tokens = await getAllTokens(env);
+  await Promise.all(tokens.map(async ([key, token]) => {
+    try {
+      const rows = await nbFetchReport(token, "LAST_30_DAYS", ["AD_SET"], ["IMPRESSION"]);
+      const map = {};
+      for (const r of rows) map[r.adSetId] = nbRowToDoc(r);
+      out[key] = map;
+    } catch (e) { /* account unreadable this minute: its ad sets are skipped */ if (errs) errs.push(key + ': ' + String((e && e.message) || e)); }
+  }));
+  return out;
+}
+
+// Decide what every rule would do right now. Pure: does not touch NewsBreak.
+function planRules(data, life, rules, state) {
+  const plan = [];
+  let evaluated = 0;
+  const active = rules.filter((r) => r.enabled);
+  for (const c of (data && data.campaigns) || []) {
+    if (c.status !== "ON" || !life[c.accountKey]) continue;
+    for (const s of c.adSets || []) {
+      if (s.status !== "ON") continue;
+      evaluated++;
+      const mt = life[c.accountKey][s.id] || { cost: 0, ic: 0, venda: 0 };
+      const ctx = { accountKey: c.accountKey, adAccountId: c.adAccountId, campaignId: c.id, campaignName: c.name };
+      const hits = active.filter((r) => ruleScopeOk(r.scope, ctx) && ruleMatches(r, mt));
+      const done = (r) => state[r.id + ":" + s.id];
+      const base = { accountKey: c.accountKey, accountLabel: c.adAccountName || c.accountKey, campaignId: c.id, campaign: c.name, adsetId: s.id, adset: s.name,
+        metrics: { cost: mt.cost, ic: mt.ic, sales: mt.venda }, budget: s.budget, budgetType: s.budgetType };
+      // pause beats budget; notify rules are independent
+      const pause = hits.find((r) => r.action.type === "pause_adset" && (!done(r) || mt.cost >= done(r).cost + 10));
+      if (pause) plan.push({ ...base, rule: pause, kind: "pause_adset" });
+      else {
+        const budgetRule = hits.find((r) => r.action.type === "set_budget" && !done(r) && !(Number(s.budget) >= r.action.budget));
+        if (budgetRule) plan.push({ ...base, rule: budgetRule, kind: "set_budget" });
+      }
+      for (const r of hits) if (r.action.type === "notify" && !done(r)) plan.push({ ...base, rule: r, kind: "notify" });
+    }
+  }
+  return { plan, evaluated };
+}
+
+async function runRulesEngine(env, data) {
+  const on = (await env.COSTS_KV.get("rules_engine_on")) === "1";
+  if (!on) return { ran: false };
+  const rules = await loadRules(env);
+  const life = await fetchLifetimeAdsetMetrics(env);
+  const stateRaw = await env.COSTS_KV.get("rules_state");
+  const state = stateRaw ? JSON.parse(stateRaw) : {};
+  const { plan, evaluated } = planRules(data, life, rules, state);
+  const logRaw = await env.COSTS_KV.get("rules_log");
+  const log = logRaw ? JSON.parse(logRaw) : [];
+  const lines = [];
+  for (const p of plan) {
+    const entry = { at: Date.now(), ruleId: p.rule.id, ruleName: p.rule.name, accountKey: p.accountKey, account: p.accountLabel, campaign: p.campaign, adset: p.adset, adsetId: p.adsetId, metrics: p.metrics, action: p.kind, result: "ok", detail: "" };
+    try {
+      if (p.kind === "pause_adset") {
+        await nbSetAdSetStatus(await tokenForAccountKey(env, p.accountKey), p.adsetId, "OFF");
+        entry.detail = "conjunto pausado";
+      } else if (p.kind === "set_budget") {
+        await nbSetAdSetBudget(await tokenForAccountKey(env, p.accountKey), p.adsetId, Math.round(p.rule.action.budget * 100), p.budgetType || "DAILY");
+        entry.detail = "orçamento $" + (p.budget != null ? p.budget : "?") + " → $" + p.rule.action.budget;
+      } else entry.detail = "aviso";
+      state[p.rule.id + ":" + p.adsetId] = { at: Date.now(), cost: p.metrics.cost };
+      const mm = "gasto $" + p.metrics.cost + ", IC " + p.metrics.ic + ", vendas " + p.metrics.sales;
+      if (p.rule.notify !== false || p.kind === "notify") lines.push((p.kind === "pause_adset" ? "Pausado: " : p.kind === "set_budget" ? "Orçamento $" + p.rule.action.budget + ": " : "Aviso: ") + p.accountLabel + " · " + p.adset + " — " + mm + " (" + p.rule.name + ")");
+    } catch (e) {
+      entry.result = "erro";
+      entry.detail = String((e && e.message) || e).slice(0, 200);
+      lines.push("FALHOU (" + (p.kind === "pause_adset" ? "pausar" : p.kind === "set_budget" ? "mudar orçamento" : "avisar") + "): " + p.accountLabel + " · " + p.adset + " (" + p.rule.name + ")");
+    }
+    log.unshift(entry);
+  }
+  if (plan.length) {
+    await env.COSTS_KV.put("rules_state", JSON.stringify(state));
+    await env.COSTS_KV.put("rules_log", JSON.stringify(log.slice(0, 200)));
+    await env.COSTS_KV.delete("live_campanhas");
+    if (lines.length) await sendPush(env, "Regras: " + lines.length + (lines.length === 1 ? " ação" : " ações"), lines.slice(0, 6).join("\n"), "rules");
+  }
+  return { ran: true, evaluated, actions: plan.length };
 }
 
 export default {
@@ -932,7 +1170,8 @@ export default {
         if (data) {
           await env.COSTS_KV.put("live_campanhas", JSON.stringify({ ts: Date.now(), data }));
           try { await pushRejectedAlerts(env, data); } catch (e) { note = "push_error:" + String((e && e.message) || e); }
-          if ((data.failedAccounts || []).length) note = "ok; failedAccounts:" + data.failedAccounts.join(",");
+          try { const rr = await runRulesEngine(env, data); if (rr && rr.ran) note += "; rules_eval:" + rr.evaluated + " rules_acoes:" + rr.actions; } catch (e) { note += "; rules_error:" + String((e && e.message) || e); }
+          if ((data.failedAccounts || []).length) note = (note === "ok" ? "ok" : note) + "; failedAccounts:" + data.failedAccounts.join(",");
         }
       } catch (e) {
         note = "error:" + String((e && e.message) || e);
@@ -950,7 +1189,7 @@ export default {
 
     if (url.pathname === "/vturb/stats" && request.method === "GET") {
       try {
-        const stats = await vturbStats(env);
+        const stats = await vturbStats(await keyedEnv(env));
         return json(stats, 200, origin);
       } catch (e) {
         return json({ error: "vturb_fetch_failed" }, 502, origin);
@@ -962,7 +1201,7 @@ export default {
         const today = todayKeySaoPaulo();
         const dateFrom = url.searchParams.get("date_from") || today;
         const dateTo = url.searchParams.get("date_to") || today;
-        const data = await getCached(env, `vendas_estado:${dateFrom}:${dateTo}`, 600, () => computeVendasPorEstado(env, dateFrom, dateTo));
+        const data = await getCached(env, `vendas_estado:${dateFrom}:${dateTo}`, 600, async () => computeVendasPorEstado(await keyedEnv(env), dateFrom, dateTo));
         return json(data, 200, origin);
       } catch (e) {
         return json({ error: "vendas_estado_failed", detail: String(e.message || e) }, 502, origin);
@@ -971,7 +1210,7 @@ export default {
 
     if (url.pathname === "/live/painel" && request.method === "GET") {
       try {
-        const data = await getCached(env, "live_painel", 20, () => computeLivePainel(env));
+        const data = await getCached(env, "live_painel", 20, async () => computeLivePainel(await keyedEnv(env)));
         return json(data, 200, origin);
       } catch (e) {
         return json({ error: "live_painel_failed" }, 502, origin);
@@ -1618,6 +1857,189 @@ export default {
       } catch (e) {
         return json({ error: "nb_create_ad_failed", detail: String(e.message || e) }, 502, origin);
       }
+    }
+
+    if (url.pathname === "/rules" && request.method === "GET") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      const rules = await loadRules(env);
+      const logRaw = await env.COSTS_KV.get("rules_log");
+      const hb = await env.COSTS_KV.get("cron_heartbeat");
+      return json({ rules, log: (logRaw ? JSON.parse(logRaw) : []).slice(0, 100), engineOn: (await env.COSTS_KV.get("rules_engine_on")) === "1", heartbeat: hb ? JSON.parse(hb) : null }, 200, origin);
+    }
+
+    if (url.pathname === "/rules" && request.method === "POST") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      let body;
+      try { body = await request.json(); } catch { return json({ error: "invalid_json" }, 400, origin); }
+      const rules = await loadRules(env);
+      const idx = body && body.id ? rules.findIndex((r) => r.id === body.id) : -1;
+      const cleaned = cleanRule(body || {}, idx >= 0 ? rules[idx].id : null);
+      if (cleaned.error) return json({ error: cleaned.error }, 400, origin);
+      if (idx >= 0) rules[idx] = cleaned.rule; else rules.push(cleaned.rule);
+      if (rules.length > 100) return json({ error: "too_many_rules" }, 400, origin);
+      await saveRules(env, rules);
+      return json({ rules }, 200, origin);
+    }
+
+    if (url.pathname.startsWith("/rules/") && request.method === "DELETE") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      const id = decodeURIComponent(url.pathname.split("/")[2] || "");
+      const rules = (await loadRules(env)).filter((r) => r.id !== id);
+      await saveRules(env, rules);
+      return json({ rules }, 200, origin);
+    }
+
+    if (url.pathname === "/rules/engine" && request.method === "POST") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      let body;
+      try { body = await request.json(); } catch { return json({ error: "invalid_json" }, 400, origin); }
+      await env.COSTS_KV.put("rules_engine_on", body && body.on ? "1" : "0");
+      return json({ engineOn: !!(body && body.on) }, 200, origin);
+    }
+
+    if (url.pathname === "/rules/preview" && request.method === "POST") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      try {
+        const data = await getCached(env, "live_campanhas", 10, () => computeLiveCampanhas(env));
+        const lifeErrors = [];
+        const life = await fetchLifetimeAdsetMetrics(env, lifeErrors);
+        const rules = await loadRules(env);
+        const stateRaw = await env.COSTS_KV.get("rules_state");
+        const { plan, evaluated } = planRules(data, life, rules, stateRaw ? JSON.parse(stateRaw) : {});
+        const near = [];
+        for (const c of data.campaigns || []) {
+          if (c.status !== "ON" || !life[c.accountKey]) continue;
+          for (const s of c.adSets || []) {
+            if (s.status !== "ON") continue;
+            const mt = life[c.accountKey][s.id] || { cost: 0, ic: 0, venda: 0 };
+            if (mt.cost > 0) near.push({ account: c.adAccountName, campaign: c.name, adset: s.name, cost: mt.cost, ic: mt.ic, sales: mt.venda, budget: s.budget });
+          }
+        }
+        near.sort((a, b) => b.cost - a.cost);
+        return json({
+          lifeAccounts: Object.keys(life), lifeErrors,
+          evaluated,
+          wouldDo: plan.map((p) => ({ rule: p.rule.name, action: p.kind, account: p.accountLabel, campaign: p.campaign, adset: p.adset, metrics: p.metrics, budget: p.budget })),
+          activeAdsets: near.slice(0, 40),
+        }, 200, origin);
+      } catch (e) {
+        return json({ error: "preview_failed", detail: String((e && e.message) || e) }, 502, origin);
+      }
+    }
+
+    if (url.pathname === "/integrations" && request.method === "GET") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      const saved = await loadIntegrations(env);
+      return json({ integrations: INTEGRATIONS.map((i) => ({
+        key: i.key, label: i.label, hint: i.hint,
+        source: saved[i.key] && saved[i.key].value ? "app" : (env[i.key] ? "server" : null),
+        tail: saved[i.key] && saved[i.key].value ? String(saved[i.key].value).slice(-4) : null,
+        updatedAt: saved[i.key] ? saved[i.key].updatedAt : null,
+      })) }, 200, origin);
+    }
+
+    if (url.pathname === "/integrations" && request.method === "POST") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      let body;
+      try { body = await request.json(); } catch { return json({ error: "invalid_json" }, 400, origin); }
+      const spec = INTEGRATIONS.find((i) => i.key === (body && body.key));
+      const value = String((body && body.value) || "").trim();
+      if (!spec) return json({ error: "unknown_integration" }, 400, origin);
+      if (value.length < 8 || value.length > 400 || /\s/.test(value)) return json({ error: "value_invalid" }, 400, origin);
+      const saved = await loadIntegrations(env);
+      saved[spec.key] = { value, updatedAt: Date.now() };
+      await env.COSTS_KV.put("integrations", JSON.stringify(saved));
+      await env.COSTS_KV.delete("live_painel");
+      return json({ ok: true }, 200, origin);
+    }
+
+    if (url.pathname.startsWith("/integrations/") && request.method === "DELETE") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      const k = decodeURIComponent(url.pathname.split("/")[2] || "");
+      const saved = await loadIntegrations(env);
+      delete saved[k];
+      await env.COSTS_KV.put("integrations", JSON.stringify(saved));
+      await env.COSTS_KV.delete("live_painel");
+      return json({ ok: true }, 200, origin);
+    }
+
+    if (url.pathname === "/integrations/test" && request.method === "POST") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      let body;
+      try { body = await request.json(); } catch { return json({ error: "invalid_json" }, 400, origin); }
+      const e = await keyedEnv(env);
+      try {
+        if (body.key === "VTURB_API_TOKEN") {
+          if (!e.VTURB_API_TOKEN) return json({ ok: false, error: "not_configured" }, 200, origin);
+          await vturbStats(e);
+        } else if (body.key === "REDTRACK_API_KEY") {
+          if (!e.REDTRACK_API_KEY) return json({ ok: false, error: "not_configured" }, 200, origin);
+          const t = todayKeySaoPaulo();
+          await rtFetchReport(e, t, t);
+        } else return json({ error: "unknown_integration" }, 400, origin);
+        return json({ ok: true }, 200, origin);
+      } catch (err) {
+        const m = String((err && err.message) || err);
+        const st = (m.match(/-> (\d{3})/) || [])[1];
+        return json({ ok: false, status: st ? Number(st) : null }, 200, origin);
+      }
+    }
+
+    if (url.pathname === "/push/recipients" && request.method === "GET") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      const recs = await loadRecipients(env);
+      return json({ serverDefault: !!env.PUSHCUT_URL, recipients: recs.map((r) => ({ id: r.id, name: r.name, urlMasked: maskPushUrl(r.url), enabled: r.enabled !== false, types: { rejections: (r.types || {}).rejections !== false, rules: (r.types || {}).rules !== false }, createdAt: r.createdAt })) }, 200, origin);
+    }
+
+    if (url.pathname === "/push/recipients" && request.method === "POST") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      let body;
+      try { body = await request.json(); } catch { return json({ error: "invalid_json" }, 400, origin); }
+      const recs = await loadRecipients(env);
+      const idx = body && body.id ? recs.findIndex((r) => r.id === body.id) : -1;
+      const name = String((body && body.name) || "").trim().slice(0, 60);
+      if (!name) return json({ error: "name_required" }, 400, origin);
+      const types = {};
+      for (const t of PUSH_TYPES) types[t] = !(body.types && body.types[t] === false);
+      if (idx >= 0) {
+        if (body.url) { if (!validPushUrl(body.url)) return json({ error: "url_invalid" }, 400, origin); recs[idx].url = String(body.url).trim(); }
+        recs[idx].name = name; recs[idx].types = types; if (body.enabled !== undefined) recs[idx].enabled = body.enabled !== false;
+      } else {
+        if (!validPushUrl(body.url)) return json({ error: "url_invalid" }, 400, origin);
+        if (recs.length >= 20) return json({ error: "too_many" }, 400, origin);
+        recs.push({ id: crypto.randomUUID(), name, url: String(body.url).trim(), enabled: true, types, createdAt: Date.now() });
+      }
+      await env.COSTS_KV.put("push_recipients", JSON.stringify(recs));
+      return json({ ok: true }, 200, origin);
+    }
+
+    if (url.pathname.startsWith("/push/recipients/") && request.method === "DELETE") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      const id = decodeURIComponent(url.pathname.split("/")[3] || "");
+      const recs = (await loadRecipients(env)).filter((r) => r.id !== id);
+      await env.COSTS_KV.put("push_recipients", JSON.stringify(recs));
+      return json({ ok: true }, 200, origin);
+    }
+
+    if (url.pathname === "/push/test" && request.method === "POST") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      let body;
+      try { body = await request.json(); } catch { return json({ error: "invalid_json" }, 400, origin); }
+      const r = await sendPush(env, "Teste do aviso", "Se você viu isso, o aviso do RASTRO está funcionando.", "test", String((body && body.id) || "default"));
+      return json(r, 200, origin);
     }
 
     if (url.pathname === "/push-test" && request.method === "POST") {
