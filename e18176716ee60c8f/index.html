@@ -679,7 +679,7 @@
 <body>
 <div class="shell">
   <nav class="sidenav" id="sidenav">
-    <div class="sidenav-brand"><span>Native Ads</span><button type="button" class="nav-collapse-btn" id="navCollapseBtn" title="Ocultar menu" aria-label="Ocultar menu">«</button></div>
+    <div class="sidenav-brand"><span>Native Ads</span></div>
     <div class="sidenav-group-label">Tráfego</div>
     <button class="nav-item" data-view="painel"><span class="ic">▦</span>Dashboard</button>
     <button class="nav-item" data-view="criar"><span class="ic">✚</span>Criar Campanha</button>
@@ -703,7 +703,7 @@
       <button type="button" data-theme-set="dark" title="Tema escuro" aria-label="Tema escuro"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></button>
     </div>
   </nav>
-  <button type="button" class="nav-expand-btn" id="navExpandBtn" title="Mostrar menu" aria-label="Mostrar menu" hidden>☰</button>
+  <div class="nav-overlay" id="navOverlay"></div>
 
   <div class="assign-sheet" id="rejSheet" hidden>
     <div class="assign-sheet-card rej-card" role="dialog" aria-modal="true">
@@ -749,7 +749,10 @@
 
   <main class="content" id="mainContent">
     <header>
-      <div>
+      <div class="header-left">
+        <button type="button" class="menu-btn" id="menuBtn" aria-label="Menu" title="Menu">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
         <h1 id="pageTitle">NewsBreak</h1>
       </div>
       <div class="panel-head-right">
@@ -937,6 +940,26 @@
     .camp-table-bar{gap:8px;}
     .camp-table-bar select.camp-search{max-width:none; width:100%;}
     .panel-head-right .tabs, .panel-head-right .camp-search{margin:0;}
+  }
+
+  /* ===== Hamburger menu (desktop: hide/show sidebar; phone: slide-in drawer) ===== */
+  .header-left{display:flex; align-items:center; gap:12px; min-width:0;}
+  .menu-btn{flex:none; width:40px; height:40px; border:1px solid var(--line); background:var(--surface-raised); color:var(--ink); border-radius:10px; display:flex; align-items:center; justify-content:center; padding:0; cursor:pointer;}
+  .menu-btn:hover{border-color:color-mix(in srgb, var(--ink) 30%, var(--line));}
+  .nav-overlay{display:none;}
+  body.nav-locked{overflow:hidden;}
+  @media (max-width:720px){
+    .sidenav{position:fixed; top:0; left:0; right:auto; bottom:0; width:min(280px, 84vw); height:100%; flex-direction:column; justify-content:flex-start; align-items:stretch; overflow-x:hidden; overflow-y:auto; border-right:1px solid var(--line); border-top:none; padding:20px 14px 16px; gap:2px; background:var(--surface); box-shadow:none; transform:translateX(-104%); transition:transform .22s ease; z-index:80;}
+    .shell.nav-open .sidenav{transform:none; box-shadow:12px 0 40px -10px rgba(0,0,0,.5);}
+    .shell.nav-collapsed .sidenav{display:flex;}
+    .sidenav-brand{display:flex; padding:4px 10px 18px;}
+    .sidenav-group-label{display:block;}
+    .nav-item{flex:0 0 auto; min-width:0; width:100%; flex-direction:row; justify-content:flex-start; gap:11px; padding:11px 12px; font-size:14px; font-weight:500; white-space:normal; border-radius:var(--radius-sm);}
+    .nav-item .ic{font-size:14px; width:18px; opacity:.85;}
+    .theme-toggle{position:sticky; bottom:-16px; align-self:stretch; margin:auto -14px -16px; padding:10px 14px; gap:6px; border-top:1px solid var(--line); background:var(--surface);}
+    .nav-overlay{display:block; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:70; opacity:0; pointer-events:none; transition:opacity .2s;}
+    .shell.nav-open .nav-overlay{opacity:1; pointer-events:auto;}
+    .content{padding:14px 14px 24px;}
   }
 </style>
 </defs>
@@ -1780,14 +1803,25 @@
   document.querySelectorAll('[data-theme-set]').forEach(b => b.addEventListener('click', () => applyTheme(b.dataset.themeSet)));
   document.querySelectorAll('[data-theme-set]').forEach(b => b.classList.toggle('active', b.dataset.themeSet === (document.documentElement.dataset.theme || 'light')));
 
+  // Hamburger menu: on desktop it hides/shows the sidebar; on phones the sidebar is a drawer that slides in from the left.
+  const navShell = document.querySelector('.shell');
+  const navMobile = window.matchMedia('(max-width: 720px)');
   function applyNavCollapsed(c){
-    const shell = document.querySelector('.shell');
-    shell.classList.toggle('nav-collapsed', c);
-    document.getElementById('navExpandBtn').hidden = !c;
+    navShell.classList.toggle('nav-collapsed', c);
     savePref('navCollapsed', c ? '1' : '');
   }
-  document.getElementById('navCollapseBtn').addEventListener('click', () => applyNavCollapsed(true));
-  document.getElementById('navExpandBtn').addEventListener('click', () => applyNavCollapsed(false));
+  function setNavOpen(o){
+    navShell.classList.toggle('nav-open', o);
+    document.body.classList.toggle('nav-locked', o && navMobile.matches);
+  }
+  document.getElementById('menuBtn').addEventListener('click', () => {
+    if (navMobile.matches) setNavOpen(!navShell.classList.contains('nav-open'));
+    else applyNavCollapsed(!navShell.classList.contains('nav-collapsed'));
+  });
+  document.getElementById('navOverlay').addEventListener('click', () => setNavOpen(false));
+  document.querySelectorAll('.nav-item').forEach(b => b.addEventListener('click', () => { if (navMobile.matches) setNavOpen(false); }));
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') setNavOpen(false); });
+  navMobile.addEventListener('change', () => setNavOpen(false));
   applyNavCollapsed(loadPref('navCollapsed', '') === '1');
 
   let libraryItems = [];
