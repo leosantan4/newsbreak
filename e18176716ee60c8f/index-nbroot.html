@@ -2202,6 +2202,7 @@
 
   let libraryItems = [];
   let niches = [];
+  const NB_ROOT = 'NEWSBREAK', SOURCE_ROOTS = ['NEWSBREAK', 'TABOOLA']; // declared here (not next to topNiches): renderAll runs before the gallery code
   let view = loadPref('view', 'painel');
   let criarSource = null;
   let scope = loadPref('scope', 'geral');
@@ -4748,7 +4749,6 @@
   function inFolder(cat, folder){ return !!folder && (cat === folder || cat.indexOf(folder + '/') === 0); }
   // One top folder per traffic source in the gallery (NEWSBREAK, TABOOLA). NewsBreak flows keep using the bare niche code
   // (ED, HL...); `nicheFolder(code)` is that niche's folder path. Works before the migration too (flat folders).
-  const NB_ROOT = 'NEWSBREAK', SOURCE_ROOTS = ['NEWSBREAK', 'TABOOLA'];
   function nbRooted(){ return niches.indexOf(NB_ROOT) !== -1; }
   function topNiches(){
     return nbRooted()
