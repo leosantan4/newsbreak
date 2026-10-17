@@ -4777,17 +4777,19 @@
     const all = Array.from(set);
     const withParents = new Set(all);
     all.forEach(c => { const parts = c.split('/'); for (let k = 1; k < parts.length; k++) withParents.add(parts.slice(0, k).join('/')); });
+    // order = the order folders were created (niches list), source roots first (NEWSBREAK, TABOOLA); a parent comes before its children
+    const folderRank = path => { const segs = path.split('/'); return segs.map((_, i) => { const pp = segs.slice(0, i + 1).join('/'); if (i === 0 && SOURCE_ROOTS.indexOf(pp) !== -1) return SOURCE_ROOTS.indexOf(pp) - 100; const k = niches.indexOf(pp); return k === -1 ? 999 : k; }); };
     const rest = Array.from(withParents).filter(c => c !== 'logo').sort((x, y) => {
-      const ix = niches.indexOf(x), iy = niches.indexOf(y);
-      if (x.split('/')[0] === y.split('/')[0]) return x.localeCompare(y);
-      const tx = niches.indexOf(x.split('/')[0]), ty = niches.indexOf(y.split('/')[0]);
-      return (tx === -1 ? 999 : tx) - (ty === -1 ? 999 : ty) || x.localeCompare(y);
+      const a = folderRank(x), b = folderRank(y);
+      for (let i = 0; i < Math.min(a.length, b.length); i++) if (a[i] !== b[i]) return a[i] - b[i];
+      return a.length - b.length || x.localeCompare(y);
     });
     return ['logo'].concat(rest);
   }
   const CHEV_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>';
   const FOLDER_SVG = '<svg class="tree-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>';
   let galleryExpanded = new Set((loadPref('galleryExpanded', '') || '').split('|').filter(Boolean));
+  if (!loadPref('galleryExpanded', '')) galleryExpanded.add('NEWSBREAK'); // first visit: NewsBreak folder open
   function saveExpanded(){ savePref('galleryExpanded', Array.from(galleryExpanded).join('|')); }
 
   function loadNiches(){
