@@ -4383,7 +4383,8 @@
 
   function itemCategory(it){ return it.category === 'logo' ? 'logo' : (it.category || '').toUpperCase(); }
   function inFolder(cat, folder){ return !!folder && (cat === folder || cat.indexOf(folder + '/') === 0); }
-  function topNiches(){ return niches.filter(n => n.indexOf('/') === -1); }
+  // TABOOLA is a top folder of the gallery (one tree per traffic source), not a niche of the NewsBreak flows
+  function topNiches(){ return niches.filter(n => n.indexOf('/') === -1 && n !== 'TABOOLA'); }
   function folderLabel(code){
     if (code === 'logo') return 'Logos';
     if (code === 'CREATIVE') return 'Sem pasta (antigo)';
