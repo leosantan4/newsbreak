@@ -3150,7 +3150,7 @@
     document.getElementById('campOtherPanel').hidden = src.connected;
     if (!src.connected){
       document.getElementById('campOtherHead').textContent = 'Campanhas — ' + src.label;
-      document.getElementById('campOtherBody').textContent = 'A integração com ' + src.label + ' ainda não está conectada. Quando for, as campanhas dessa fonte aparecem aqui.';
+      if (tbReady()) renderSourcePanels(); else document.getElementById('campOtherBody').textContent = 'A integração com ' + src.label + ' ainda não está conectada. Quando for, as campanhas dessa fonte aparecem aqui.';
       return;
     }
     renderCampModeTabs();
