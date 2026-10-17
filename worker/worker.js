@@ -2047,24 +2047,6 @@ export default {
       return json({ configured: true, ok: okAny, status: okAny ? null : (data[0] && data[0].status) || null, accounts: data.flatMap((c) => c.accounts), connections: data }, 200, origin);
     }
 
-    // TEMPORARY read-only probe (GET only) to inspect the real Taboola account while modelling step B. REMOVE after use.
-    if (url.pathname === "/taboola/probe" && request.method === "GET") {
-      const key = request.headers.get("X-Access-Key");
-      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
-      const path = url.searchParams.get("path") || "";
-      if (!/^\/api\/1\.0\/[A-Za-z0-9_\-\/\.%]*$/.test(path)) return json({ error: "bad_path" }, 400, origin);
-      const conn = ((await loadConnections(env)).taboola || [])[0];
-      if (!conn) return json({ error: "no_connection" }, 400, origin);
-      const qs = new URLSearchParams(url.searchParams); qs.delete("path");
-      const full = path + (qs.toString() ? "?" + qs.toString() : "");
-      try {
-        const token = await taboolaToken(env, conn, false);
-        const r = await fetch(`${TABOOLA_BASE}${full}`, { headers: { Authorization: `Bearer ${token}`, Accept: "application/json" } });
-        const text = await r.text();
-        return new Response(JSON.stringify({ status: r.status, body: text.slice(0, 60000) }), { status: 200, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": origin || "*" } });
-      } catch (err) { return json({ error: String((err && err.message) || err) }, 502, origin); }
-    }
-
     if (url.pathname === "/connections" && request.method === "GET") {
       const key = request.headers.get("X-Access-Key");
       if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
