@@ -1160,6 +1160,20 @@
   .pill .src-dot.on{background:var(--good);}
   .pill .src-dot.part{background:#e0a300;}
   .pill.active .src-dot:not(.on):not(.part){background:color-mix(in srgb, var(--accent-ink) 35%, transparent);}
+  .integ-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:10px; padding:4px 18px 14px;}
+  .integ-card{display:flex; flex-direction:column; align-items:flex-start; gap:8px; text-align:left; padding:14px 16px; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface-raised); color:var(--ink); font:inherit; cursor:pointer; transition:border-color .12s, transform .12s;}
+  .integ-card:hover{border-color:var(--accent); transform:translateY(-1px);}
+  .integ-card-name{font-size:15px; font-weight:700;}
+  .integ-intro{font-size:13px; color:var(--muted); padding:0 18px 4px;}
+  .integ-detail-head{display:flex; align-items:center; gap:14px; padding:4px 18px 8px; flex-wrap:wrap;}
+  .integ-back{border:1px solid var(--line); background:var(--surface-raised); color:var(--ink); font:inherit; font-weight:600; font-size:12.5px; padding:6px 10px; border-radius:var(--radius-sm); cursor:pointer;}
+  .integ-detail-title{font-size:18px; font-weight:750;}
+  .integ-status{padding:0 18px 6px;}
+  .integ-subhead{font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); padding:14px 18px 6px; border-top:1px solid var(--line);}
+  .integ-pad{padding:0 18px 14px;}
+  .integ-form{display:flex; gap:8px; flex-wrap:wrap; align-items:center; padding:0 18px 16px;}
+  .integ-form input{flex:1 1 200px; min-width:0; padding:8px 10px; font-size:13.5px; border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--bg); color:var(--ink); font-family:inherit;}
+  .integ-form .integ-res{flex-basis:100%;}
   .integ-section{font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); padding:16px 18px 6px; border-top:1px solid var(--line);}
   .integ-sub{font-size:13px; font-weight:700; padding:12px 18px 2px;}
   .integ-note{font-size:12.5px; color:var(--muted); padding:0 18px 12px; line-height:1.5;}
@@ -1854,7 +1868,7 @@
         <section class="panel">
           <div class="step-head">
             <div class="step-head-left"><span class="step-title">Integrações</span></div>
-            <span class="step-desc">Cole aqui as chaves das ferramentas que alimentam o RASTRO. Elas ficam guardadas no servidor e <b>nunca aparecem inteiras</b> depois de salvas (só os 4 últimos caracteres). Uma chave salva aqui tem prioridade sobre a configurada na Cloudflare.</span>
+            <span class="step-desc">As ferramentas que alimentam o RASTRO. As chaves ficam guardadas no servidor e <b>nunca aparecem inteiras</b> depois de salvas (só os 4 últimos caracteres).</span>
           </div>
           <div id="integList"></div>
         </section>
@@ -2139,7 +2153,7 @@
   }
   function loadTaboolaState(){
     return fetch(TABOOLA_STATUS_API, { headers: { 'X-Access-Key': COSTS_API_KEY }, cache: 'no-store' }).then(r => r.json())
-      .then(j => { taboolaState = { configured: !!j.configured, ok: !!j.ok, status: j.status, accounts: j.accounts || [] }; renderCampSourcePills(); renderSourcePanels(); })
+      .then(j => { taboolaState = { configured: !!j.configured, ok: !!j.ok, status: j.status, accounts: j.accounts || [], connections: j.connections || [] }; renderCampSourcePills(); renderSourcePanels(); if (view === 'integracoes' && integOpen === 'taboola' && !document.activeElement.matches('#integList input')) renderIntegrations(); })
       .catch(() => {});
   }
 
@@ -3203,7 +3217,7 @@
     renderSourcePanels();
   }
 
-  document.querySelectorAll('.nav-item').forEach(btn => btn.addEventListener('click', () => { view = btn.dataset.view; savePref('view', view); renderAll(); if (view === 'rejeicoes') loadRejeicoes(); if (view === 'regras') loadRegras(); if (view === 'notificacoes') loadNotifs(); if (view === 'integracoes') loadIntegrations(); }));
+  document.querySelectorAll('.nav-item').forEach(btn => btn.addEventListener('click', () => { view = btn.dataset.view; savePref('view', view); renderAll(); if (view === 'rejeicoes') loadRejeicoes(); if (view === 'regras') loadRegras(); if (view === 'notificacoes') loadNotifs(); if (view === 'integracoes') { integOpen = null; loadIntegrations(); } }));
 
   document.getElementById('costDate').value = todayKey();
   document.getElementById('costForm').addEventListener('submit', (e) => {
@@ -3268,50 +3282,121 @@
 
 
 
-  // ---------- Integrações (chaves de API coladas no app) ----------
+  // ---------- Integrações (uma guia por ferramenta; várias contas por ferramenta quando faz sentido) ----------
   const INTEG_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/integrations';
-  let integData = [], integFlags = {};
+  const CONN_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/connections';
+  let integData = [], integFlags = {}, connData = { taboola: [] }, integOpen = null;
+  const INTEG_TOOLS = [
+    { key: 'newsbreak', name: 'NewsBreak', cat: 'Fonte de tráfego', kind: 'link' },
+    { key: 'taboola', name: 'Taboola', cat: 'Fonte de tráfego', kind: 'multi' },
+    { key: 'adskeeper', name: 'Adskeeper', cat: 'Fonte de tráfego', kind: 'soon' },
+    { key: 'revcontent', name: 'RevContent', cat: 'Fonte de tráfego', kind: 'soon' },
+    { key: 'outbrain', name: 'Outbrain', cat: 'Fonte de tráfego', kind: 'soon' },
+    { key: 'redtrack', name: 'RedTrack', cat: 'Vendas', kind: 'single', integKey: 'REDTRACK_API_KEY' },
+    { key: 'vturb', name: 'Vturb', cat: 'Vídeo', kind: 'single', integKey: 'VTURB_API_TOKEN' },
+  ];
   function integrationOn(k){ return !!integFlags[k]; }
   function integApi(path, method, body){
     return fetch(INTEG_API + (path || ''), { method: method || 'GET', cache: 'no-store', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY }, body: body ? JSON.stringify(body) : undefined })
       .then(r => r.json().then(j => { if (!r.ok) throw new Error(j.error || 'falhou'); return j; }));
   }
+  function connApi(path, method, body){
+    return fetch(CONN_API + (path || ''), { method: method || 'GET', cache: 'no-store', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY }, body: body ? JSON.stringify(body) : undefined })
+      .then(r => r.json().then(j => { if (!r.ok) throw new Error(j.error || 'falhou'); return j; }));
+  }
   function loadIntegrationFlags(){
     return integApi().then(j => { integFlags = {}; (j.integrations || []).forEach(i => { integFlags[i.key] = !!i.source; }); integData = j.integrations || []; }).catch(() => {});
   }
-  function loadIntegrations(){ return loadIntegrationFlags().then(renderIntegrations); }
+  function loadConnections(){ return connApi().then(j => { connData = { taboola: j.taboola || [] }; }).catch(() => {}); }
+  function loadIntegrations(){ return Promise.all([loadIntegrationFlags(), loadConnections()]).then(renderIntegrations); }
+  function integStatus(t){
+    if (t.kind === 'link') return { txt: 'Contas em "Contas"', cls: 'act' };
+    if (t.kind === 'soon') return { txt: 'Em breve', cls: '' };
+    if (t.kind === 'multi') { const n = (connData[t.key] || []).length; return n ? { txt: n + (n === 1 ? ' conta conectada' : ' contas conectadas'), cls: 'act' } : { txt: 'Não configurada', cls: 'warn' }; }
+    const i = integData.find(x => x.key === t.integKey);
+    return i && i.source ? { txt: i.source === 'server' ? 'Conectada (servidor)' : 'Conectada', cls: 'act' } : { txt: 'Não configurada', cls: 'warn' };
+  }
+  function integResultText(j){
+    return j.ok ? 'Funcionando ✓' + (j.detail ? ' · ' + j.detail : '') : (j.error === 'not_configured' || j.error === 'not_found' ? 'Sem chave configurada.' : 'A ferramenta recusou a chave' + (j.status ? ' (status ' + j.status + ')' : '') + '. Confira se colou certo.');
+  }
   function renderIntegrations(){
     const el = document.getElementById('integList');
     if (!el) return;
-    const rowHtml = (i) => {
-      const st = i.source === 'app' ? '<span class="rule-chip act">Configurada neste app · ••••' + ccEsc(i.tail || '') + '</span>' : i.source === 'server' ? '<span class="rule-chip">Configurada no servidor (Cloudflare)</span>' : '<span class="rule-chip warn">Não configurada</span>';
-      return '<div class="integ-row"><div><div class="rule-name">' + ccEsc(i.label) + '</div><div class="rule-line">' + ccEsc(i.hint) + '</div><div class="rule-line">' + st + '</div></div>' +
-        '<div class="integ-actions"><input type="password" autocomplete="off" placeholder="' + (i.source ? 'Colar uma chave nova' : 'Cole a chave aqui') + '" data-integ-input="' + ccEsc(i.key) + '">' +
-        '<button type="button" class="rej-edit-btn" data-integ-save="' + ccEsc(i.key) + '">Salvar</button>' +
-        '<button type="button" data-integ-test="' + ccEsc(i.key) + '"' + (i.source ? '' : ' disabled') + '>Testar</button>' +
-        (i.source === 'app' ? '<button type="button" class="danger" data-integ-del="' + ccEsc(i.key) + '">Remover</button>' : '') +
-        '<span class="cell-muted integ-res" data-integ-res="' + ccEsc(i.key) + '"></span></div></div>';
-    };
-    const tab = integData.filter(i => /^TABOOLA_/.test(i.key)), tools = integData.filter(i => !/^TABOOLA_/.test(i.key));
-    el.innerHTML = integData.length ?
-      '<div class="integ-section">Fontes de tráfego</div>' +
-      '<div class="integ-sub">NewsBreak</div><div class="integ-note">Os tokens das contas da NewsBreak ficam em <b>Contas</b> (cada conta tem o seu).</div>' +
-      '<div class="integ-sub">Taboola</div>' + tab.map(rowHtml).join('') +
-      TRAFFIC_SOURCES.filter(x => ['adskeeper', 'revcontent', 'outbrain'].indexOf(x.key) !== -1).map(x => '<div class="integ-sub">' + ccEsc(x.label) + '</div><div class="integ-note">Em breve. Quando a integração com ' + ccEsc(x.label) + ' for construída, as chaves entram aqui.</div>').join('') +
-      '<div class="integ-section">Ferramentas (vendas e vídeo)</div>' + tools.map(rowHtml).join('')
-      : '<div class="empty-state">Carregando…</div>';
+    const tool = INTEG_TOOLS.find(t => t.key === integOpen);
+    if (!tool) {
+      const cats = []; INTEG_TOOLS.forEach(t => { if (cats.indexOf(t.cat) === -1) cats.push(t.cat); });
+      el.innerHTML = '<div class="integ-intro">Clique numa ferramenta para ver as contas dela e adicionar novas.</div>' + cats.map(c =>
+        '<div class="integ-section">' + ccEsc(c) + '</div><div class="integ-grid">' + INTEG_TOOLS.filter(t => t.cat === c).map(t => {
+          const st = integStatus(t);
+          return '<button type="button" class="integ-card" data-integ-open="' + t.key + '"><span class="integ-card-name">' + ccEsc(t.name) + '</span><span class="rule-chip ' + st.cls + '">' + ccEsc(st.txt) + '</span></button>';
+        }).join('') + '</div>').join('');
+      el.querySelectorAll('[data-integ-open]').forEach(b => b.addEventListener('click', () => { integOpen = b.dataset.integOpen; renderIntegrations(); }));
+      return;
+    }
+    const head = '<div class="integ-detail-head"><button type="button" class="integ-back" data-integ-back>← Integrações</button><span class="integ-detail-title">' + ccEsc(tool.name) + '</span></div>';
+    const st = integStatus(tool);
+    let body = '';
+    if (tool.kind === 'link') {
+      body = '<div class="integ-note">Os tokens da NewsBreak ficam por conta (cada conta tem o seu), na tela <b>Contas</b>. Lá você vê as que já existem e adiciona novas.</div><div class="integ-pad"><button type="button" class="rej-edit-btn" data-integ-goto="contas">Abrir Contas</button></div>';
+    } else if (tool.kind === 'soon') {
+      body = '<div class="integ-note">Em breve. Quando a integração com ' + ccEsc(tool.name) + ' for construída, você adiciona as contas aqui, uma por uma.</div>';
+    } else if (tool.kind === 'multi') {
+      const list = connData[tool.key] || [], state = (taboolaState.connections || []);
+      body = '<div class="integ-subhead">Contas conectadas</div>' + (list.length ? list.map(c => {
+        const sc = state.find(x => x.id === c.id);
+        const found = sc && sc.ok && sc.accounts.length ? '<div class="rule-line">' + sc.accounts.length + ' conta(s) de anúncio: ' + ccEsc(sc.accounts.slice(0, 4).map(a => a.name).join(', ')) + (sc.accounts.length > 4 ? '…' : '') + '</div>' : (sc && !sc.ok ? '<div class="rule-line"><span class="rule-chip warn">O Taboola não aceitou' + (sc.status ? ' (status ' + sc.status + ')' : '') + '</span></div>' : '');
+        return '<div class="integ-row"><div><div class="rule-name">' + ccEsc(c.name) + '</div><div class="rule-line">Client ID ••••' + ccEsc(c.clientIdTail) + '</div>' + found + '</div>' +
+          '<div class="integ-actions"><button type="button" data-conn-test="' + ccEsc(c.id) + '">Testar</button><button type="button" class="danger" data-conn-del="' + ccEsc(c.id) + '" data-conn-name="' + ccEsc(c.name) + '">Remover</button><span class="cell-muted integ-res" data-conn-res="' + ccEsc(c.id) + '"></span></div></div>';
+      }).join('') : '<div class="integ-note">Nenhuma conta conectada ainda.</div>') +
+      '<div class="integ-subhead">Adicionar conta</div><div class="integ-note">O Client ID e o Client Secret vêm do seu gerente de conta do Taboola (Backstage API). O nome é só pra você reconhecer.</div>' +
+      '<div class="integ-form"><input type="text" id="connName" placeholder="Nome (ex.: Taboola principal)" maxlength="60" autocomplete="off"><input type="text" id="connId" placeholder="Client ID" autocomplete="off"><input type="password" id="connSecret" placeholder="Client Secret" autocomplete="off"><button type="button" class="rej-edit-btn" id="connAdd">Salvar e testar</button><span class="cell-muted integ-res" id="connAddRes"></span></div>';
+    } else {
+      const i = integData.find(x => x.key === tool.integKey) || {};
+      const chip = i.source === 'app' ? '<span class="rule-chip act">Configurada neste app · ••••' + ccEsc(i.tail || '') + '</span>' : i.source === 'server' ? '<span class="rule-chip">Configurada no servidor (Cloudflare)</span>' : '<span class="rule-chip warn">Não configurada</span>';
+      body = '<div class="integ-subhead">Conta conectada</div><div class="integ-row"><div><div class="rule-name">' + ccEsc(tool.name) + '</div><div class="rule-line">' + ccEsc(i.hint || '') + '</div><div class="rule-line">' + chip + '</div></div>' +
+        '<div class="integ-actions"><input type="password" autocomplete="off" placeholder="' + (i.source ? 'Colar uma chave nova' : 'Cole a chave aqui') + '" data-integ-input="' + ccEsc(tool.integKey) + '">' +
+        '<button type="button" class="rej-edit-btn" data-integ-save="' + ccEsc(tool.integKey) + '">Salvar</button>' +
+        '<button type="button" data-integ-test="' + ccEsc(tool.integKey) + '"' + (i.source ? '' : ' disabled') + '>Testar</button>' +
+        (i.source === 'app' ? '<button type="button" class="danger" data-integ-del="' + ccEsc(tool.integKey) + '">Remover</button>' : '') +
+        '<span class="cell-muted integ-res" data-integ-res="' + ccEsc(tool.integKey) + '"></span></div></div>' +
+        '<div class="integ-note">Por enquanto o app usa uma conta de ' + ccEsc(tool.name) + '. Várias contas entram quando o painel precisar somar mais de uma.</div>';
+    }
+    el.innerHTML = head + '<div class="integ-status">' + '<span class="rule-chip ' + st.cls + '">' + ccEsc(st.txt) + '</span></div>' + body;
+    el.querySelector('[data-integ-back]').addEventListener('click', () => { integOpen = null; renderIntegrations(); });
+    const go = el.querySelector('[data-integ-goto]');
+    if (go) go.addEventListener('click', () => { view = go.dataset.integGoto; savePref('view', view); renderAll(); });
+    // ---- Taboola (várias contas) ----
+    const cres = (id, t) => { const o = el.querySelector('[data-conn-res="' + id + '"]'); if (o) o.textContent = t; };
+    el.querySelectorAll('[data-conn-test]').forEach(b => b.addEventListener('click', () => {
+      const id = b.dataset.connTest; cres(id, 'Testando…');
+      connApi('/test', 'POST', { tool: 'taboola', id }).then(j => { cres(id, integResultText(j)); loadTaboolaState(); }).catch(() => cres(id, 'Sem conexão com o servidor.'));
+    }));
+    el.querySelectorAll('[data-conn-del]').forEach(b => b.addEventListener('click', () => {
+      if (confirm('Remover a conta "' + b.dataset.connName + '" do Taboola deste app? As chaves dela serão apagadas aqui.')) connApi('/' + encodeURIComponent(b.dataset.connDel), 'DELETE').then(() => loadConnections()).then(() => loadTaboolaState()).then(renderIntegrations);
+    }));
+    const add = el.querySelector('#connAdd');
+    if (add) add.addEventListener('click', () => {
+      const out = el.querySelector('#connAddRes'), name = el.querySelector('#connName').value.trim(), cid = el.querySelector('#connId').value.trim(), sec = el.querySelector('#connSecret').value.trim();
+      if (!name || !cid || !sec) { out.textContent = 'Preencha o nome, o Client ID e o Client Secret.'; return; }
+      out.textContent = 'Salvando…'; add.disabled = true;
+      connApi('', 'POST', { tool: 'taboola', name, clientId: cid, clientSecret: sec }).then(r => {
+        out.textContent = 'Salva. Testando…';
+        return connApi('/test', 'POST', { tool: 'taboola', id: r.connection.id }).then(j => ({ j, id: r.connection.id }));
+      }).then(({ j }) => loadConnections().then(() => loadTaboolaState()).then(() => { renderIntegrations(); const o = document.getElementById('connAddRes'); if (o) o.textContent = 'Conta adicionada. ' + integResultText(j); }))
+        .catch(e => { add.disabled = false; out.textContent = e.message === 'value_invalid' ? 'ID ou Secret inválido (tamanho ou espaços).' : e.message === 'too_many' ? 'Limite de contas atingido.' : friendlyError(e.message); });
+    });
+    // ---- ferramentas de chave única ----
     const res = (k, t) => { const o = el.querySelector('[data-integ-res="' + k + '"]'); if (o) o.textContent = t; };
     el.querySelectorAll('[data-integ-save]').forEach(b => b.addEventListener('click', () => {
       const k = b.dataset.integSave, input = el.querySelector('[data-integ-input="' + k + '"]'), v = input.value.trim();
       if (!v) { res(k, 'Cole a chave primeiro.'); return; }
       res(k, 'Salvando…');
-      integApi('', 'POST', { key: k, value: v }).then(() => { input.value = ''; return loadIntegrationFlags(); }).then(() => { renderIntegrations(); loadVturb(); loadMapaVendas(); loadLivePainel(); loadTaboolaState(); setTimeout(() => res(k, 'Salva. Clique em Testar pra conferir.'), 50); })
+      integApi('', 'POST', { key: k, value: v }).then(() => { input.value = ''; return loadIntegrationFlags(); }).then(() => { renderIntegrations(); loadVturb(); loadMapaVendas(); loadLivePainel(); setTimeout(() => res(k, 'Salva. Clique em Testar pra conferir.'), 50); })
         .catch(e => res(k, e.message === 'value_invalid' ? 'Chave inválida (tamanho ou espaços).' : friendlyError(e.message)));
     }));
     el.querySelectorAll('[data-integ-test]').forEach(b => b.addEventListener('click', () => {
       const k = b.dataset.integTest; res(k, 'Testando…');
-      integApi('/test', 'POST', { key: k }).then(j => res(k, j.ok ? 'Funcionando ✓' + (j.detail ? ' · ' + j.detail : '') : (j.error === 'not_configured' ? 'Sem chave configurada.' : j.error === 'taboola_needs_both' ? 'Preencha o Client ID e o Client Secret do Taboola, e teste de novo.' : 'A ferramenta recusou a chave' + (j.status ? ' (status ' + j.status + ')' : '') + '. Confira se colou certo.')))
-        .catch(() => res(k, 'Sem conexão com o servidor.'));
+      integApi('/test', 'POST', { key: k }).then(j => res(k, integResultText(j))).catch(() => res(k, 'Sem conexão com o servidor.'));
     }));
     el.querySelectorAll('[data-integ-del]').forEach(b => b.addEventListener('click', () => {
       const k = b.dataset.integDel;
