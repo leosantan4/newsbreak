@@ -2202,6 +2202,7 @@
 
   let libraryItems = [];
   let niches = [];
+  const NB_ROOT = 'NEWSBREAK', SOURCE_ROOTS = ['NEWSBREAK', 'TABOOLA']; // declared here (not next to topNiches): renderAll runs before the gallery code
   let view = loadPref('view', 'painel');
   let criarSource = null;
   let scope = loadPref('scope', 'geral');
@@ -4746,8 +4747,15 @@
 
   function itemCategory(it){ return it.category === 'logo' ? 'logo' : (it.category || '').toUpperCase(); }
   function inFolder(cat, folder){ return !!folder && (cat === folder || cat.indexOf(folder + '/') === 0); }
-  // TABOOLA is a top folder of the gallery (one tree per traffic source), not a niche of the NewsBreak flows
-  function topNiches(){ return niches.filter(n => n.indexOf('/') === -1 && n !== 'TABOOLA'); }
+  // One top folder per traffic source in the gallery (NEWSBREAK, TABOOLA). NewsBreak flows keep using the bare niche code
+  // (ED, HL...); `nicheFolder(code)` is that niche's folder path. Works before the migration too (flat folders).
+  function nbRooted(){ return niches.indexOf(NB_ROOT) !== -1; }
+  function topNiches(){
+    return nbRooted()
+      ? niches.filter(n => n.indexOf(NB_ROOT + '/') === 0 && n.split('/').length === 2).map(n => n.slice(NB_ROOT.length + 1))
+      : niches.filter(n => n.indexOf('/') === -1 && SOURCE_ROOTS.indexOf(n) === -1);
+  }
+  function nicheFolder(code){ return nbRooted() && code ? NB_ROOT + '/' + code : code; }
   function folderLabel(code){
     if (code === 'logo') return 'Logos';
     if (code === 'CREATIVE') return 'Sem pasta (antigo)';
@@ -4793,6 +4801,7 @@
     const clean = code.trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12);
     if (!clean) { note.textContent = 'Digite um nome pra pasta (ex: ED).'; return; }
     const parent = galleryOpenFolder && galleryOpenFolder !== 'logo' ? galleryOpenFolder : '';
+    if (!parent && nbRooted()) { note.textContent = 'Abra a pasta NEWSBREAK ou TABOOLA e crie a pasta lá dentro.'; return; }
     note.textContent = 'Criando…';
     fetch(NICHES_API, {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY },
@@ -4821,7 +4830,7 @@
           return;
         }
         niches = json.niches || niches;
-        if (selectedNiche === folder) { selectedNiche = ''; savePref('ccNiche', ''); }
+        if (selectedNiche && nicheFolder(selectedNiche) === folder) { selectedNiche = ''; savePref('ccNiche', ''); }
         note.textContent = '';
         const up = folder.indexOf('/') === -1 ? null : folder.slice(0, folder.lastIndexOf('/'));
         renderNicheSelect();
@@ -5057,7 +5066,7 @@
       niches = json.niches || niches;
       libraryItems = json.items || libraryItems;
       if (galleryOpenFolder) galleryOpenFolder = remapPath(galleryOpenFolder, path, to);
-      if (selectedNiche && (selectedNiche === path || selectedNiche.indexOf(path + '/') === 0)) { selectedNiche = ''; savePref('ccNiche', ''); }
+      if (selectedNiche && (nicheFolder(selectedNiche) === path || (nicheFolder(selectedNiche) + '/').indexOf(path + '/') === 0)) { selectedNiche = ''; savePref('ccNiche', ''); }
       galleryExpanded = new Set(Array.from(galleryExpanded).map(c => remapPath(c, path, to)));
       if (parent) galleryExpanded.add(parent);
       saveExpanded();
@@ -5434,7 +5443,7 @@
       selectAllBtn.hidden = true;
       return;
     }
-    const shown = libraryItems.filter(it => inFolder(itemCategory(it), selectedNiche) && it.name.toLowerCase().indexOf(q) !== -1).slice().reverse();
+    const shown = libraryItems.filter(it => inFolder(itemCategory(it), nicheFolder(selectedNiche)) && it.name.toLowerCase().indexOf(q) !== -1).slice().reverse();
     note.textContent = shown.length + ' resultado(s) na pasta ' + selectedNiche + ' pra "' + mediaSearchQuery.trim() + '"';
     if (!shown.length){
       grid.innerHTML = '<div class="empty-state">Nenhum anúncio encontrado na pasta ' + selectedNiche + ' pra "' + mediaSearchQuery.trim() + '". Confira o nome na Galeria.</div>';
@@ -5610,7 +5619,7 @@
 
   function renderMediaDatalist(){
     const dl = document.getElementById('mediaNamesList');
-    const pool = selectedNiche ? libraryItems.filter(it => inFolder(itemCategory(it), selectedNiche)) : [];
+    const pool = selectedNiche ? libraryItems.filter(it => inFolder(itemCategory(it), nicheFolder(selectedNiche))) : [];
     dl.innerHTML = pool.map(it => '<option value="' + it.name.replace(/"/g, '&quot;') + '">').join('');
   }
 
@@ -5623,7 +5632,7 @@
     if (e.key !== 'Enter') return;
     const typed = mediaSearchQuery.trim().toLowerCase();
     if (!typed || !selectedNiche) return;
-    const pool = libraryItems.filter(it => inFolder(itemCategory(it), selectedNiche));
+    const pool = libraryItems.filter(it => inFolder(itemCategory(it), nicheFolder(selectedNiche)));
     const matches = pool.filter(it => it.name.toLowerCase().indexOf(typed) !== -1);
     const match = matches.length === 1 ? matches[0] : pool.find(it => it.name.toLowerCase() === typed);
     if (match) {
