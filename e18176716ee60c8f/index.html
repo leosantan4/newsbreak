@@ -77,6 +77,7 @@
 
   .content{flex:1; min-width:0; max-width:1160px; margin:0 auto; padding:28px 24px 60px;}
   .content.wide{max-width:1320px;}
+  .content.full{max-width:none;}
 
   header{display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:22px; flex-wrap:wrap;}
   header h1{font-size:22px; font-weight:700; margin:0 0 4px; letter-spacing:-.01em;}
@@ -352,7 +353,18 @@
   .camp-table-bar{display:flex; flex-wrap:wrap; gap:10px 14px; align-items:center; padding:4px 0 12px;}
   .camp-table-bar .tabs{margin:0;}
   .camp-table-bar select.camp-search{width:auto; max-width:240px;}
-  .ctable{min-width:1180px;}
+  .ctable{table-layout:fixed; width:100%; border-collapse:collapse;}
+  .ctable th, .ctable td{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .ctable thead th{position:relative;}
+  .ctable thead th[draggable=true]{cursor:grab;}
+  .ctable thead th.drag-over{box-shadow:inset 3px 0 0 var(--accent);}
+  .ctable thead th.dragging{opacity:.4;}
+  .ctable thead th.spacer, .ctable tbody td.spacer, .ctable tfoot td.spacer{padding:0; border:none;}
+  .col-rs{position:absolute; top:0; right:0; width:7px; height:100%; cursor:col-resize; z-index:2;}
+  .col-rs:hover, .col-rs.on{background:color-mix(in srgb, var(--accent) 45%, transparent);}
+  body.col-resizing{cursor:col-resize; user-select:none;}
+  .ctable-name-link{background:none; border:none; padding:0; font:inherit; font-weight:600; color:var(--ink); cursor:pointer; text-align:left; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:block;}
+  .ctable-name-link:hover{color:var(--accent); text-decoration:underline;}
   .ctable th, .ctable td{padding:8px 10px;}
   .ctable thead th{cursor:pointer; user-select:none;}
   .ctable thead th.l, .ctable tbody td.l, .ctable tfoot td.l{text-align:left;}
@@ -362,8 +374,9 @@
   .ctable tbody tr.is-off td{background:color-mix(in srgb, var(--bad) 6%, transparent);}
   .ctable tfoot td{font-weight:700; border-top:1px solid var(--line); padding-top:10px;}
   .ctable-ident{display:flex; align-items:center; gap:10px;}
-  .ctable-name{font-weight:600; font-size:13px; white-space:normal; max-width:260px;}
-  .ctable-sub{font-size:11px; color:var(--muted); font-weight:400; white-space:normal; max-width:260px;}
+  .ctable-ident > div{min-width:0;}
+  .ctable-name{font-weight:600; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .ctable-sub{font-size:11px; color:var(--muted); font-weight:400; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   .ctable-thumb{width:44px; height:58px; object-fit:cover; border-radius:6px; background:var(--neutral-bg); display:block; flex:none;}
   .budget-actions{display:inline-flex; align-items:center; gap:6px; margin-left:6px;}
   .budget-actions[hidden]{display:none;}
@@ -780,6 +793,18 @@
     <div class="side-drawer-body" id="rulesDrawerBody"></div>
   </aside>
 
+  <div class="assign-sheet" id="ctDelSheet" hidden>
+    <div class="assign-sheet-card" role="dialog" aria-modal="true">
+      <div class="assign-sheet-title" id="ctDelTitle">Excluir</div>
+      <div class="rej-summary" id="ctDelWhat"></div>
+      <div class="rej-summary" style="color:var(--bad);font-weight:600;">Isso apaga na NewsBreak e <b>não dá pra desfazer</b>. Excluir uma campanha pode apagar também o que está dentro dela.</div>
+      <label class="notif-add-label">Digite <b>EXCLUIR</b> pra confirmar <input type="text" id="ctDelInput" autocomplete="off" placeholder="EXCLUIR"></label>
+      <div class="rej-log" id="ctDelLog"></div>
+      <button type="button" class="assign-sheet-close ct-del-confirm" id="ctDelGo" disabled>Excluir definitivamente</button>
+      <button type="button" class="rename-cancel" id="ctDelCancel">Cancelar</button>
+    </div>
+  </div>
+
   <div class="assign-sheet" id="rejSheet" hidden>
     <div class="assign-sheet-card rej-card" role="dialog" aria-modal="true">
       <div class="assign-sheet-title" id="rejSheetTitle">Editar anúncios</div>
@@ -887,13 +912,30 @@
       <section class="panel" id="campNbPanel">
         <div class="panel-head">
           <h2 id="campStatsHead">Campanhas</h2>
-          <div class="panel-head-right">
-            <div class="tabs" id="campModeTabs" style="margin:0;"></div>
-            <input type="text" id="campSearchInput" class="camp-search" placeholder="Buscar campanha…">
-            <div class="tabs" id="campFilterTabs" style="margin:0;"></div>
-          </div>
+          <div class="panel-head-right"><span class="cell-muted" id="ctLoadMsg"></span></div>
         </div>
-        <p class="dre-intro" id="campIntro">Uma campanha só conta como <b>ativa de verdade</b> quando a campanha, pelo menos um conjunto e pelo menos um anúncio dentro dele estão todos ligados. "Liga mas não entrega" é quando o botão tá ON só na campanha, mas nada por dentro está rodando. Clique numa campanha pra ver os conjuntos de anúncios; clique num conjunto pra ver os anúncios. Dá pra pausar/ativar e mudar orçamento direto aqui.</p>
+        <div class="ct-toolbar">
+          <input type="text" id="campSearchInput" class="camp-search ct-search" placeholder="Buscar por nome ou ID…">
+          <select id="ctPeriod" class="camp-search" title="Período das métricas">
+            <option value="TODAY">Hoje</option><option value="YESTERDAY">Ontem</option><option value="LAST_3_DAYS">Últimos 3 dias</option>
+            <option value="LAST_7_DAYS">Últimos 7 dias</option><option value="LAST_14_DAYS">Últimos 14 dias</option><option value="LAST_30_DAYS">Últimos 30 dias</option><option value="MONTH_TO_DATE">Este mês</option>
+          </select>
+          <select id="ctStatus" class="camp-search" title="Status">
+            <option value="all">Todos os status</option><option value="active">Ativos</option><option value="inactive">Inativos</option>
+            <option value="rejected">Recusados</option><option value="review">Em análise</option><option value="completed">Concluídos</option>
+          </select>
+          <select id="campAccSel" class="camp-search" title="Conta"></select>
+          <select id="ctNiche" class="camp-search" title="Nicho"></select>
+          <div class="ct-cols-wrap"><button type="button" class="select-all-btn" id="ctColsBtn">Colunas</button><div class="ct-cols-panel" id="ctColsPanel" hidden></div></div>
+        </div>
+        <div class="ct-bulk" id="ctBulk" hidden>
+          <b id="ctBulkCount"></b>
+          <button type="button" class="select-all-btn" id="ctBulkOn">Ativar</button>
+          <button type="button" class="select-all-btn" id="ctBulkOff">Pausar</button>
+          <button type="button" class="select-all-btn danger" id="ctBulkDel">Excluir</button>
+          <button type="button" class="select-all-btn" id="ctBulkClear">Limpar seleção</button>
+          <span class="cell-muted" id="ctBulkMsg"></span>
+        </div>
         <div class="camp-wrap" id="campWrap"></div>
       </section>
     </div>
@@ -1211,6 +1253,33 @@
   .integ-section{font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); padding:16px 18px 6px; border-top:1px solid var(--line);}
   .integ-sub{font-size:13px; font-weight:700; padding:12px 18px 2px;}
   .integ-note{font-size:12.5px; color:var(--muted); padding:0 18px 12px; line-height:1.5;}
+  /* ===== Campanhas v2 (3 abas, estilo gerenciador da NewsBreak) ===== */
+  .ct-toolbar{display:flex; flex-wrap:wrap; gap:8px 10px; align-items:center; padding:4px 18px 12px;}
+  .ct-toolbar select.camp-search{width:auto; max-width:200px;}
+  .ct-search{flex:1 1 220px; min-width:160px;}
+  .ct-cols-wrap{position:relative;}
+  .ct-cols-panel{position:absolute; right:0; top:calc(100% + 6px); z-index:30; width:min(300px, 90vw); max-height:60vh; overflow-y:auto; background:var(--surface-raised); border:1px solid var(--line); border-radius:12px; box-shadow:0 12px 32px -8px rgba(0,0,0,.45); padding:10px 12px;}
+  .ct-cols-panel[hidden]{display:none;}
+  .ct-cols-title{font-size:11px; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); font-weight:700; margin:6px 0;}
+  .ct-col-row{display:flex; justify-content:space-between; align-items:center; gap:8px; padding:3px 0; font-size:13px;}
+  .ct-col-row label{display:flex; gap:7px; align-items:center; cursor:pointer;}
+  .ct-col-row input{accent-color:var(--accent);}
+  .ct-col-row button{border:1px solid var(--line); background:var(--surface-raised); color:var(--ink); border-radius:6px; padding:1px 7px; cursor:pointer; font-size:12px;}
+  .ct-col-row button:disabled{opacity:.35; cursor:default;}
+  .ct-bulk{display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:8px 18px; margin:0 18px 8px; background:color-mix(in srgb, var(--accent) 10%, var(--neutral-bg)); border-radius:10px; font-size:13px;}
+  .ct-bulk[hidden]{display:none;}
+  .select-all-btn.danger{color:var(--bad);}
+  .select-all-btn.danger:hover{border-color:var(--bad);}
+  .ct-tabbar{display:flex; flex-wrap:wrap; gap:8px 12px; align-items:center; padding:0 18px 10px;}
+  .ct-tabbar .tabs{margin:0;}
+  .ct-chip{display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600; padding:3px 6px 3px 10px; border-radius:999px; background:var(--neutral-bg); color:var(--ink);}
+  .ct-chip button{border:none; background:none; color:var(--muted); cursor:pointer; padding:0 4px; font-size:13px;}
+  .ctable input[type=checkbox]{accent-color:var(--accent);}
+  .ct-budget input.adset-budget-input{width:74px;}
+  .ct-del-confirm{background:var(--bad); color:#fff;}
+  .ct-del-confirm:disabled{opacity:.45;}
+  .notif-add-label{display:flex; flex-direction:column; gap:4px; font-size:12px; font-weight:600; margin:10px 0; color:var(--muted);}
+  .notif-add-label input{padding:9px 10px; font-size:14px; border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--bg); color:var(--ink); font-family:inherit; text-transform:none;}
 </style>
 </defs>
 
@@ -2132,6 +2201,7 @@
   applyNavCollapsed(loadPref('navCollapsed', '') === '1');
 
   let libraryItems = [];
+  let niches = [];
   let view = loadPref('view', 'painel');
   let criarSource = null;
   let scope = loadPref('scope', 'geral');
@@ -2731,6 +2801,7 @@
     document.getElementById('integracoesView').hidden = view !== 'integracoes';
     document.getElementById('contasView').hidden = view !== 'contas';
     document.getElementById('mainContent').classList.toggle('wide', view === 'criar' || view === 'galeria');
+    document.getElementById('mainContent').classList.toggle('full', view === 'campanhas');
   }
 
   function vturbBreakdown(list){
@@ -3151,26 +3222,84 @@
     }
   }
 
-  let campMode = loadPref('campMode', 'tree');
-  let campTab = loadPref('campTab', 'ads');
-  let campStatusF = loadPref('campStatusF', 'all');
-  let campAccF = loadPref('campAccF', 'all');
+  // ---------- Campanhas: 3 abas (Campanhas / Conjuntos / Anúncios) no estilo do gerenciador da NewsBreak ----------
+  const METRICS_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/metrics';
+  const NB_ENTITY_DELETE_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/nb/entity-delete';
+  let campTab = loadPref('campTab', 'campaigns');
+  if (['campaigns', 'adsets', 'ads'].indexOf(campTab) === -1) campTab = 'campaigns';
+  let ctPeriod = 'TODAY';              // always starts on "Hoje"
+  let ctStatusF = 'all', campAccF = 'all', ctNicheF = 'all';
   let campSort = { key: 'cost', dir: -1 };
+  let ctSel = { campaigns: new Set(), adsets: new Set(), ads: new Set() };
+  let ctMetrics = {};                  // range -> { data, ts }
 
   const AUDIT_LABEL = { REJECTED: 'Reprovado', DISAPPROVED: 'Reprovado', IN_REVIEW: 'Em revisão', PENDING: 'Em revisão', UNDER_REVIEW: 'Em revisão' };
+  const CT_PERIOD_LABEL = { TODAY: 'hoje', YESTERDAY: 'ontem', LAST_3_DAYS: 'os últimos 3 dias', LAST_7_DAYS: 'os últimos 7 dias', LAST_14_DAYS: 'os últimos 14 dias', LAST_30_DAYS: 'os últimos 30 dias', MONTH_TO_DATE: 'este mês' };
+  const fmtInt = v => Math.round(v).toLocaleString('pt-BR');
+  const CT_CATALOG = {
+    budget: { label: 'Orçamento/dia', fmt: fmtUSD },
+    cost: { label: 'Gasto', fmt: fmtUSD },
+    fat: { label: 'Valor de conversão', fmt: fmtUSD },
+    ic: { label: 'IC (checkouts)', fmt: fmtInt },
+    custoIc: { label: 'Custo por IC', fmt: fmtUSD },
+    venda: { label: 'Conversões (vendas)', fmt: fmtInt },
+    cpa: { label: 'CPA', fmt: fmtUSD },
+    click: { label: 'Cliques', fmt: fmtInt },
+    cpc: { label: 'CPC', fmt: fmtUSD },
+    ctr: { label: 'CTR', fmt: v => v.toFixed(2) + '%' },
+    cpm: { label: 'CPM', fmt: fmtUSD },
+    impr: { label: 'Impressões', fmt: fmtInt },
+    roas: { label: 'ROAS', fmt: v => v.toFixed(2) + 'x' },
+  };
+  // default = the user's NewsBreak "LS" preset
+  const CT_DEFAULT_COLS = ['budget', 'cost', 'fat', 'ic', 'custoIc', 'venda', 'cpa', 'click', 'cpc', 'ctr', 'cpm'];
+  let ctCols = (() => { try { const a = JSON.parse(loadPref('ctCols', 'null')); const ok = Array.isArray(a) ? a.filter(k => CT_CATALOG[k]) : []; return ok.length ? ok : CT_DEFAULT_COLS.slice(); } catch { return CT_DEFAULT_COLS.slice(); } })();
+  function saveCtCols(){ savePref('ctCols', JSON.stringify(ctCols)); }
+  // column layout: one ordered list holding every draggable column (context/account/status + metrics)
+  const CT_FIXED = { ctx: 'Campanha', conta: 'Conta', status: 'Status' };
+  const CT_DEF_W = { name: 340, ctx: 220, conta: 90, status: 160, budget: 130, cost: 100, fat: 150, ic: 120, custoIc: 110, venda: 160, cpa: 90, click: 80, cpc: 80, ctr: 80, cpm: 90, impr: 110, roas: 80 };
+  let ctOrder = (() => { try { const a = JSON.parse(loadPref('ctOrder', 'null')); return Array.isArray(a) ? a : []; } catch { return []; } })();
+  let ctWidths = (() => { try { const o = JSON.parse(loadPref('ctWidths', 'null')); return o && typeof o === 'object' ? o : {}; } catch { return {}; } })();
+  function ctW(k){ return Math.max(50, Math.round(ctWidths[k] || CT_DEF_W[k] || 100)); }
+  // the full order (also keeps columns that are hidden in the current tab, so they keep their place)
+  function ctFullOrder(){
+    const base = ['ctx', 'conta', 'status'].concat(ctCols);
+    const out = ctOrder.filter(k => base.indexOf(k) !== -1);
+    base.forEach(k => { if (out.indexOf(k) === -1) out.push(k); });
+    return out;
+  }
+  function ctVisibleOrder(){ return ctFullOrder().filter(k => !(k === 'ctx' && campTab === 'campaigns') && !(k === 'budget' && campTab === 'ads')); }
+  function ctSaveOrder(full){
+    ctOrder = full; savePref('ctOrder', JSON.stringify(full));
+    ctCols = full.filter(k => CT_CATALOG[k]); saveCtCols();
+  }
+
+  function ctNicheOf(name){
+    const n = String(name || '').split(' - ')[0].trim().toUpperCase();
+    return topNiches().indexOf(n) !== -1 ? n : '';
+  }
+  function ctRowMetrics(type, o){
+    if (ctPeriod === 'TODAY') {
+      return { cost: o.todayCost, ic: o.todayIc, custoIc: o.todayCustoIc, venda: o.todayVenda, fat: o.todayFat, cpa: o.todayCpa, impr: o.todayImpr, cpm: o.todayCpm, click: o.todayClick, cpc: o.todayCpc, ctr: o.todayCtr,
+        roas: (o.todayFat != null && o.todayCost) ? o.todayFat / o.todayCost : null };
+    }
+    const m = ctMetrics[ctPeriod] && ctMetrics[ctPeriod].data;
+    if (!m) return {};
+    const d = (m[type] || {})[o.id] || { cost: 0, ic: 0, custoIc: null, venda: 0, faturamento: 0, cpa: null, impression: 0, cpm: null, click: 0, cpc: 0, ctr: 0, roas: null };
+    return { cost: d.cost, ic: d.ic, custoIc: d.custoIc, venda: d.venda, fat: d.faturamento, cpa: d.cpa, impr: d.impression, cpm: d.cpm, click: d.click, cpc: d.cpc, ctr: d.ctr, roas: d.roas };
+  }
 
   function flattenCampData(){
     const rows = { campaigns: [], adsets: [], ads: [] };
-    const metrics = (o) => ({ cost: o.todayCost, ic: o.todayIc, custoIc: o.todayCustoIc, venda: o.todayVenda, fat: o.todayFat, cpa: o.todayCpa, impr: o.todayImpr, cpm: o.todayCpm, click: o.todayClick, cpc: o.todayCpc, ctr: o.todayCtr });
     campaigns.forEach(c => {
       const sub = subAccounts[c.adAccountId] ? subDisplayName(c.adAccountId) : c.adAccountName;
-      const base = { accountKey: c.accountKey, adAccountId: c.adAccountId, sub, campName: c.name };
-      rows.campaigns.push({ ...base, type: 'campaign', id: c.id, name: c.name, on: c.status === 'ON', budget: c.activeBudget,
-        active: !!c.reallyActive, reason: c.status !== 'ON' ? 'Campanha desligada' : (!c.reallyActive ? 'Nenhum conjunto/anúncio ativo dentro' : ''), ...metrics(c) });
+      const base = { accountKey: c.accountKey, adAccountId: c.adAccountId, sub, campName: c.name, campId: c.id, niche: ctNicheOf(c.name) };
+      rows.campaigns.push({ ...base, type: 'campaign', metricType: 'campaign', id: c.id, name: c.name, on: c.status === 'ON', budget: c.activeBudget, nb: c.onlineStatus, audit: null,
+        active: !!c.reallyActive, reason: c.status !== 'ON' ? 'Campanha desligada' : (!c.reallyActive ? 'Nenhum conjunto/anúncio ativo dentro' : ''), ...ctRowMetrics('campaign', c) });
       (c.adSets || []).forEach(a => {
         const setActive = c.status === 'ON' && a.status === 'ON' && a.adsOn > 0;
-        rows.adsets.push({ ...base, type: 'adset', id: a.id, name: a.name, on: a.status === 'ON', budget: a.budget, active: setActive,
-          reason: a.status !== 'ON' ? 'Conjunto desligado' : (c.status !== 'ON' ? 'Campanha desligada' : (a.adsOn === 0 ? 'Nenhum anúncio ligado' : '')), ...metrics(a) });
+        rows.adsets.push({ ...base, type: 'adset', metricType: 'adset', id: a.id, adsetId: a.id, name: a.name, on: a.status === 'ON', budget: a.budget, nb: a.onlineStatus, audit: null, active: setActive,
+          reason: a.status !== 'ON' ? 'Conjunto desligado' : (c.status !== 'ON' ? 'Campanha desligada' : (a.adsOn === 0 ? 'Nenhum anúncio ligado' : '')), ...ctRowMetrics('adset', a) });
         (a.ads || []).forEach(ad => {
           const audit = ad.auditStatus;
           const auditBad = audit && audit !== 'APPROVED';
@@ -3180,120 +3309,179 @@
           else if (ad.status !== 'ON') reason = 'Anúncio desligado';
           else if (a.status !== 'ON') reason = 'Conjunto desligado';
           else if (c.status !== 'ON') reason = 'Campanha desligada';
-          rows.ads.push({ ...base, type: 'ad', id: ad.id, name: ad.name, on: ad.status === 'ON', active: adActive, reason,
-            setName: a.name, thumb: ad.assetUrl, creativeType: ad.creativeType, ...metrics(ad) });
+          rows.ads.push({ ...base, type: 'ad', metricType: 'ad', id: ad.id, adsetId: a.id, name: ad.name, on: ad.status === 'ON', active: adActive, reason, nb: ad.onlineStatus, audit,
+            setName: a.name, thumb: ad.assetUrl, creativeType: ad.creativeType, ...ctRowMetrics('ad', ad) });
         });
       });
     });
     return rows;
   }
 
+  // one status word per row: what the user actually cares about
+  function ctStatusKey(r){
+    if (r.audit === 'REJECTED' || r.audit === 'DISAPPROVED') return 'rejected';
+    if (r.audit === 'PENDING' || r.audit === 'IN_REVIEW' || r.audit === 'UNDER_REVIEW') return 'review';
+    if (r.nb === 'COMPLETED') return 'completed';
+    return r.active ? 'active' : 'inactive';
+  }
+  const CT_STATUS_BADGE = { active: ['Ativo', 'good'], inactive: ['Inativo', 'bad'], rejected: ['Recusado', 'bad'], review: ['Em análise', 'flat'], completed: ['Concluído', 'flat'] };
+
   function campTotals(list){
     const s = (k) => list.reduce((a, r) => a + (r[k] || 0), 0);
-    const cost = s('cost'), ic = s('ic'), venda = s('venda'), click = s('click'), impr = s('impr');
-    return { cost, ic, venda, fat: s('fat'), click, impr,
-      custoIc: ic ? cost / ic : null, cpa: venda ? cost / venda : null, cpm: impr ? cost / impr * 1000 : null,
-      cpc: click ? cost / click : null, ctr: impr ? click / impr * 100 : null };
+    const cost = s('cost'), ic = s('ic'), venda = s('venda'), click = s('click'), impr = s('impr'), fat = s('fat');
+    return { cost, ic, venda, fat, click, impr, custoIc: ic ? cost / ic : null, cpa: venda ? cost / venda : null, cpm: impr ? cost / impr * 1000 : null,
+      cpc: click ? cost / click : null, ctr: impr ? click / impr * 100 : null, roas: cost ? fat / cost : null };
   }
 
-  const CT_METRICS = [
-    { key: 'cost', label: 'Gasto', fmt: fmtUSD },
-    { key: 'ic', label: 'IC', fmt: v => String(v) },
-    { key: 'custoIc', label: 'Custo/IC', fmt: fmtUSD },
-    { key: 'venda', label: 'Vendas', fmt: v => String(v) },
-    { key: 'fat', label: 'Fatur.', fmt: fmtUSD },
-    { key: 'cpa', label: 'CPA', fmt: fmtUSD },
-    { key: 'cpm', label: 'CPM', fmt: fmtUSD },
-    { key: 'click', label: 'Cliques', fmt: v => String(v) },
-    { key: 'cpc', label: 'CPC', fmt: fmtUSD },
-    { key: 'ctr', label: 'CTR', fmt: v => v.toFixed(2) + '%' },
-  ];
+  function ctCell(r, key){
+    if (key === 'budget') return '';
+    const v = r[key];
+    return '<td class="r num">' + (v == null ? '<span class="cell-muted">–</span>' : CT_CATALOG[key].fmt(v)) + '</td>';
+  }
 
-  function ctCell(r, m){
-    const v = r[m.key];
-    return '<td class="r num">' + (v == null ? '<span class="cell-muted">–</span>' : m.fmt(v)) + '</td>';
+  function ctLoadMetrics(range, force){
+    if (range === 'TODAY') return Promise.resolve();
+    const e = ctMetrics[range];
+    if (!force && e && Date.now() - e.ts < 45000) return Promise.resolve();
+    document.getElementById('ctLoadMsg').textContent = 'Carregando ' + (CT_PERIOD_LABEL[range] || range) + '…';
+    return fetch(METRICS_API + '?range=' + range, { headers: { 'X-Access-Key': COSTS_API_KEY }, cache: 'no-store' }).then(r => r.json()).then(j => {
+      if (j && !j.error) ctMetrics[range] = { data: j, ts: Date.now() };
+    }).catch(() => {}).finally(() => { document.getElementById('ctLoadMsg').textContent = ''; });
+  }
+
+  function ctAccountOptions(){
+    const seen = new Map();
+    campaigns.forEach(c => { if (!seen.has(c.adAccountId)) seen.set(c.adAccountId, subAccounts[c.adAccountId] ? subDisplayName(c.adAccountId) : c.adAccountName); });
+    return [...seen.entries()].map(([id, label]) => ({ id, label })).sort((a, b) => String(a.label).localeCompare(String(b.label), 'pt-BR', { numeric: true }));
+  }
+  function ctFillSelects(){
+    const acc = document.getElementById('campAccSel');
+    acc.innerHTML = '<option value="all">Todas as contas</option>' + ctAccountOptions().map(o => '<option value="' + ccEsc(o.id) + '">' + ccEsc(o.label) + '</option>').join('');
+    acc.value = campAccF;
+    if (acc.value !== campAccF) { campAccF = 'all'; acc.value = 'all'; }
+    const ni = document.getElementById('ctNiche');
+    ni.innerHTML = '<option value="all">Todos os nichos</option>' + topNiches().map(n => '<option value="' + ccEsc(n) + '">' + ccEsc(n) + '</option>').join('') + '<option value="none">Sem nicho no nome</option>';
+    ni.value = ctNicheF;
+    document.getElementById('ctPeriod').value = ctPeriod;
+    document.getElementById('ctStatus').value = ctStatusF;
+  }
+
+  function renderCtColsPanel(){
+    const panel = document.getElementById('ctColsPanel');
+    const rest = Object.keys(CT_CATALOG).filter(k => ctCols.indexOf(k) === -1);
+    panel.innerHTML = '<div class="ct-cols-title">Colunas (a ordem daqui é a da tabela)</div>' +
+      ctCols.map((k, i) => '<div class="ct-col-row"><label><input type="checkbox" data-col-toggle="' + k + '" checked> ' + CT_CATALOG[k].label + '</label>' +
+        '<span><button type="button" data-col-up="' + k + '"' + (i === 0 ? ' disabled' : '') + '>↑</button><button type="button" data-col-down="' + k + '"' + (i === ctCols.length - 1 ? ' disabled' : '') + '>↓</button></span></div>').join('') +
+      (rest.length ? '<div class="ct-cols-title">Disponíveis</div>' + rest.map(k => '<div class="ct-col-row"><label><input type="checkbox" data-col-toggle="' + k + '"> ' + CT_CATALOG[k].label + '</label></div>').join('') : '') +
+      '<button type="button" class="bell-pop-link" id="ctColsReset">Restaurar colunas e larguras (padrão LS)</button>';
+    panel.querySelectorAll('[data-col-toggle]').forEach(c => c.addEventListener('change', () => {
+      const k = c.dataset.colToggle;
+      if (c.checked) { if (ctCols.indexOf(k) === -1) ctCols.push(k); } else if (ctCols.length > 1) ctCols = ctCols.filter(x => x !== k);
+      saveCtCols(); renderCtColsPanel(); renderCampanhas();
+    }));
+    const move = (k, d) => { const i = ctCols.indexOf(k), j = i + d; if (j < 0 || j >= ctCols.length) return; const full = ctFullOrder(), a = full.indexOf(ctCols[i]), b = full.indexOf(ctCols[j]); [full[a], full[b]] = [full[b], full[a]]; ctSaveOrder(full); renderCtColsPanel(); renderCampanhas(); };
+    panel.querySelectorAll('[data-col-up]').forEach(b => b.addEventListener('click', () => move(b.dataset.colUp, -1)));
+    panel.querySelectorAll('[data-col-down]').forEach(b => b.addEventListener('click', () => move(b.dataset.colDown, 1)));
+    document.getElementById('ctColsReset').addEventListener('click', () => { ctCols = CT_DEFAULT_COLS.slice(); saveCtCols(); ctOrder = []; ctWidths = {}; savePref('ctOrder', '[]'); savePref('ctWidths', '{}'); renderCtColsPanel(); renderCampanhas(); });
   }
 
   function renderCampTable(){
     const wrap = document.getElementById('campWrap');
     const all = flattenCampData();
-    const TABS = [{ key: 'campaigns', label: 'Campanhas' }, { key: 'adsets', label: 'Conjuntos' }, { key: 'ads', label: 'Anúncios' }];
-    if (!all[campTab]) campTab = 'ads';
+    // keep selections only for rows that still exist
+    ['campaigns', 'adsets', 'ads'].forEach(t => { const ids = new Set(all[t].map(r => r.id)); ctSel[t] = new Set([...ctSel[t]].filter(id => ids.has(id))); });
 
     const q = campSearch.trim().toLowerCase();
     const scoped = (list) => list.filter(r =>
       (campAccF === 'all' || r.adAccountId === campAccF) &&
+      (ctNicheF === 'all' || (ctNicheF === 'none' ? !r.niche : r.niche === ctNicheF)) &&
       (!q || (r.name + ' ' + r.id + ' ' + r.campName + ' ' + r.sub + ' ' + accountLabelFor(r.accountKey)).toLowerCase().includes(q)));
     const scopedAll = { campaigns: scoped(all.campaigns), adsets: scoped(all.adsets), ads: scoped(all.ads) };
-    const inTab = scopedAll[campTab];
-    const nActive = inTab.filter(r => r.active).length;
-    const shown = inTab.filter(r => campStatusF === 'all' || (campStatusF === 'active' ? r.active : !r.active));
+    // selecting rows narrows the next tab, like in the NewsBreak manager
+    if (ctSel.campaigns.size) { scopedAll.adsets = scopedAll.adsets.filter(r => ctSel.campaigns.has(r.campId)); scopedAll.ads = scopedAll.ads.filter(r => ctSel.campaigns.has(r.campId)); }
+    if (ctSel.adsets.size) scopedAll.ads = scopedAll.ads.filter(r => ctSel.adsets.has(r.adsetId));
 
+    const inTab = scopedAll[campTab];
+    const shown = inTab.filter(r => ctStatusF === 'all' || ctStatusKey(r) === ctStatusF);
     const dir = campSort.dir;
     const val = (r) => {
       const k = campSort.key;
       if (k === 'name') return r.name.toLowerCase();
-      if (k === 'status') return r.active ? 1 : 0;
+      if (k === 'status') return ctStatusKey(r);
       const v = r[k];
       return v == null ? -Infinity : v;
     };
     shown.sort((a, b) => { const x = val(a), y = val(b); return (x < y ? -1 : x > y ? 1 : 0) * dir || a.name.localeCompare(b.name); });
 
-    const accOpts = [];
-    const seen = new Set();
-    campaigns.forEach(c => { if (!seen.has(c.adAccountId)) { seen.add(c.adAccountId); accOpts.push({ id: c.adAccountId, label: subAccounts[c.adAccountId] ? subDisplayName(c.adAccountId) : c.adAccountName }); } });
-    accOpts.sort((a, b) => a.label.localeCompare(b.label));
+    const TABS = [{ key: 'campaigns', label: 'Campanhas' }, { key: 'adsets', label: 'Conjuntos' }, { key: 'ads', label: 'Anúncios' }];
+    const chip = (t, label) => ctSel[t].size && campTab !== t && ((t === 'campaigns' && campTab !== 'campaigns') || (t === 'adsets' && campTab === 'ads'))
+      ? '<span class="ct-chip">' + ctSel[t].size + ' ' + label + (ctSel[t].size > 1 ? 's' : '') + ' selecionad' + (t === 'campaigns' ? 'a' : 'o') + (ctSel[t].size > 1 ? 's' : '') + ' <button type="button" data-ct-clear="' + t + '" title="Tirar o filtro">✕</button></span>' : '';
+    const bar = '<div class="ct-tabbar"><div class="tabs">' + TABS.map(t => '<button class="tab' + (campTab === t.key ? ' active' : '') + '" data-ct-tab="' + t.key + '">' + t.label + ' <span class="cell-muted">' + scopedAll[t.key].length + '</span></button>').join('') + '</div>' +
+      chip('campaigns', 'campanha') + chip('adsets', 'conjunto') + '</div>';
 
-    const bar =
-      '<div class="camp-table-bar">' +
-        '<div class="tabs">' + TABS.map(t => '<button class="tab' + (campTab === t.key ? ' active' : '') + '" data-ct-tab="' + t.key + '">' + t.label + ' <span class="cell-muted">' + scopedAll[t.key].length + '</span></button>').join('') + '</div>' +
-        '<div class="tabs">' + [['all', 'Todos (' + inTab.length + ')'], ['active', 'Ativos (' + nActive + ')'], ['inactive', 'Inativos (' + (inTab.length - nActive) + ')']]
-          .map(o => '<button class="tab small' + (campStatusF === o[0] ? ' active' : '') + '" data-ct-status="' + o[0] + '">' + o[1] + '</button>').join('') + '</div>' +
-        '<select class="camp-search" id="campAccSel"><option value="all">Todas as contas</option>' +
-          accOpts.map(o => '<option value="' + o.id + '"' + (campAccF === o.id ? ' selected' : '') + '>' + ccEsc(o.label) + '</option>').join('') + '</select>' +
-      '</div>';
-
-    const th = (key, label, cls) => '<th class="' + cls + '" data-ct-sort="' + key + '">' + label + (campSort.key === key ? (dir < 0 ? ' ↓' : ' ↑') : '') + '</th>';
+    const vis = ctVisibleOrder();
+    const labelOf = (k) => k === 'ctx' ? (campTab === 'ads' ? 'Conjunto · Campanha' : 'Campanha') : k === 'conta' ? 'Conta' : k === 'status' ? 'Status' : (k === 'budget' && campTab === 'campaigns' ? 'Orç. ativo/dia' : CT_CATALOG[k].label);
+    const thx = (key, label, cls, movable) => '<th class="' + cls + '" data-ct-sort="' + key + '" data-ct-col="' + key + '"' + (movable ? ' draggable="true"' : '') + '>' + label + (campSort.key === key ? (dir < 0 ? ' ↓' : ' ↑') : '') + '<span class="col-rs" data-rs="' + key + '"></span></th>';
     const nameLabel = { campaigns: 'Campanha', adsets: 'Conjunto', ads: 'Anúncio' }[campTab];
-    const head = '<tr><th class="c">Liga</th>' + th('name', nameLabel, 'l') +
-      (campTab !== 'campaigns' ? '<th class="l">' + (campTab === 'ads' ? 'Conjunto · Campanha' : 'Campanha') + '</th>' : '') +
-      '<th class="l">Conta</th>' + th('status', 'Status', 'l') +
-      (campTab !== 'ads' ? th('budget', campTab === 'campaigns' ? 'Orç./dia' : 'Orçamento', 'r') : '') +
-      CT_METRICS.map(m => th(m.key, m.label, 'r')).join('') + '</tr>';
+    const cols = vis.filter(k => CT_CATALOG[k]);
+    const allChecked = shown.length && shown.every(r => ctSel[campTab].has(r.id));
+    const colgroup = '<colgroup><col style="width:36px"><col style="width:56px"><col style="width:' + ctW('name') + 'px">' + vis.map(k => '<col data-col="' + k + '" style="width:' + ctW(k) + 'px">').join('') + '<col></colgroup>';
+    const tableW = 36 + 56 + ctW('name') + vis.reduce((a, k) => a + ctW(k), 0) + 40;
+    const head = '<tr><th class="c"><input type="checkbox" id="ctCheckAll"' + (allChecked ? ' checked' : '') + ' title="Marcar todos"></th><th class="c">Liga</th>' + thx('name', nameLabel, 'l', false) +
+      vis.map(k => thx(k, labelOf(k), CT_CATALOG[k] ? 'r' : 'l', true)).join('') + '<th class="spacer"></th></tr>';
 
     const body = shown.map(r => {
       const thumb = campTab === 'ads' && r.thumb
         ? (r.creativeType === 'VIDEO' ? '<video class="ctable-thumb" src="' + ccEsc(r.thumb) + '" muted preload="metadata"></video>' : '<img class="ctable-thumb" loading="lazy" src="' + ccEsc(r.thumb) + '" alt="">')
         : '';
+      const sk = ctStatusKey(r), badge = CT_STATUS_BADGE[sk];
+      const budgetCell = campTab === 'adsets'
+        ? '<td class="r num"><div class="adset-budget-wrap ct-budget" onclick="event.stopPropagation()">$<input type="number" class="adset-budget-input" data-adset-budget="' + r.id + '" data-account-key="' + r.accountKey + '" data-orig="' + (r.budget != null ? r.budget : '') + '" value="' + (pendingBudgets[r.id] != null ? pendingBudgets[r.id] : (r.budget != null ? r.budget : '')) + '" min="10" step="1">' +
+          '<span class="budget-actions" data-budget-actions="' + r.id + '"' + (pendingBudgets[r.id] != null ? '' : ' hidden') + '><span class="budget-delta">' + budgetDeltaText(r.budget, pendingBudgets[r.id]) + '</span>' +
+          '<button type="button" class="budget-confirm" data-budget-confirm="' + r.id + '" data-account-key="' + r.accountKey + '">✓</button><button type="button" class="budget-cancel" data-budget-cancel="' + r.id + '" title="Cancelar">✕</button></span></div></td>'
+        : '<td class="r num">' + (r.budget != null ? fmtUSD(r.budget) : '<span class="cell-muted">–</span>') + '</td>';
       return '<tr class="' + (r.active ? '' : 'is-off') + '">' +
+        '<td class="c"><input type="checkbox" data-ct-check="' + r.id + '"' + (ctSel[campTab].has(r.id) ? ' checked' : '') + '></td>' +
         '<td class="c"><label class="toggle-switch small"><input type="checkbox" data-t-status="' + r.id + '" data-t-type="' + r.type + '" data-account-key="' + r.accountKey + '"' + (r.on ? ' checked' : '') + '><span class="toggle-track"></span></label></td>' +
-        '<td class="l"><div class="ctable-ident">' + thumb + '<div><div class="ctable-name">' + ccEsc(r.name) + '</div><div class="ctable-sub">ID ' + r.id + '</div></div></div></td>' +
-        (campTab === 'ads' ? '<td class="l"><div class="ctable-sub" style="color:var(--ink);">' + ccEsc(r.setName) + '</div><div class="ctable-sub">' + ccEsc(r.campName) + '</div></td>' : '') +
-        (campTab === 'adsets' ? '<td class="l"><div class="ctable-sub" style="color:var(--ink);">' + ccEsc(r.campName) + '</div></td>' : '') +
-        '<td class="l"><div class="ctable-sub" style="color:var(--ink);">' + ccEsc(r.sub) + '</div></td>' +
-        '<td class="l"><span class="roas-pill ' + (r.active ? 'good' : 'bad') + '">' + (r.active ? 'Ativo' : 'Inativo') + '</span>' + (r.reason ? '<div class="ctable-sub">' + ccEsc(r.reason) + '</div>' : '') + '</td>' +
-        (campTab !== 'ads' ? '<td class="r num">' + (r.budget != null ? fmtUSD(r.budget) : '<span class="cell-muted">–</span>') + '</td>' : '') +
-        CT_METRICS.map(m => ctCell(r, m)).join('') +
+        '<td class="l"><div class="ctable-ident">' + thumb + '<div><div class="ctable-name">' + (campTab === 'ads' ? ccEsc(r.name) : '<button type="button" class="ctable-name-link" data-ct-open="' + r.id + '" title="' + (campTab === 'campaigns' ? 'Ver os conjuntos desta campanha' : 'Ver os anúncios deste conjunto') + '">' + ccEsc(r.name) + '</button>') + '</div><div class="ctable-sub">ID ' + r.id + '</div></div></div></td>' +
+        vis.map(k => {
+          if (k === 'ctx') return campTab === 'ads' ? '<td class="l"><div class="ctable-sub" style="color:var(--ink);">' + ccEsc(r.setName) + '</div><div class="ctable-sub">' + ccEsc(r.campName) + '</div></td>'
+            : '<td class="l"><div class="ctable-sub" style="color:var(--ink);">' + ccEsc(r.campName) + '</div></td>';
+          if (k === 'conta') return '<td class="l"><div class="ctable-sub" style="color:var(--ink);">' + ccEsc(r.sub) + '</div></td>';
+          if (k === 'status') return '<td class="l"><span class="roas-pill ' + badge[1] + '">' + badge[0] + '</span>' + (r.reason && sk !== 'review' ? '<div class="ctable-sub">' + ccEsc(r.reason) + '</div>' : '') + '</td>';
+          return k === 'budget' ? budgetCell : ctCell(r, k);
+        }).join('') + '<td class="spacer"></td>' +
       '</tr>';
     }).join('');
 
     const tot = campTotals(shown);
-    const fixedCols = 1 + 1 + (campTab !== 'campaigns' ? 1 : 0) + 1 + 1 + (campTab !== 'ads' ? 1 : 0);
-    const foot = '<tr><td class="l" colspan="' + fixedCols + '">Total (' + shown.length + ')</td>' + CT_METRICS.map(m => ctCell(tot, m)).join('') + '</tr>';
+    const fixedCols = 3;
+    const foot = '<tr><td class="l" colspan="' + fixedCols + '">Total (' + shown.length + ')</td>' + vis.map(k => !CT_CATALOG[k] ? '<td></td>' : k === 'budget' ? '<td></td>' : ctCell(tot, k)).join('') + '<td class="spacer"></td></tr>';
+    const loading = ctPeriod !== 'TODAY' && !(ctMetrics[ctPeriod] && ctMetrics[ctPeriod].data);
 
-    wrap.innerHTML = bar + '<div class="table-scroll"><table class="ctable"><thead>' + head + '</thead><tbody>' +
-      (body || '<tr><td class="l" colspan="' + (fixedCols + CT_METRICS.length) + '"><div class="empty-state">Nada encontrado com esses filtros.</div></td></tr>') +
+    wrap.innerHTML = bar + '<div class="table-scroll"><table class="ctable" style="min-width:' + tableW + 'px">' + colgroup + '<thead>' + head + '</thead><tbody>' +
+      (body || '<tr><td class="l" colspan="' + (fixedCols + vis.length + 1) + '"><div class="empty-state">' + (loading ? 'Carregando…' : 'Nada encontrado com esses filtros.') + '</div></td></tr>') +
       '</tbody><tfoot>' + foot + '</tfoot></table></div>' +
-      '<p class="cell-muted" style="font-size:11.5px; padding:8px 18px 0;">Métricas de hoje (fuso de Brasília), do pixel da NewsBreak — vendas aqui podem diferir do RedTrack. “Inativo” = não está entregando (o próprio item, o conjunto, a campanha ou a revisão da NewsBreak).</p>';
+      '<p class="cell-muted" style="font-size:11.5px; padding:8px 18px 0;">Métricas d' + (ctPeriod === 'TODAY' ? 'e hoje' : 'o período: ' + CT_PERIOD_LABEL[ctPeriod]) + ' (fuso de Brasília), do relatório da NewsBreak — vendas aqui podem diferir do RedTrack. A NewsBreak atualiza a cada ~5 min e as <b>últimas 3 horas ainda não estão finalizadas</b>. “Inativo” = não está entregando.</p>';
 
     wrap.querySelectorAll('[data-ct-tab]').forEach(b => b.addEventListener('click', () => { campTab = b.dataset.ctTab; savePref('campTab', campTab); renderCampanhas(); }));
-    wrap.querySelectorAll('[data-ct-status]').forEach(b => b.addEventListener('click', () => { campStatusF = b.dataset.ctStatus; savePref('campStatusF', campStatusF); renderCampanhas(); }));
-    wrap.querySelector('#campAccSel').addEventListener('change', (e) => { campAccF = e.target.value; savePref('campAccF', campAccF); renderCampanhas(); });
+    wrap.querySelectorAll('[data-ct-clear]').forEach(b => b.addEventListener('click', () => { ctSel[b.dataset.ctClear] = new Set(); renderCampanhas(); }));
+    wrap.querySelectorAll('[data-ct-open]').forEach(b => b.addEventListener('click', () => {
+      const id = b.dataset.ctOpen;
+      if (campTab === 'campaigns') { ctSel.campaigns = new Set([id]); ctSel.adsets = new Set(); campTab = 'adsets'; }
+      else { ctSel.adsets = new Set([id]); campTab = 'ads'; }
+      savePref('campTab', campTab); renderCampanhas();
+    }));
+    ctBindColumns(wrap);
     wrap.querySelectorAll('[data-ct-sort]').forEach(h => h.addEventListener('click', () => {
+      if (Date.now() - ctLastDrag < 300) return;
       const k = h.dataset.ctSort;
       campSort = campSort.key === k ? { key: k, dir: -campSort.dir } : { key: k, dir: k === 'name' ? 1 : -1 };
       renderCampanhas();
     }));
+    wrap.querySelectorAll('[data-ct-check]').forEach(c => c.addEventListener('change', () => { if (c.checked) ctSel[campTab].add(c.dataset.ctCheck); else ctSel[campTab].delete(c.dataset.ctCheck); renderCampanhas(); }));
+    const ca = wrap.querySelector('#ctCheckAll');
+    if (ca) ca.addEventListener('change', () => { shown.forEach(r => { if (ca.checked) ctSel[campTab].add(r.id); else ctSel[campTab].delete(r.id); }); renderCampanhas(); });
     wrap.querySelectorAll('[data-t-status]').forEach(el => el.addEventListener('change', () => {
       const prev = !el.checked;
       el.closest('.toggle-switch').setAttribute('data-busy', '1');
@@ -3302,12 +3490,114 @@
         .catch(() => { el.checked = prev; alert('Não consegui atualizar o status.'); })
         .finally(() => { const t = el.closest('.toggle-switch'); if (t) t.removeAttribute('data-busy'); });
     }));
+    // bulk bar
+    const n = ctSel[campTab].size;
+    const bulk = document.getElementById('ctBulk');
+    bulk.hidden = !n;
+    const fem = campTab === 'campaigns';
+    document.getElementById('ctBulkCount').textContent = n + ' ' + { campaigns: 'campanha', adsets: 'conjunto', ads: 'anúncio' }[campTab] + (n === 1 ? '' : 's') + ' selecionad' + (fem ? 'a' : 'o') + (n === 1 ? '' : 's');
   }
 
-  function renderCampModeTabs(){
-    const wrap = document.getElementById('campModeTabs');
-    wrap.innerHTML = [['tree', 'Árvore'], ['table', 'Tabela']].map(o => '<button class="tab small' + (campMode === o[0] ? ' active' : '') + '" data-camp-mode="' + o[0] + '">' + o[1] + '</button>').join('');
-    wrap.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => { campMode = b.dataset.campMode; savePref('campMode', campMode); renderCampanhas(); }));
+  // --- drag to reorder / drag the edge to resize ---
+  let ctLastDrag = 0;
+  function ctBindColumns(wrap){
+    const table = wrap.querySelector('table.ctable'); if (!table) return;
+    let dragKey = null;
+    table.querySelectorAll('th[draggable=true]').forEach(th => {
+      th.addEventListener('dragstart', (e) => { dragKey = th.dataset.ctCol; th.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', dragKey); } catch {} });
+      th.addEventListener('dragend', () => { th.classList.remove('dragging'); table.querySelectorAll('th.drag-over').forEach(x => x.classList.remove('drag-over')); ctLastDrag = Date.now(); });
+      th.addEventListener('dragover', (e) => { if (!dragKey || dragKey === th.dataset.ctCol) return; e.preventDefault(); th.classList.add('drag-over'); });
+      th.addEventListener('dragleave', () => th.classList.remove('drag-over'));
+      th.addEventListener('drop', (e) => {
+        e.preventDefault(); th.classList.remove('drag-over');
+        const to = th.dataset.ctCol; if (!dragKey || dragKey === to) return;
+        const full = ctFullOrder(); full.splice(full.indexOf(dragKey), 1); full.splice(full.indexOf(to), 0, dragKey);
+        dragKey = null; ctSaveOrder(full); renderCtColsPanel(); renderCampanhas();
+      });
+    });
+    table.querySelectorAll('.col-rs').forEach(h => {
+      h.addEventListener('click', (e) => e.stopPropagation());
+      h.addEventListener('mousedown', (e) => {
+        e.preventDefault(); e.stopPropagation();
+        const key = h.dataset.rs, th = h.parentElement; th.draggable = false;
+        const col = key === 'name' ? table.querySelector('colgroup col:nth-child(3)') : table.querySelector('col[data-col="' + key + '"]');
+        const startX = e.clientX, startW = ctW(key), startTable = parseFloat(table.style.minWidth) || table.offsetWidth;
+        h.classList.add('on'); document.body.classList.add('col-resizing');
+        const mv = (ev) => { const w = Math.max(50, Math.round(startW + ev.clientX - startX)); ctWidths[key] = w; col.style.width = w + 'px'; table.style.minWidth = (startTable + w - startW) + 'px'; };
+        const up = () => {
+          document.removeEventListener('mousemove', mv); document.removeEventListener('mouseup', up);
+          h.classList.remove('on'); document.body.classList.remove('col-resizing'); th.draggable = !!CT_CATALOG[key] || !!CT_FIXED[key];
+          savePref('ctWidths', JSON.stringify(ctWidths)); ctLastDrag = Date.now();
+        };
+        document.addEventListener('mousemove', mv); document.addEventListener('mouseup', up);
+      });
+    });
+  }
+
+  // --- bulk actions ---
+  function ctSelectedRows(){ return flattenCampData()[campTab].filter(r => ctSel[campTab].has(r.id)); }
+  async function ctBulkStatus(status){
+    const rows = ctSelectedRows(); if (!rows.length) return;
+    const msg = document.getElementById('ctBulkMsg'); let ok = 0, fail = 0;
+    ['ctBulkOn', 'ctBulkOff', 'ctBulkDel', 'ctBulkClear'].forEach(id => { document.getElementById(id).disabled = true; });
+    for (let i = 0; i < rows.length; i++) {
+      msg.textContent = (status === 'ON' ? 'Ativando ' : 'Pausando ') + (i + 1) + '/' + rows.length + '…';
+      try { await setEntityStatus(rows[i].accountKey, rows[i].type, rows[i].id, status); ok++; } catch (e) { fail++; }
+    }
+    ['ctBulkOn', 'ctBulkOff', 'ctBulkDel', 'ctBulkClear'].forEach(id => { document.getElementById(id).disabled = false; });
+    msg.textContent = ok + ' ' + (status === 'ON' ? 'ativado(s)' : 'pausado(s)') + (fail ? ' · ' + fail + ' falhou/falharam' : '') + '.';
+    setTimeout(() => { msg.textContent = ''; }, 6000);
+    await loadLiveCampanhas();
+  }
+  function ctOpenDelete(){
+    const rows = ctSelectedRows(); if (!rows.length) return;
+    const noun = { campaigns: 'campanha', adsets: 'conjunto', ads: 'anúncio' }[campTab];
+    document.getElementById('ctDelTitle').textContent = 'Excluir ' + rows.length + ' ' + noun + (rows.length === 1 ? '' : 's') + '?';
+    document.getElementById('ctDelWhat').innerHTML = rows.slice(0, 6).map(r => '• ' + ccEsc(r.name)).join('<br>') + (rows.length > 6 ? '<br>… e mais ' + (rows.length - 6) : '');
+    document.getElementById('ctDelInput').value = ''; document.getElementById('ctDelGo').disabled = true; document.getElementById('ctDelLog').innerHTML = '';
+    document.getElementById('ctDelSheet').hidden = false;
+  }
+  async function ctRunDelete(){
+    const rows = ctSelectedRows(); if (!rows.length) return;
+    const log = document.getElementById('ctDelLog'), go = document.getElementById('ctDelGo');
+    go.disabled = true; log.innerHTML = '';
+    let ok = 0;
+    for (const r of rows) {
+      try {
+        const res = await fetch(NB_ENTITY_DELETE_API, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY }, body: JSON.stringify({ accountKey: r.accountKey, entityType: r.type, id: r.id, confirm: true }) });
+        const j = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(j.detail || j.error || 'falhou');
+        ok++; ctSel[campTab].delete(r.id);
+        const d = document.createElement('div'); d.className = 'ok'; d.textContent = 'Excluído: ' + r.name; log.appendChild(d);
+      } catch (e) {
+        const denied = /permission/i.test(String(e.message));
+        const d = document.createElement('div'); d.className = 'err';
+        d.textContent = r.name + ': ' + (denied ? 'a NewsBreak negou a exclusão (o token desta conta pode não ter permissão de excluir).' : friendlyError(e.message)); d.title = e.message; log.appendChild(d);
+      }
+    }
+    const end = document.createElement('div'); end.textContent = ok + ' de ' + rows.length + ' excluído(s).'; log.appendChild(end);
+    await loadLiveCampanhas();
+    go.disabled = ok === rows.length;
+  }
+
+  function initCampV2(){
+    ctFillSelects();
+    renderCtColsPanel();
+    document.getElementById('ctPeriod').addEventListener('change', (e) => { ctPeriod = e.target.value; ctLoadMetrics(ctPeriod).then(() => renderCampanhas()); renderCampanhas(); });
+    document.getElementById('ctStatus').addEventListener('change', (e) => { ctStatusF = e.target.value; renderCampanhas(); });
+    document.getElementById('campAccSel').addEventListener('change', (e) => { campAccF = e.target.value; ctSel = { campaigns: new Set(), adsets: new Set(), ads: new Set() }; renderCampanhas(); });
+    document.getElementById('ctNiche').addEventListener('change', (e) => { ctNicheF = e.target.value; renderCampanhas(); });
+    document.getElementById('ctColsBtn').addEventListener('click', (e) => { e.stopPropagation(); const p = document.getElementById('ctColsPanel'); p.hidden = !p.hidden; });
+    document.addEventListener('click', (e) => { const p = document.getElementById('ctColsPanel'); if (p && !p.hidden && !e.target.closest('.ct-cols-wrap')) p.hidden = true; });
+    document.getElementById('ctBulkOn').addEventListener('click', () => ctBulkStatus('ON'));
+    document.getElementById('ctBulkOff').addEventListener('click', () => ctBulkStatus('OFF'));
+    document.getElementById('ctBulkDel').addEventListener('click', ctOpenDelete);
+    document.getElementById('ctBulkClear').addEventListener('click', () => { ctSel[campTab] = new Set(); renderCampanhas(); });
+    document.getElementById('ctDelInput').addEventListener('input', (e) => { document.getElementById('ctDelGo').disabled = e.target.value.trim() !== 'EXCLUIR'; });
+    document.getElementById('ctDelGo').addEventListener('click', ctRunDelete);
+    document.getElementById('ctDelCancel').addEventListener('click', () => { document.getElementById('ctDelSheet').hidden = true; renderCampanhas(); });
+    document.getElementById('ctDelSheet').addEventListener('click', (e) => { if (e.target.id === 'ctDelSheet') { e.target.hidden = true; renderCampanhas(); } });
+    setInterval(() => { if (view === 'campanhas' && ctPeriod !== 'TODAY' && !document.hidden) ctLoadMetrics(ctPeriod, true).then(() => renderCampanhas()); }, 60000);
   }
 
   function renderCampSourcePills(){
@@ -3319,6 +3609,7 @@
     });
   }
 
+  let campV2Ready = false;
   function renderCampanhas(){
     renderCampSourcePills();
     const src = TRAFFIC_SOURCES.find(x => x.key === campSource);
@@ -3329,33 +3620,21 @@
       if (tbReady()) renderSourcePanels(); else document.getElementById('campOtherBody').textContent = 'A integração com ' + src.label + ' ainda não está conectada. Quando for, as campanhas dessa fonte aparecem aqui.';
       return;
     }
-    renderCampModeTabs();
-    renderCampFilterTabs();
-    document.getElementById('campFilterTabs').hidden = campMode === 'table';
-    document.getElementById('campIntro').hidden = campMode === 'table';
+    if (!campV2Ready) { campV2Ready = true; initCampV2(); }
     const activeCount = campaigns.filter(c => c.reallyActive).length;
     const mismatchCount = campaigns.filter(c => c.status === 'ON' && !c.reallyActive).length;
     document.getElementById('campStatsHead').textContent =
       'Campanhas — ' + activeCount + ' ativa' + (activeCount===1?'':'s') + ' de ' + campaigns.length +
       (mismatchCount ? ' · ' + mismatchCount + ' ligada' + (mismatchCount===1?'':'s') + ' sem entregar' : '');
-
-    if (campMode === 'table'){
-      renderCampTable();
-      wireCampanhaEvents();
-      return;
-    }
-
-    let list = campFilter === 'active'
-      ? campaigns.filter(c => c.reallyActive || (c.status === 'ON' && !c.reallyActive))
-      : campaigns.slice();
-    const q = campSearch.trim().toLowerCase();
-    if (q) list = list.filter(c => c.name.toLowerCase().includes(q) || accountLabelFor(c.accountKey).toLowerCase().includes(q));
-    list.sort((a,b) => (b.reallyActive - a.reallyActive) || a.name.localeCompare(b.name));
-
-    document.getElementById('campWrap').innerHTML = '<div class="camp-list">' +
-      (list.map(renderCampCard).join('') || '<div class="empty-state">Nenhuma campanha encontrada.</div>') +
-    '</div>';
+    ctFillSelectsKeepFocus();
+    renderCampTable();
     wireCampanhaEvents();
+  }
+  // keep the account list in sync with new data without touching a select that is being used
+  function ctFillSelectsKeepFocus(){
+    const act = document.activeElement;
+    if (act && (act.id === 'campAccSel' || act.id === 'ctNiche' || act.id === 'ctPeriod' || act.id === 'ctStatus')) return;
+    ctFillSelects();
   }
 
   function computeBalance(accId){
@@ -4439,7 +4718,7 @@
       rejLiveLoaded = true;
       rejRecompute();
       const active = document.activeElement;
-      if (active && active.matches && active.matches('[data-adset-budget], #campAccSel')) return;
+      if (active && active.matches && active.matches('[data-adset-budget], #campAccSel, #ctNiche, #ctPeriod, #ctStatus, #campSearchInput, #ctDelInput')) return;
       renderCampanhas();
     }).catch(() => {});
   }
@@ -4463,7 +4742,6 @@
   let mediaSearchQuery = '';
   let galleryOpenFolder = (function(){ const v = loadPref('galleryOpenFolder', '__root__'); return v === '__root__' ? null : v; })();
   let selectedGalleryIds = [];
-  let niches = [];
   let selectedNiche = loadPref('ccNiche', '');
 
   function itemCategory(it){ return it.category === 'logo' ? 'logo' : (it.category || '').toUpperCase(); }
