@@ -1162,7 +1162,7 @@ async function runRulesEngine(env, data) {
 // ---------------------------------------------------------------------------------------------
 const TABOOLA_BASE = "https://backstage.taboola.com/backstage";
 
-// Several Taboola logins can be connected (KV "connections": { taboola: [{ id, name, clientId, clientSecret, createdAt }] }).
+// Several Taboola logins can be connected (KV "connections": { taboola: [{ id, name, clientId, clientSecret, accountId, createdAt }] }).
 async function loadConnections(env) {
   const raw = await env.COSTS_KV.get("connections");
   if (!raw) return {};
@@ -1213,7 +1213,7 @@ async function taboolaAccounts(env, conn) {
 
 // Never expose the secret: only name + last 4 of the Client ID.
 function publicConnection(c) {
-  return { id: c.id, name: c.name, clientIdTail: String(c.clientId || "").slice(-4), createdAt: c.createdAt || null };
+  return { id: c.id, name: c.name, accountId: c.accountId || "", clientIdTail: String(c.clientId || "").slice(-4), createdAt: c.createdAt || null };
 }
 
 export default {
@@ -2063,12 +2063,13 @@ export default {
       const name = String(body.name || "").trim().slice(0, 60);
       const clientId = String(body.clientId || "").trim();
       const clientSecret = String(body.clientSecret || "").trim();
+      const accountId = String(body.accountId || "").trim();
       if (!name) return json({ error: "name_required" }, 400, origin);
-      if (clientId.length < 6 || clientId.length > 200 || /\s/.test(clientId) || clientSecret.length < 8 || clientSecret.length > 400 || /\s/.test(clientSecret)) return json({ error: "value_invalid" }, 400, origin);
+      if (accountId.length < 3 || accountId.length > 120 || /\s/.test(accountId) || clientId.length < 6 || clientId.length > 200 || /\s/.test(clientId) || clientSecret.length < 8 || clientSecret.length > 400 || /\s/.test(clientSecret)) return json({ error: "value_invalid" }, 400, origin);
       const all = await loadConnections(env);
       const list = all.taboola || [];
       if (list.length >= 20) return json({ error: "too_many" }, 400, origin);
-      const conn = { id: crypto.randomUUID(), name, clientId, clientSecret, createdAt: Date.now() };
+      const conn = { id: crypto.randomUUID(), name, clientId, clientSecret, accountId, createdAt: Date.now() };
       list.push(conn);
       all.taboola = list;
       await saveConnections(env, all);
@@ -2086,7 +2087,8 @@ export default {
         await taboolaToken(env, conn, true);
         const accs = await taboolaAccounts(env, conn);
         await env.COSTS_KV.delete("taboola_status");
-        return json({ ok: true, detail: accs.length + " conta(s): " + accs.slice(0, 4).map((a) => a.name).join(", ") + (accs.length > 4 ? "…" : "") }, 200, origin);
+        const accountFound = !conn.accountId || accs.some((a) => String(a.id).toLowerCase() === String(conn.accountId).toLowerCase());
+        return json({ ok: true, accountFound, detail: accs.length + " conta(s): " + accs.slice(0, 4).map((a) => a.name).join(", ") + (accs.length > 4 ? "…" : "") }, 200, origin);
       } catch (err) {
         const m = String((err && err.message) || err); const st = (m.match(/-> (\d{3})/) || [])[1];
         return json({ ok: false, status: st ? Number(st) : null }, 200, origin);

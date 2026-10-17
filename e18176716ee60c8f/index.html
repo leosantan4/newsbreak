@@ -3317,7 +3317,7 @@
     return i && i.source ? { txt: i.source === 'server' ? 'Conectada (servidor)' : 'Conectada', cls: 'act' } : { txt: 'Não configurada', cls: 'warn' };
   }
   function integResultText(j){
-    return j.ok ? 'Funcionando ✓' + (j.detail ? ' · ' + j.detail : '') : (j.error === 'not_configured' || j.error === 'not_found' ? 'Sem chave configurada.' : 'A ferramenta recusou a chave' + (j.status ? ' (status ' + j.status + ')' : '') + '. Confira se colou certo.');
+    return j.ok ? 'Funcionando ✓' + (j.detail ? ' · ' + j.detail : '') + (j.accountFound === false ? ' · ⚠ Mas o Account ID informado não está entre as contas que essas chaves enxergam. Confira o Account ID.' : '') : (j.error === 'not_configured' || j.error === 'not_found' ? 'Sem chave configurada.' : 'A ferramenta recusou a chave' + (j.status ? ' (status ' + j.status + ')' : '') + '. Confira se colou certo.');
   }
   function renderIntegrations(){
     const el = document.getElementById('integList');
@@ -3345,11 +3345,11 @@
       body = '<div class="integ-subhead">Contas conectadas</div>' + (list.length ? list.map(c => {
         const sc = state.find(x => x.id === c.id);
         const found = sc && sc.ok && sc.accounts.length ? '<div class="rule-line">' + sc.accounts.length + ' conta(s) de anúncio: ' + ccEsc(sc.accounts.slice(0, 4).map(a => a.name).join(', ')) + (sc.accounts.length > 4 ? '…' : '') + '</div>' : (sc && !sc.ok ? '<div class="rule-line"><span class="rule-chip warn">O Taboola não aceitou' + (sc.status ? ' (status ' + sc.status + ')' : '') + '</span></div>' : '');
-        return '<div class="integ-row"><div><div class="rule-name">' + ccEsc(c.name) + '</div><div class="rule-line">Client ID ••••' + ccEsc(c.clientIdTail) + '</div>' + found + '</div>' +
+        return '<div class="integ-row"><div><div class="rule-name">' + ccEsc(c.name) + '</div><div class="rule-line">Account ID: ' + ccEsc(c.accountId || '—') + ' · Client ID ••••' + ccEsc(c.clientIdTail) + '</div>' + found + '</div>' +
           '<div class="integ-actions"><button type="button" data-conn-test="' + ccEsc(c.id) + '">Testar</button><button type="button" class="danger" data-conn-del="' + ccEsc(c.id) + '" data-conn-name="' + ccEsc(c.name) + '">Remover</button><span class="cell-muted integ-res" data-conn-res="' + ccEsc(c.id) + '"></span></div></div>';
       }).join('') : '<div class="integ-note">Nenhuma conta conectada ainda.</div>') +
-      '<div class="integ-subhead">Adicionar conta</div><div class="integ-note">O Client ID e o Client Secret vêm do seu gerente de conta do Taboola (Backstage API). O nome é só pra você reconhecer.</div>' +
-      '<div class="integ-form"><input type="text" id="connName" placeholder="Nome (ex.: Taboola principal)" maxlength="60" autocomplete="off"><input type="text" id="connId" placeholder="Client ID" autocomplete="off"><input type="password" id="connSecret" placeholder="Client Secret" autocomplete="off"><button type="button" class="rej-edit-btn" id="connAdd">Salvar e testar</button><span class="cell-muted integ-res" id="connAddRes"></span></div>';
+      '<div class="integ-subhead">Adicionar conta</div><div class="integ-note">Os três dados (Client ID, Client Secret e Account ID) vêm do seu gerente de conta do Taboola (Backstage API). O nome é só pra você reconhecer.</div>' +
+      '<div class="integ-form"><input type="text" id="connName" placeholder="Nome (ex.: Taboola principal)" maxlength="60" autocomplete="off"><input type="text" id="connId" placeholder="Client ID" autocomplete="off"><input type="password" id="connSecret" placeholder="Client Secret" autocomplete="off"><input type="text" id="connAcc" placeholder="Account ID (ex.: minhaconta-network)" autocomplete="off"><button type="button" class="rej-edit-btn" id="connAdd">Salvar e testar</button><span class="cell-muted integ-res" id="connAddRes"></span></div>';
     } else {
       const i = integData.find(x => x.key === tool.integKey) || {};
       const chip = i.source === 'app' ? '<span class="rule-chip act">Configurada neste app · ••••' + ccEsc(i.tail || '') + '</span>' : i.source === 'server' ? '<span class="rule-chip">Configurada no servidor (Cloudflare)</span>' : '<span class="rule-chip warn">Não configurada</span>';
@@ -3376,14 +3376,14 @@
     }));
     const add = el.querySelector('#connAdd');
     if (add) add.addEventListener('click', () => {
-      const out = el.querySelector('#connAddRes'), name = el.querySelector('#connName').value.trim(), cid = el.querySelector('#connId').value.trim(), sec = el.querySelector('#connSecret').value.trim();
-      if (!name || !cid || !sec) { out.textContent = 'Preencha o nome, o Client ID e o Client Secret.'; return; }
+      const out = el.querySelector('#connAddRes'), name = el.querySelector('#connName').value.trim(), cid = el.querySelector('#connId').value.trim(), sec = el.querySelector('#connSecret').value.trim(), acc = el.querySelector('#connAcc').value.trim();
+      if (!name || !cid || !sec || !acc) { out.textContent = 'Preencha o nome, o Client ID, o Client Secret e o Account ID.'; return; }
       out.textContent = 'Salvando…'; add.disabled = true;
-      connApi('', 'POST', { tool: 'taboola', name, clientId: cid, clientSecret: sec }).then(r => {
+      connApi('', 'POST', { tool: 'taboola', name, clientId: cid, clientSecret: sec, accountId: acc }).then(r => {
         out.textContent = 'Salva. Testando…';
         return connApi('/test', 'POST', { tool: 'taboola', id: r.connection.id }).then(j => ({ j, id: r.connection.id }));
       }).then(({ j }) => loadConnections().then(() => loadTaboolaState()).then(() => { renderIntegrations(); const o = document.getElementById('connAddRes'); if (o) o.textContent = 'Conta adicionada. ' + integResultText(j); }))
-        .catch(e => { add.disabled = false; out.textContent = e.message === 'value_invalid' ? 'ID ou Secret inválido (tamanho ou espaços).' : e.message === 'too_many' ? 'Limite de contas atingido.' : friendlyError(e.message); });
+        .catch(e => { add.disabled = false; out.textContent = e.message === 'value_invalid' ? 'Client ID, Secret ou Account ID inválido (tamanho ou espaços).' : e.message === 'too_many' ? 'Limite de contas atingido.' : friendlyError(e.message); });
     });
     // ---- ferramentas de chave única ----
     const res = (k, t) => { const o = el.querySelector('[data-integ-res="' + k + '"]'); if (o) o.textContent = t; };
