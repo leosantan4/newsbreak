@@ -31,6 +31,27 @@ async function saveTopups(env, topups) {
   await env.COSTS_KV.put("topups", JSON.stringify(topups));
 }
 
+// ---- Campanhas table: metrics per level for a period (the list endpoints carry no metrics). ----
+const METRIC_RANGES = ["TODAY", "YESTERDAY", "LAST_3_DAYS", "LAST_7_DAYS", "LAST_14_DAYS", "LAST_30_DAYS", "MONTH_TO_DATE"];
+async function computeMetricsByLevel(env, range) {
+  const out = { campaign: {}, adset: {}, ad: {} };
+  const failed = [];
+  const tokens = await getAllTokens(env);
+  await Promise.all(tokens.map(async ([key, token]) => {
+    try {
+      const [c, a, d] = await Promise.all([
+        nbFetchReport(token, range, ["CAMPAIGN"], ["IMPRESSION"]),
+        nbFetchReport(token, range, ["AD_SET"], ["IMPRESSION"]),
+        nbFetchReport(token, range, ["AD"], ["IMPRESSION"]),
+      ]);
+      for (const r of c) out.campaign[r.campaignId] = nbRowToDoc(r);
+      for (const r of a) out.adset[r.adSetId] = nbRowToDoc(r);
+      for (const r of d) out.ad[r.adId] = nbRowToDoc(r);
+    } catch (e) { failed.push(key); }
+  }));
+  return { range, ...out, failedAccounts: failed, generatedAt: new Date().toISOString() };
+}
+
 // ---- Integrations: API keys pasted in the app (KV) override the server secrets of the same name. ----
 const INTEGRATIONS = [
   { key: "VTURB_API_TOKEN", label: "Vturb", hint: "Token da API do Vturb" },
@@ -2243,6 +2264,37 @@ export default {
         return json({ ad }, 201, origin);
       } catch (e) {
         return json({ error: "nb_create_ad_failed", detail: String(e.message || e) }, 502, origin);
+      }
+    }
+
+    if (url.pathname === "/metrics" && request.method === "GET") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      const range = url.searchParams.get("range") || "TODAY";
+      if (METRIC_RANGES.indexOf(range) === -1) return json({ error: "invalid_range" }, 400, origin);
+      try {
+        const data = await getCached(env, "metrics:" + range, range === "TODAY" ? 15 : 60, () => computeMetricsByLevel(env, range));
+        return json(data, 200, origin);
+      } catch (e) {
+        return json({ error: "metrics_failed", detail: String((e && e.message) || e) }, 502, origin);
+      }
+    }
+
+    if (url.pathname === "/nb/entity-delete" && request.method === "POST") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      let body;
+      try { body = await request.json(); } catch { return json({ error: "invalid_json" }, 400, origin); }
+      const { accountKey, entityType, id } = body;
+      const path = { campaign: "campaign/delete/", adset: "ad-set/delete/", ad: "ad/delete/" }[entityType];
+      if (!path || !id || !/^\d+$/.test(String(id)) || body.confirm !== true) return json({ error: "invalid_body" }, 400, origin);
+      try {
+        const token = await tokenForAccountKey(env, accountKey);
+        await nbApi(token, path + id, { method: "DELETE" });
+        await env.COSTS_KV.delete("live_campanhas");
+        return json({ ok: true }, 200, origin);
+      } catch (e) {
+        return json({ error: "nb_entity_delete_failed", detail: String(e.message || e) }, 502, origin);
       }
     }
 
