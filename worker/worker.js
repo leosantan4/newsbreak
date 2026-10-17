@@ -35,8 +35,6 @@ async function saveTopups(env, topups) {
 const INTEGRATIONS = [
   { key: "VTURB_API_TOKEN", label: "Vturb", hint: "Token da API do Vturb" },
   { key: "REDTRACK_API_KEY", label: "RedTrack", hint: "API key do RedTrack (plataforma de vendas)" },
-  { key: "TABOOLA_CLIENT_ID", label: "Taboola · Client ID", hint: "Vem do gerente de conta do Taboola (Backstage API). Precisa dos dois: ID e Secret." },
-  { key: "TABOOLA_CLIENT_SECRET", label: "Taboola · Client Secret", hint: "Vem junto com o Client ID." },
 ];
 async function loadIntegrations(env) {
   const raw = await env.COSTS_KV.get("integrations");
@@ -1164,29 +1162,41 @@ async function runRulesEngine(env, data) {
 // ---------------------------------------------------------------------------------------------
 const TABOOLA_BASE = "https://backstage.taboola.com/backstage";
 
-async function taboolaToken(env, force) {
-  if (!env.TABOOLA_CLIENT_ID || !env.TABOOLA_CLIENT_SECRET) throw new Error("taboola_not_configured");
-  const cid = String(env.TABOOLA_CLIENT_ID).slice(-6);
+// Several Taboola logins can be connected (KV "connections": { taboola: [{ id, name, clientId, clientSecret, createdAt }] }).
+async function loadConnections(env) {
+  const raw = await env.COSTS_KV.get("connections");
+  if (!raw) return {};
+  try { return JSON.parse(raw); } catch { return {}; }
+}
+async function saveConnections(env, all) {
+  await env.COSTS_KV.put("connections", JSON.stringify(all));
+  await env.COSTS_KV.delete("taboola_status");
+}
+
+async function taboolaToken(env, conn, force) {
+  if (!conn || !conn.clientId || !conn.clientSecret) throw new Error("taboola_not_configured");
+  const kvKey = `taboola_token:${conn.id}`;
+  const cid = String(conn.clientId).slice(-6) + String(conn.clientSecret).slice(-4);
   if (!force) {
-    const raw = await env.COSTS_KV.get("taboola_token");
+    const raw = await env.COSTS_KV.get(kvKey);
     if (raw) { try { const t = JSON.parse(raw); if (t.cid === cid && t.exp > Date.now() + 60000) return t.token; } catch {} }
   }
   const resp = await fetch(`${TABOOLA_BASE}/oauth/token`, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({ client_id: env.TABOOLA_CLIENT_ID, client_secret: env.TABOOLA_CLIENT_SECRET, grant_type: "client_credentials" }).toString(),
+    body: new URLSearchParams({ client_id: conn.clientId, client_secret: conn.clientSecret, grant_type: "client_credentials" }).toString(),
   });
   if (!resp.ok) throw new Error(`taboola token -> ${resp.status}`);
   const j = await resp.json();
   if (!j || !j.access_token) throw new Error("taboola token -> sem access_token");
   const ttl = Math.max(300, (Number(j.expires_in) || 43200) - 120);
-  await env.COSTS_KV.put("taboola_token", JSON.stringify({ token: j.access_token, exp: Date.now() + ttl * 1000, cid }), { expirationTtl: ttl });
+  await env.COSTS_KV.put(kvKey, JSON.stringify({ token: j.access_token, exp: Date.now() + ttl * 1000, cid }), { expirationTtl: ttl });
   return j.access_token;
 }
 
-async function taboolaFetch(env, path, options = {}) {
+async function taboolaFetch(env, conn, path, options = {}) {
   for (let attempt = 0; attempt < 2; attempt++) {
-    const token = await taboolaToken(env, attempt > 0);
+    const token = await taboolaToken(env, conn, attempt > 0);
     const resp = await fetch(`${TABOOLA_BASE}${path}`, { ...options, headers: { Authorization: `Bearer ${token}`, Accept: "application/json", ...(options.headers || {}) } });
     if (resp.status === 401 && attempt === 0) continue; // token expired/revoked: get a new one once
     if (!resp.ok) throw new Error(`taboola ${path} -> ${resp.status}`);
@@ -1195,10 +1205,15 @@ async function taboolaFetch(env, path, options = {}) {
   throw new Error("taboola auth -> 401");
 }
 
-async function taboolaAccounts(env) {
-  const j = await taboolaFetch(env, "/api/1.0/users/current/allowed-accounts");
+async function taboolaAccounts(env, conn) {
+  const j = await taboolaFetch(env, conn, "/api/1.0/users/current/allowed-accounts");
   const list = Array.isArray(j) ? j : (j && (j.results || j.accounts)) || [];
   return list.map((a) => ({ id: a.account_id || a.id, name: a.name || a.account_id || a.id, currency: a.currency || null, timezone: a.time_zone_name || null, active: a.is_active !== false }));
+}
+
+// Never expose the secret: only name + last 4 of the Client ID.
+function publicConnection(c) {
+  return { id: c.id, name: c.name, clientIdTail: String(c.clientId || "").slice(-4), createdAt: c.createdAt || null };
 }
 
 export default {
@@ -2018,10 +2033,75 @@ export default {
     if (url.pathname === "/taboola/status" && request.method === "GET") {
       const key = request.headers.get("X-Access-Key");
       if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
-      const e = await keyedEnv(env);
-      if (!e.TABOOLA_CLIENT_ID || !e.TABOOLA_CLIENT_SECRET) return json({ configured: false }, 200, origin);
-      try { return json({ configured: true, ok: true, accounts: await taboolaAccounts(e) }, 200, origin); }
-      catch (err) { const m = String((err && err.message) || err); const st = (m.match(/-> (\d{3})/) || [])[1]; return json({ configured: true, ok: false, status: st ? Number(st) : null }, 200, origin); }
+      const conns = (await loadConnections(env)).taboola || [];
+      if (!conns.length) return json({ configured: false, connections: [] }, 200, origin);
+      const data = await getCached(env, "taboola_status", 300, async () => {
+        const out = [];
+        for (const c of conns) {
+          try { out.push({ id: c.id, name: c.name, ok: true, accounts: await taboolaAccounts(env, c) }); }
+          catch (err) { const m = String((err && err.message) || err); const st = (m.match(/-> (\d{3})/) || [])[1]; out.push({ id: c.id, name: c.name, ok: false, status: st ? Number(st) : null, accounts: [] }); }
+        }
+        return out;
+      });
+      const okAny = data.some((c) => c.ok);
+      return json({ configured: true, ok: okAny, status: okAny ? null : (data[0] && data[0].status) || null, accounts: data.flatMap((c) => c.accounts), connections: data }, 200, origin);
+    }
+
+    if (url.pathname === "/connections" && request.method === "GET") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      const all = await loadConnections(env);
+      return json({ taboola: (all.taboola || []).map(publicConnection) }, 200, origin);
+    }
+
+    if (url.pathname === "/connections" && request.method === "POST") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      let body;
+      try { body = await request.json(); } catch { return json({ error: "invalid_json" }, 400, origin); }
+      if (!body || body.tool !== "taboola") return json({ error: "unknown_tool" }, 400, origin);
+      const name = String(body.name || "").trim().slice(0, 60);
+      const clientId = String(body.clientId || "").trim();
+      const clientSecret = String(body.clientSecret || "").trim();
+      if (!name) return json({ error: "name_required" }, 400, origin);
+      if (clientId.length < 6 || clientId.length > 200 || /\s/.test(clientId) || clientSecret.length < 8 || clientSecret.length > 400 || /\s/.test(clientSecret)) return json({ error: "value_invalid" }, 400, origin);
+      const all = await loadConnections(env);
+      const list = all.taboola || [];
+      if (list.length >= 20) return json({ error: "too_many" }, 400, origin);
+      const conn = { id: crypto.randomUUID(), name, clientId, clientSecret, createdAt: Date.now() };
+      list.push(conn);
+      all.taboola = list;
+      await saveConnections(env, all);
+      return json({ ok: true, connection: publicConnection(conn) }, 200, origin);
+    }
+
+    if (url.pathname === "/connections/test" && request.method === "POST") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      let body;
+      try { body = await request.json(); } catch { return json({ error: "invalid_json" }, 400, origin); }
+      const conn = ((await loadConnections(env)).taboola || []).find((c) => c.id === (body && body.id));
+      if (!conn) return json({ ok: false, error: "not_found" }, 200, origin);
+      try {
+        await taboolaToken(env, conn, true);
+        const accs = await taboolaAccounts(env, conn);
+        await env.COSTS_KV.delete("taboola_status");
+        return json({ ok: true, detail: accs.length + " conta(s): " + accs.slice(0, 4).map((a) => a.name).join(", ") + (accs.length > 4 ? "…" : "") }, 200, origin);
+      } catch (err) {
+        const m = String((err && err.message) || err); const st = (m.match(/-> (\d{3})/) || [])[1];
+        return json({ ok: false, status: st ? Number(st) : null }, 200, origin);
+      }
+    }
+
+    if (url.pathname.startsWith("/connections/") && request.method === "DELETE") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      const id = decodeURIComponent(url.pathname.split("/")[2] || "");
+      const all = await loadConnections(env);
+      all.taboola = (all.taboola || []).filter((c) => c.id !== id);
+      await saveConnections(env, all);
+      await env.COSTS_KV.delete(`taboola_token:${id}`);
+      return json({ ok: true }, 200, origin);
     }
 
     if (url.pathname === "/integrations/test" && request.method === "POST") {
@@ -2038,11 +2118,6 @@ export default {
           if (!e.REDTRACK_API_KEY) return json({ ok: false, error: "not_configured" }, 200, origin);
           const t = todayKeySaoPaulo();
           await rtFetchReport(e, t, t);
-        } else if (body.key === "TABOOLA_CLIENT_ID" || body.key === "TABOOLA_CLIENT_SECRET") {
-          if (!e.TABOOLA_CLIENT_ID || !e.TABOOLA_CLIENT_SECRET) return json({ ok: false, error: "taboola_needs_both" }, 200, origin);
-          await taboolaToken(e, true);
-          const accs = await taboolaAccounts(e);
-          return json({ ok: true, detail: accs.length + " conta(s): " + accs.slice(0, 4).map((a) => a.name).join(", ") + (accs.length > 4 ? "…" : "") }, 200, origin);
         } else return json({ error: "unknown_integration" }, 400, origin);
         return json({ ok: true }, 200, origin);
       } catch (err) {
