@@ -1216,6 +1216,124 @@ function publicConnection(c) {
   return { id: c.id, name: c.name, accountId: c.accountId || "", clientIdTail: String(c.clientId || "").slice(-4), createdAt: c.createdAt || null };
 }
 
+// ---- Taboola read layer (step B): advertiser accounts -> campaigns -> items, plus sites (= the "ad sets" of Taboola) ----
+const TB_DATE = /^\d{4}-\d{2}-\d{2}$/;
+function tbNum(x) { const n = Number(x); return isFinite(n) ? n : 0; }
+
+async function taboolaReport(env, conn, acct, report, dim, params) {
+  const qs = new URLSearchParams(params || {});
+  return taboolaFetch(env, conn, `/api/1.0/${encodeURIComponent(acct)}/reports/${report}/dimensions/${dim}?${qs}`);
+}
+
+// Advertiser accounts under the connection's network account (the network itself holds no campaigns). Cached 1h.
+async function taboolaAdvertisers(env, conn) {
+  const key = `taboola_adv:${conn.id}`;
+  return getCached(env, key, 3600, async () => {
+    const j = await taboolaFetch(env, conn, `/api/1.0/${encodeURIComponent(conn.accountId)}/advertisers`);
+    const list = Array.isArray(j) ? j : (j && j.results) || [];
+    return list.map((a) => ({ id: a.account_id || a.id, name: a.name || a.account_id, currency: a.currency || "USD", timezone: a.time_zone_name || null, active: a.is_active !== false }));
+  });
+}
+
+// Every advertiser account across all connected logins, with the connection that reaches it.
+async function taboolaAllAdvertisers(env) {
+  const conns = (await loadConnections(env)).taboola || [];
+  const out = [], seen = new Set();
+  for (const c of conns) {
+    try {
+      for (const a of await taboolaAdvertisers(env, c)) { if (!seen.has(a.id)) { seen.add(a.id); out.push({ ...a, conn: c }); } }
+    } catch (e) { /* this login is unreachable right now: the others still load */ }
+  }
+  return out;
+}
+
+function tbMetrics(r) {
+  const spent = tbNum(r.spent), clicks = tbNum(r.clicks), impressions = tbNum(r.impressions), conversions = tbNum(r.cpa_actions_num);
+  return { spent: round2(spent), clicks, impressions, cpc: clicks ? round4(spent / clicks) : 0, ctr: impressions ? round4(clicks / impressions * 100) : 0, cpm: impressions ? round2(spent / impressions * 1000) : 0, conversions, cpa: conversions ? round2(spent / conversions) : null, revenue: round2(tbNum(r.conversions_value)) };
+}
+
+function tbCampaign(c, acct) {
+  return {
+    id: String(c.id), account: acct.id, accountName: acct.name, name: c.name || String(c.id),
+    status: c.status || (c.is_active === false ? "PAUSED" : "RUNNING"), active: c.is_active !== false,
+    approval: c.approval_state || null, rejectReason: (c.policy_review && c.policy_review.reject_reason) || null,
+    bidType: c.bid_type || c.bid_strategy || null, bid: c.cpc != null ? tbNum(c.cpc) : null,
+    dailyCap: c.daily_cap != null ? tbNum(c.daily_cap) : null, spendingLimit: c.spending_limit != null ? tbNum(c.spending_limit) : null, spendingModel: c.spending_limit_model || null,
+    startDate: c.start_date || null, country: Array.isArray(c.country_targeting && c.country_targeting.value) ? c.country_targeting.value : null,
+  };
+}
+
+async function computeTaboolaOverview(env, from, to) {
+  const advs = await taboolaAllAdvertisers(env);
+  let updatedAt = null;
+  const accounts = await Promise.all(advs.map(async (a) => {
+    try {
+      const [camps, rep] = await Promise.all([
+        taboolaFetch(env, a.conn, `/api/1.0/${encodeURIComponent(a.id)}/campaigns/`),
+        taboolaReport(env, a.conn, a.id, "campaign-summary", "campaign_breakdown", { start_date: from, end_date: to }),
+      ]);
+      if (rep && rep["last-used-rawdata-update-time"]) updatedAt = updatedAt && updatedAt > rep["last-used-rawdata-update-time"] ? updatedAt : rep["last-used-rawdata-update-time"];
+      const byId = {};
+      for (const r of (rep && rep.results) || []) byId[String(r.campaign)] = tbMetrics(r);
+      const list = ((camps && camps.results) || []).map((c) => ({ ...tbCampaign(c, a), ...(byId[String(c.id)] || tbMetrics({})) }));
+      const total = tbMetrics({ spent: list.reduce((x, c) => x + c.spent, 0), clicks: list.reduce((x, c) => x + c.clicks, 0), impressions: list.reduce((x, c) => x + c.impressions, 0), cpa_actions_num: list.reduce((x, c) => x + c.conversions, 0), conversions_value: list.reduce((x, c) => x + c.revenue, 0) });
+      return { id: a.id, name: a.name, currency: a.currency, ok: true, campaigns: list, total };
+    } catch (err) {
+      const m = String((err && err.message) || err); const st = (m.match(/-> (\d{3})/) || [])[1];
+      return { id: a.id, name: a.name, ok: false, status: st ? Number(st) : null, campaigns: [], total: tbMetrics({}) };
+    }
+  }));
+  return { from, to, dataUpdatedAt: updatedAt, generatedAt: new Date().toISOString(), accounts };
+}
+
+// Sites (publishers). Per account for the whole account, or limited to one campaign (campaign_site_day_breakdown, summed).
+async function computeTaboolaSites(env, from, to, acctId, campaignId) {
+  const advs = (await taboolaAllAdvertisers(env)).filter((a) => !acctId || a.id === acctId);
+  const sites = [];
+  let updatedAt = null;
+  await Promise.all(advs.map(async (a) => {
+    try {
+      let rep, rows;
+      if (campaignId) {
+        rep = await taboolaReport(env, a.conn, a.id, "campaign-summary", "campaign_site_day_breakdown", { start_date: from, end_date: to, campaign: campaignId });
+        const agg = new Map();
+        for (const r of (rep && rep.results) || []) {
+          const k = String(r.site_id || r.site);
+          const cur = agg.get(k) || { site_id: r.site_id, site: r.site, site_name: r.site_name, spent: 0, clicks: 0, impressions: 0, cpa_actions_num: 0, conversions_value: 0 };
+          cur.spent += tbNum(r.spent); cur.clicks += tbNum(r.clicks); cur.impressions += tbNum(r.impressions); cur.cpa_actions_num += tbNum(r.cpa_actions_num); cur.conversions_value += tbNum(r.conversions_value);
+          agg.set(k, cur);
+        }
+        rows = [...agg.values()];
+      } else {
+        rep = await taboolaReport(env, a.conn, a.id, "campaign-summary", "site_breakdown", { start_date: from, end_date: to });
+        rows = (rep && rep.results) || [];
+      }
+      if (rep && rep["last-used-rawdata-update-time"]) updatedAt = updatedAt && updatedAt > rep["last-used-rawdata-update-time"] ? updatedAt : rep["last-used-rawdata-update-time"];
+      for (const r of rows) sites.push({ account: a.id, accountName: a.name, siteId: String(r.site_id || r.site), site: r.site_name || r.site || String(r.site_id), ...tbMetrics(r) });
+    } catch (err) { /* one account failing does not hide the others */ }
+  }));
+  sites.sort((x, y) => y.spent - x.spent);
+  return { from, to, campaign: campaignId || null, dataUpdatedAt: updatedAt, sites };
+}
+
+// Items (ads) of one campaign, with approval state and the metrics of the period.
+async function computeTaboolaItems(env, from, to, acctId, campaignId) {
+  const a = (await taboolaAllAdvertisers(env)).find((x) => x.id === acctId);
+  if (!a) return { items: [], error: "account_not_found" };
+  const [items, rep] = await Promise.all([
+    taboolaFetch(env, a.conn, `/api/1.0/${encodeURIComponent(a.id)}/campaigns/${encodeURIComponent(campaignId)}/items/`),
+    taboolaReport(env, a.conn, a.id, "top-campaign-content", "item_breakdown", { start_date: from, end_date: to, campaign: campaignId }).catch(() => null),
+  ]);
+  const byItem = {};
+  for (const r of (rep && rep.results) || []) byItem[String(r.item)] = tbMetrics(r);
+  const list = ((items && items.results) || []).map((i) => ({
+    id: String(i.id), account: a.id, campaign: String(campaignId), title: i.title || i.description || String(i.id), url: i.url || null, thumbnail: i.thumbnail_url || null,
+    status: i.status || null, active: i.is_active !== false, approval: i.approval_state || null, rejectReason: (i.policy_review && i.policy_review.reject_reason) || null,
+    ...(byItem[String(i.id)] || tbMetrics({})),
+  }));
+  return { from, to, dataUpdatedAt: (rep && rep["last-used-rawdata-update-time"]) || null, items: list };
+}
+
 export default {
   // Cron (every minute): keeps the live campaigns snapshot warm, so the page never waits on a cold read.
   async scheduled(event, env, ctx) {
@@ -2045,6 +2163,23 @@ export default {
       });
       const okAny = data.some((c) => c.ok);
       return json({ configured: true, ok: okAny, status: okAny ? null : (data[0] && data[0].status) || null, accounts: data.flatMap((c) => c.accounts), connections: data }, 200, origin);
+    }
+
+    if (url.pathname.startsWith("/taboola/") && request.method === "GET" && ["overview", "sites", "items"].includes(url.pathname.split("/")[2])) {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      const kind = url.pathname.split("/")[2];
+      const from = url.searchParams.get("from") || "", to = url.searchParams.get("to") || "";
+      const acct = url.searchParams.get("account") || "", camp = url.searchParams.get("campaign") || "";
+      if (!TB_DATE.test(from) || !TB_DATE.test(to) || from > to) return json({ error: "bad_dates" }, 400, origin);
+      if (!/^[A-Za-z0-9_\-]{0,120}$/.test(acct) || !/^[A-Za-z0-9_\-]{0,40}$/.test(camp)) return json({ error: "bad_params" }, 400, origin);
+      if (kind === "items" && (!acct || !camp)) return json({ error: "need_account_and_campaign" }, 400, origin);
+      if (!((await loadConnections(env)).taboola || []).length) return json({ error: "taboola_not_configured" }, 200, origin);
+      const ttl = to >= todayKeySaoPaulo() ? 20 : 300;
+      try {
+        const data = await getCached(env, `tb_${kind}:${from}:${to}:${acct}:${camp}`, ttl, () => kind === "overview" ? computeTaboolaOverview(env, from, to) : kind === "sites" ? computeTaboolaSites(env, from, to, acct, camp) : computeTaboolaItems(env, from, to, acct, camp));
+        return json(data, 200, origin);
+      } catch (err) { return json({ error: "taboola_failed", detail: String((err && err.message) || err).slice(0, 200) }, 502, origin); }
     }
 
     if (url.pathname === "/connections" && request.method === "GET") {
