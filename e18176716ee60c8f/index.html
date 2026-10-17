@@ -3237,7 +3237,7 @@
     }));
     el.querySelectorAll('[data-integ-test]').forEach(b => b.addEventListener('click', () => {
       const k = b.dataset.integTest; res(k, 'Testando…');
-      integApi('/test', 'POST', { key: k }).then(j => res(k, j.ok ? 'Funcionando ✓' : (j.error === 'not_configured' ? 'Sem chave configurada.' : 'A ferramenta recusou a chave' + (j.status ? ' (status ' + j.status + ')' : '') + '. Confira se colou certo.')))
+      integApi('/test', 'POST', { key: k }).then(j => res(k, j.ok ? 'Funcionando ✓' + (j.detail ? ' · ' + j.detail : '') : (j.error === 'not_configured' ? 'Sem chave configurada.' : j.error === 'taboola_needs_both' ? 'Preencha o Client ID e o Client Secret do Taboola, e teste de novo.' : 'A ferramenta recusou a chave' + (j.status ? ' (status ' + j.status + ')' : '') + '. Confira se colou certo.')))
         .catch(() => res(k, 'Sem conexão com o servidor.'));
     }));
     el.querySelectorAll('[data-integ-del]').forEach(b => b.addEventListener('click', () => {
