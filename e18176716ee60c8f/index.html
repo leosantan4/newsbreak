@@ -1175,6 +1175,14 @@
   .tb-root .summary-grid{margin-bottom:16px;}
   .tb-root .empty-state{padding:28px 12px;}
   .pill.small{padding:3px 9px; font-size:11.5px;}
+  .tbr-top{display:flex; gap:16px; flex-wrap:wrap; justify-content:space-between; align-items:flex-start; margin-bottom:4px;}
+  .tbr-panel{margin-top:12px; padding:0;}
+  .tbr-table{min-width:560px;}
+  .tbr-table th, .tbr-table td{text-align:center; padding:12px 14px; vertical-align:middle;}
+  .tbr-ic{border:0; background:none; color:var(--muted); cursor:pointer; padding:6px; border-radius:var(--radius-sm); line-height:0;}
+  .tbr-ic:hover{background:var(--neutral-bg); color:var(--ink);}
+  .tbr-ic.bad:hover{color:var(--bad);}
+  .tbr-accs{max-height:180px; overflow:auto; padding:2px 0;}
   .tbr-modes{display:flex; gap:6px; flex-wrap:wrap;}
   .tbr-form{border:1px solid var(--line); border-radius:var(--radius); padding:14px 16px; margin:0 0 16px; background:var(--surface-raised);}
   .tbr-form input, .tbr-form select, .tbr-form textarea{padding:7px 10px; font-size:13px; border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--bg); color:var(--ink); font-family:inherit; min-width:0;}
@@ -2268,53 +2276,126 @@
   setInterval(() => { if (tbReady() && (view === 'painel' || view === 'campanhas') && !document.hidden && !(document.activeElement && document.activeElement.matches('.tb-root input, .tb-root select'))) { Object.keys(tbCache).forEach(k => { if (tbCache[k]) tbCache[k].at = 0; }); renderSourcePanels(); } }, 30000);
   // ---------- /Taboola leitura ----------
 
-  // ---------- Taboola: Regras (bloqueio por nome na conta + otimização por site) ----------
-  let tbrData = null, tbrErr = '', tbrPreview = null, tbrBusy = false, tbrDraft = null;
+  // ---------- Taboola: Regras — duas seções separadas: "Regras condicionais" (por site, como no NB) e "Regras de sites" (bloqueio por nome na conta) ----------
+  let tbrData = null, tbrErr = '', tbrPreview = null, tbrBusy = false, tbrSection = loadPref('tbrSection', 'cond');
   const TBR_METRIC_LABEL = { cost: 'Gasto ($)', clicks: 'Cliques', impressions: 'Impressões', conversions: 'Conversões', cpa: 'CPA ($)', cpc: 'CPC ($)', ctr: 'CTR (%)' };
   const TBR_MODES = [['off', 'Desligado', 'Não avalia nada.'], ['notify', 'Só avisar', 'Avalia e avisa no celular o que FARIA, sem mexer em nada no Taboola.'], ['on', 'Agir', 'Bloqueia de verdade no Taboola.']];
+  const TBR_IC = {
+    play: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4l13 8-13 8z"/></svg>',
+    eye: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>',
+    edit: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>',
+    del: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>'
+  };
   function tbrApi(path, method, body){
     return fetch(TB_API + 'rules' + (path || ''), { method: method || 'GET', cache: 'no-store', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY }, body: body ? JSON.stringify(body) : undefined })
       .then(r => r.json().then(j => { if (!r.ok || j.error) throw new Error(j.error || 'falhou'); return j; }));
   }
   function tbrLoad(){ return tbrApi().then(j => { tbrData = j; tbrErr = ''; }).catch(e => { tbrErr = friendlyError(e.message); }).finally(() => { if (view === 'regras') renderSourcePanels(); }); }
-  function tbrDescribe(r){
-    if (r.type === 'block_pattern') return 'Se o nome do site contém ' + r.patterns.map(p => '"' + ccEsc(p) + '"').join(' ou ') + ' e ele teve ' + r.minClicks + (r.minClicks === 1 ? ' clique' : ' cliques') + ' → bloquear na conta (todas as 4 contas).';
-    return 'Para cada site de campanha ativa (últimos 30 dias): ' + r.conditions.map((c, i) => (i ? (c.join === 'or' ? ' OU ' : ' E ') : '') + TBR_METRIC_LABEL[c.metric] + ' ' + c.op + ' ' + c.value).join('') + ' → ' + (r.action.type === 'block_site' ? 'bloquear o site nessa campanha.' : 'só avisar.');
+  function tbrErrText(code){ return ({ patterns_invalid: 'Informe pelo menos um prefixo (2 a 60 letras).', name_required: 'Dê um nome à regra.', conditions_invalid: 'Adicione pelo menos uma condição.', condition_invalid: 'Confira os valores das condições.', too_many_rules: 'Limite de regras atingido.' })[code] || friendlyError(code); }
+  function tbrAccounts(){ const ov = tbGet('overview'); return ov.data ? ov.data.accounts.map(a => ({ id: a.id, name: a.name })) : []; }
+  function tbrCondText(c){ return TBR_METRIC_LABEL[c.metric] + ' ' + c.op + ' ' + c.value; }
+  function tbrScopeText(r){ const n = (r.accounts || []).length; return n ? n + (n === 1 ? ' conta' : ' contas') : 'Todas as contas'; }
+  function tbrSheet(inner){
+    const el = document.createElement('div'); el.className = 'assign-sheet'; el.innerHTML = '<div class="assign-sheet-card rej-card" role="dialog" aria-modal="true" style="max-width:560px;max-height:90vh;overflow:auto;">' + inner + '</div>';
+    el.addEventListener('click', e => { if (e.target === el) el.remove(); });
+    document.body.appendChild(el); return el;
   }
-  function tbrErrText(code){ return ({ patterns_invalid: 'Informe pelo menos um trecho de nome (2 a 60 letras).', name_required: 'Dê um nome à regra.', conditions_invalid: 'Adicione pelo menos uma condição.', condition_invalid: 'Confira os valores das condições.', too_many_rules: 'Limite de regras atingido.' })[code] || friendlyError(code); }
-  function tbrDraftHtml(){
-    const d = tbrDraft;
-    const sel = (cls, opts, cur) => '<select ' + cls + '>' + opts.map(o => '<option value="' + o[0] + '"' + (String(cur) === String(o[0]) ? ' selected' : '') + '>' + o[1] + '</option>').join('') + '</select>';
-    let body;
-    if (d.type === 'block_pattern') {
-      body = '<label class="tbr-l">Trechos do nome do site (um por linha)</label><textarea data-tbr-f="patterns" rows="3" placeholder="UME-">' + ccEsc(d.patterns) + '</textarea>' +
-        '<label class="tbr-l">Bloquear a partir de quantos cliques</label><input type="number" min="1" data-tbr-f="minClicks" value="' + ccEsc(d.minClicks) + '" style="max-width:120px;">' +
-        '<div class="rule-line">O bloqueio vale para a conta inteira (sem o limite de 1.500 sites da campanha). Só entra site que já teve clique, porque o Taboola só lista o site depois disso.</div>';
-    } else {
-      body = '<label class="tbr-l">Condições (sobre os últimos 30 dias do site dentro da campanha)</label>' + d.conditions.map((c, i) => '<div class="tbr-cond">' + (i ? sel('data-tbr-j="' + i + '"', [['and', 'E'], ['or', 'OU']], c.join) : '<span class="cell-muted" style="width:42px;display:inline-block;">Se</span>') + sel('data-tbr-m="' + i + '"', Object.keys(TBR_METRIC_LABEL).map(k => [k, TBR_METRIC_LABEL[k]]), c.metric) + sel('data-tbr-o="' + i + '"', ['>', '>=', '<', '<=', '='].map(x => [x, x]), c.op) + '<input type="number" step="any" data-tbr-v="' + i + '" value="' + ccEsc(c.value) + '" style="max-width:110px;">' + (d.conditions.length > 1 ? '<button type="button" class="tb-x" data-tbr-rm="' + i + '" title="Tirar">✕</button>' : '') + '</div>').join('') +
-        '<button type="button" class="pill small" data-tbr-addcond>+ condição</button>' +
-        '<label class="tbr-l">O que fazer</label>' + sel('data-tbr-f="action"', [['block_site', 'Bloquear o site nessa campanha'], ['notify', 'Só avisar']], d.action);
-    }
-    return '<div class="tbr-form"><div class="tbr-row"><div><label class="tbr-l">Tipo</label>' + sel('data-tbr-f="type"', [['block_pattern', 'Bloqueio por nome (conta)'], ['site_optimize', 'Otimização por site']], d.type) + '</div><div style="flex:1 1 220px;"><label class="tbr-l">Nome da regra</label><input type="text" data-tbr-f="name" value="' + ccEsc(d.name) + '" maxlength="120" placeholder="Ex.: Rede UME"></div></div>' + body +
-      '<div class="tbr-actions"><button type="button" class="rej-edit-btn" data-tbr-save>Salvar regra</button><button type="button" data-tbr-cancel>Cancelar</button><span class="cell-muted" data-tbr-msg></span></div></div>';
+  function tbrAccPicker(selected){
+    const accs = tbrAccounts();
+    return '<div class="rule-lbl full">Contas<div class="tbr-accs"><label class="rule-notify" style="margin:4px 0;"><input type="checkbox" data-tbr-allacc' + (!(selected || []).length ? ' checked' : '') + '> Todas as contas</label>' + accs.map(a => '<label class="rule-notify" style="margin:4px 0 4px 18px;"><input type="checkbox" data-tbr-acc="' + ccEsc(a.id) + '"' + ((selected || []).indexOf(a.id) !== -1 ? ' checked' : '') + '> ' + ccEsc(a.name) + '</label>').join('') + '</div></div>';
+  }
+  function tbrReadAccs(root){
+    if (root.querySelector('[data-tbr-allacc]').checked) return [];
+    return [...root.querySelectorAll('[data-tbr-acc]')].filter(c => c.checked).map(c => c.dataset.tbrAcc);
+  }
+  function tbrWireAccs(root){
+    const all = root.querySelector('[data-tbr-allacc]'), each = [...root.querySelectorAll('[data-tbr-acc]')];
+    all.addEventListener('change', () => { if (all.checked) each.forEach(c => { c.checked = false; }); });
+    each.forEach(c => c.addEventListener('change', () => { if (c.checked) all.checked = false; else if (!each.some(x => x.checked)) all.checked = true; }));
+  }
+  // ----- editor: regra condicional -----
+  function tbrCondRow(c, first){
+    const sel = (attr, opts, cur) => '<select ' + attr + '>' + opts.map(o => '<option value="' + o[0] + '"' + (String(cur) === String(o[0]) ? ' selected' : '') + '>' + o[1] + '</option>').join('') + '</select>';
+    return '<div class="rule-cond">' + (first ? '<span class="cell-muted" style="font-size:12.5px;">Se</span>' : sel('data-cond="join"', [['and', 'E'], ['or', 'OU']], c.join)) + sel('data-cond="metric"', Object.keys(TBR_METRIC_LABEL).map(k => [k, TBR_METRIC_LABEL[k]]), c.metric) + sel('data-cond="op"', ['>', '>=', '<', '<=', '='].map(x => [x, x]), c.op) + '<input type="number" step="any" data-cond="value" value="' + ccEsc(c.value) + '"><button type="button" data-cond-del title="Tirar">×</button></div>';
+  }
+  function openTbrCondSheet(rule){
+    const r = rule || { name: '', accounts: [], conditions: [{ metric: 'cost', op: '>=', value: 50, join: 'and' }, { metric: 'conversions', op: '=', value: 0, join: 'and' }], action: { type: 'block_site' }, notify: true, enabled: true };
+    const el = tbrSheet('<div class="assign-sheet-title">' + (rule ? 'Editar regra condicional' : 'Nova regra condicional') + '</div>' +
+      '<div class="rej-form"><label>Nome <input type="text" data-f="name" maxlength="120" placeholder="Ex.: Site gastou $50 sem venda" value="' + ccEsc(r.name) + '"></label></div>' +
+      '<div class="rule-block"><div class="rule-block-title">Onde vale</div><div class="rule-grid">' + tbrAccPicker(r.accounts) + '</div></div>' +
+      '<div class="rule-block"><div class="rule-block-title">Quando (E = as duas ao mesmo tempo · OU = basta uma) — sobre os últimos 30 dias do site dentro da campanha</div><div data-conds></div><button type="button" class="bell-pop-link" data-addcond>+ Adicionar condição</button></div>' +
+      '<div class="rule-block"><div class="rule-block-title">Então</div><div class="rule-grid"><label>Ação <select data-f="action"><option value="block_site"' + (r.action.type === 'block_site' ? ' selected' : '') + '>Bloquear o site nessa campanha</option><option value="notify"' + (r.action.type === 'notify' ? ' selected' : '') + '>Só avisar (sem fazer nada)</option></select></label></div>' +
+      '<label class="rule-notify"><input type="checkbox" data-f="notify"' + (r.notify !== false ? ' checked' : '') + '> Receber notificação no celular quando a regra agir</label></div>' +
+      '<div class="rej-summary" data-msg></div><button type="button" class="assign-sheet-close" data-save>Salvar regra</button><button type="button" class="rename-cancel" data-close>Fechar</button>');
+    tbrWireAccs(el);
+    let conds = r.conditions.map(c => ({ ...c }));
+    const box = el.querySelector('[data-conds]');
+    const readConds = () => [...box.querySelectorAll('.rule-cond')].map((row, i) => ({ metric: row.querySelector('[data-cond=metric]').value, op: row.querySelector('[data-cond=op]').value, value: Number(row.querySelector('[data-cond=value]').value), join: i === 0 ? 'and' : row.querySelector('[data-cond=join]').value }));
+    const drawConds = () => { box.innerHTML = conds.map((c, i) => tbrCondRow(c, i === 0)).join(''); box.querySelectorAll('[data-cond-del]').forEach(b => b.addEventListener('click', () => { if (conds.length > 1) { conds = readConds(); conds.splice([...box.children].indexOf(b.closest('.rule-cond')), 1); drawConds(); } })); };
+    drawConds();
+    el.querySelector('[data-addcond]').addEventListener('click', () => { if (conds.length < 8) { conds = readConds(); conds.push({ metric: 'clicks', op: '>=', value: 10, join: 'and' }); drawConds(); } });
+    el.querySelector('[data-close]').addEventListener('click', () => el.remove());
+    el.querySelector('[data-save]').addEventListener('click', () => {
+      const msg = el.querySelector('[data-msg]'); msg.textContent = 'Salvando…';
+      const act = el.querySelector('[data-f=action]').value;
+      const body = { id: rule ? rule.id : undefined, type: 'site_optimize', name: el.querySelector('[data-f=name]').value, enabled: r.enabled !== false, accounts: tbrReadAccs(el), conditions: readConds(), action: { type: act }, notify: act === 'notify' ? true : el.querySelector('[data-f=notify]').checked };
+      tbrApi('', 'POST', body).then(() => tbrLoad()).then(() => el.remove()).catch(e => { msg.textContent = tbrErrText(e.message); });
+    });
+  }
+  // ----- editor: regra de sites (bloqueio por prefixo) -----
+  function openTbrSiteSheet(rule){
+    const r = rule || { name: '', accounts: [], patterns: [], minClicks: 1, notify: true, enabled: true };
+    const el = tbrSheet('<div class="assign-sheet-title">' + (rule ? 'Editar regra de sites' : 'Nova regra de sites') + '</div>' +
+      '<div class="rej-form"><label>Nome <input type="text" data-f="name" maxlength="120" placeholder="Ex.: ume - digiconnect" value="' + ccEsc(r.name) + '"></label></div>' +
+      '<div class="rule-block"><div class="rule-block-title">Prefixos (um por linha)</div><textarea data-f="patterns" rows="3" placeholder="UME-" style="width:100%;padding:8px 9px;font-size:13.5px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--bg);color:var(--ink);font-family:inherit;resize:vertical;">' + ccEsc((r.patterns || []).join('\n')) + '</textarea><div class="rule-line cell-muted">O site é bloqueado se o <b>nome</b> contém algum desses trechos. Vale para a conta toda, sem o limite de 1.500 sites da campanha. O Taboola só lista o site depois do primeiro clique.</div></div>' +
+      '<div class="rule-block"><div class="rule-block-title">Quando</div><div class="rule-grid"><label>Bloquear a partir de quantos cliques <input type="number" min="1" data-f="minClicks" value="' + ccEsc(r.minClicks) + '"></label></div></div>' +
+      '<div class="rule-block"><div class="rule-block-title">Onde vale</div><div class="rule-grid">' + tbrAccPicker(r.accounts) + '</div><label class="rule-notify"><input type="checkbox" data-f="notify"' + (r.notify !== false ? ' checked' : '') + '> Receber notificação no celular quando bloquear</label></div>' +
+      '<div class="rej-summary" data-msg></div><button type="button" class="assign-sheet-close" data-save>Salvar regra</button><button type="button" class="rename-cancel" data-close>Fechar</button>');
+    tbrWireAccs(el);
+    el.querySelector('[data-close]').addEventListener('click', () => el.remove());
+    el.querySelector('[data-save]').addEventListener('click', () => {
+      const msg = el.querySelector('[data-msg]'); msg.textContent = 'Salvando…';
+      const body = { id: rule ? rule.id : undefined, type: 'block_pattern', name: el.querySelector('[data-f=name]').value, enabled: r.enabled !== false, accounts: tbrReadAccs(el), patterns: el.querySelector('[data-f=patterns]').value, minClicks: Number(el.querySelector('[data-f=minClicks]').value), notify: el.querySelector('[data-f=notify]').checked };
+      tbrApi('', 'POST', body).then(() => tbrLoad()).then(() => el.remove()).catch(e => { msg.textContent = tbrErrText(e.message); });
+    });
+  }
+  // ----- janelas: sites bloqueados e histórico -----
+  function openTbrBlocked(rule){
+    const el = tbrSheet('<div class="assign-sheet-title">Sites bloqueados</div><div class="rule-line cell-muted" style="margin-bottom:10px;">Sites bloqueados pela regra "' + ccEsc(rule.name) + '"</div><div data-body><div class="empty-state">Carregando…</div></div><button type="button" class="rename-cancel" data-close>Fechar</button>');
+    el.querySelector('[data-close]').addEventListener('click', () => el.remove());
+    tbrApi('/' + encodeURIComponent(rule.id) + '/blocked').then(j => {
+      const when = t => new Date(t).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+      el.querySelector('[data-body]').innerHTML = j.sites.length ? '<div class="table-scroll"><table style="min-width:420px"><thead><tr><th style="text-align:left;">Site</th><th style="text-align:left;">Prefixo</th><th style="text-align:left;">Bloqueado em</th></tr></thead><tbody>' + j.sites.map(x => '<tr><td style="text-align:left;"><b>' + ccEsc(x.site) + '</b><div class="cell-muted" style="font-size:11.5px;">' + ccEsc(x.siteId) + ' · ' + ccEsc(x.account) + '</div></td><td style="text-align:left;">' + tbChip(x.prefix || '–', '') + '</td><td style="text-align:left;">' + (x.simulated ? tbChip('previsto (só aviso)', 'warn') + '<div class="cell-muted" style="font-size:11.5px;">' + when(x.at) + '</div>' : when(x.at)) + '</td></tr>').join('') + '</tbody></table></div>' : '<div class="empty-state">Esta regra ainda não bloqueou nenhum site.</div>';
+    }).catch(e => { el.querySelector('[data-body]').innerHTML = '<div class="empty-state">' + tbrErrText(e.message) + '</div>'; });
+  }
+  function openTbrHistory(ruleId){
+    const rows = (tbrData.log || []).filter(l => l.kind !== 'block_account' && (!ruleId || l.ruleId === ruleId));
+    const el = tbrSheet('<div class="assign-sheet-title">Histórico</div><div data-body>' + (rows.length ? '<div class="table-scroll"><table style="min-width:520px"><thead><tr><th style="text-align:left;">Quando</th><th style="text-align:left;">Regra</th><th style="text-align:left;">Site / campanha</th><th>Cliques</th><th>Gasto</th><th style="text-align:left;">Resultado</th></tr></thead><tbody>' + rows.slice(0, 60).map(l => '<tr><td style="text-align:left;">' + new Date(l.at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + '</td><td style="text-align:left;">' + ccEsc(l.ruleName) + '</td><td style="text-align:left;"><b>' + ccEsc(l.site) + '</b><div class="cell-muted" style="font-size:11.5px;">' + ccEsc(l.account) + (l.campaign ? ' · ' + ccEsc(l.campaign) : '') + '</div></td><td class="num">' + tbInt(l.metrics.clicks) + '</td><td class="num">' + fmtUSD(l.metrics.cost) + '</td><td style="text-align:left;">' + tbChip(l.result, l.result === 'feito' ? 'act' : l.result === 'erro' ? 'warn' : '') + ' <span class="cell-muted">' + ccEsc(l.detail || '') + '</span></td></tr>').join('') + '</tbody></table></div>' : '<div class="empty-state">Nenhuma ação ainda.</div>') + '</div><button type="button" class="rename-cancel" data-close>Fechar</button>');
+    el.querySelector('[data-close]').addEventListener('click', () => el.remove());
+  }
+  // ----- telas -----
+  function tbrCondHtml(){
+    const rules = tbrData.rules.filter(r => r.type === 'site_optimize');
+    const prev = tbrPreview ? '<section class="panel" style="margin:12px 18px 0;"><div class="step-head"><div class="step-head-left"><span class="step-title" style="font-size:14px;">Teste agora (nada é executado)</span></div></div><div class="rules-pad" style="padding:6px 16px 14px;">' + (tbrPreview.wouldDo.filter(w => w.action !== 'block_account').length ? tbrPreview.wouldDo.filter(w => w.action !== 'block_account').map(w => '<div class="rule-line">' + ccEsc(w.site) + ' · ' + ccEsc(w.account) + (w.campaign ? ' · ' + ccEsc(w.campaign) : '') + ' — ' + (w.action === 'block_campaign_site' ? 'bloquear na campanha' : 'avisar') + ' (' + ccEsc(w.rule) + ', ' + w.metrics.clicks + ' cliques, $' + w.metrics.cost + ')</div>').join('') : '<div class="rule-line cell-muted">Agora nenhuma regra condicional faria nada.</div>') + '</div></section>' : '';
+    return '<div class="step-head"><div class="step-head-left"><span class="step-title">Regras condicionais</span></div><div class="rules-head-actions"><button type="button" class="select-all-btn" data-tbr-preview' + (tbrBusy ? ' disabled' : '') + '>' + (tbrBusy ? 'Verificando…' : 'Testar agora') + '</button><button type="button" class="select-all-btn" data-tbr-hist>Histórico</button><button type="button" class="rej-edit-btn" data-tbr-new-cond>Nova regra</button></div><span class="step-desc">Cada regra olha o <b>site</b> dentro da campanha (nunca a campanha), a cada minuto, com os números acumulados dos últimos 30 dias. O Taboola atualiza por hora, então os números podem atrasar um pouco.</span></div>' + prev +
+      (rules.length ? rules.map(r => '<div class="rule-row' + (r.enabled ? '' : ' off') + '"><div><div class="rule-name">' + ccEsc(r.name) + '</div><div class="rule-line">' + r.conditions.map((c, i) => (i ? '<span class="rule-join">' + (c.join === 'or' ? 'OU' : 'E') + '</span>' : '') + '<span class="rule-chip">' + ccEsc(tbrCondText(c)) + '</span>').join('') + '<span class="rule-join">→</span><span class="rule-chip ' + (r.action.type === 'notify' ? '' : 'act') + '">' + (r.action.type === 'block_site' ? 'Bloquear o site na campanha' : 'Só avisar') + '</span>' + (r.action.type !== 'notify' && r.notify !== false ? '<span class="rule-chip">avisa no celular</span>' : '') + '</div><div class="rule-line">' + ccEsc(tbrScopeText(r)) + '</div></div><div class="rule-actions"><label class="switch" title="' + (r.enabled ? 'Ligada' : 'Desligada') + '"><input type="checkbox" data-tbr-toggle="' + ccEsc(r.id) + '"' + (r.enabled ? ' checked' : '') + '><span class="switch-track"></span></label><button type="button" data-tbr-rhist="' + ccEsc(r.id) + '">Histórico</button><button type="button" data-tbr-edit="' + ccEsc(r.id) + '">Editar</button><button type="button" class="danger" data-tbr-del="' + ccEsc(r.id) + '">Excluir</button></div></div>').join('') : '<div class="empty-state">Nenhuma regra condicional ainda. Clique em "Nova regra".</div>');
+  }
+  function tbrSitesHtml(){
+    const rules = tbrData.rules.filter(r => r.type === 'block_pattern');
+    return '<div class="step-head"><div class="step-head-left"><span class="step-title">Regras de sites</span></div><div class="rules-head-actions"><button type="button" class="select-all-btn" data-tbr-example>Exemplo: rede UME</button><button type="button" class="rej-edit-btn" data-tbr-new-site>Nova regra</button></div><span class="step-desc">Bloqueia sites <b>na conta toda</b> quando o nome contém um prefixo e o site teve cliques. Roda a cada minuto e vale para as 4 contas. Rede inteira só o gerente de conta do Taboola consegue bloquear.</span></div>' +
+      (rules.length ? '<div class="table-scroll"><table class="tbr-table"><thead><tr><th style="text-align:left;">Nome</th><th>Bloqueados</th><th>Status</th><th style="text-align:right;">Ações</th></tr></thead><tbody>' + rules.map(r => {
+        const n = r.blockedCount || 0, sim = r.simCount || 0;
+        return '<tr><td style="text-align:left;"><b>' + ccEsc(r.name) + '</b><div class="cell-muted" style="font-size:11.5px;">' + r.patterns.map(ccEsc).join(', ') + ' · ≥ ' + r.minClicks + (r.minClicks === 1 ? ' clique' : ' cliques') + ' · ' + ccEsc(tbrScopeText(r)) + '</div></td><td>' + tbChip(n + (n === 1 ? ' site' : ' sites'), n ? 'warn' : '') + (sim ? ' <span class="cell-muted" style="font-size:11.5px;" title="Só aviso: ainda não bloqueou de verdade">+' + sim + ' previsto' + (sim === 1 ? '' : 's') + '</span>' : '') + '</td><td><label class="switch" style="vertical-align:middle;"><input type="checkbox" data-tbr-toggle="' + ccEsc(r.id) + '"' + (r.enabled ? ' checked' : '') + '><span class="switch-track"></span></label> <span class="cell-muted" style="margin-left:6px;">' + (r.enabled ? 'Ativa' : 'Pausada') + '</span></td><td style="text-align:right;white-space:nowrap;"><button type="button" class="tbr-ic" data-tbr-run="' + ccEsc(r.id) + '" title="Executar agora">' + TBR_IC.play + '</button><button type="button" class="tbr-ic" data-tbr-blocked="' + ccEsc(r.id) + '" title="Ver sites bloqueados">' + TBR_IC.eye + '</button><button type="button" class="tbr-ic" data-tbr-edit="' + ccEsc(r.id) + '" title="Editar">' + TBR_IC.edit + '</button><button type="button" class="tbr-ic bad" data-tbr-del="' + ccEsc(r.id) + '" title="Excluir">' + TBR_IC.del + '</button></td></tr>';
+      }).join('') + '</tbody></table></div>' : '<div class="empty-state">Nenhuma regra de sites ainda. Comece pelo exemplo da rede UME.</div>');
   }
   function tbrHtml(){
     if (!tbrData) return '<div class="empty-state">' + (tbrErr || 'Carregando regras do Taboola…') + '</div>';
     const mode = tbrData.mode;
     const modes = '<div class="tbr-modes">' + TBR_MODES.map(m => '<button type="button" class="tab small' + (mode === m[0] ? ' active' : '') + '" data-tbr-mode="' + m[0] + '" title="' + ccEsc(m[2]) + '">' + m[1] + '</button>').join('') + '</div>';
-    const modeNote = '<p class="dre-intro" style="margin:6px 0 12px;">' + ccEsc(TBR_MODES.find(m => m[0] === mode)[2]) + (mode === 'on' ? ' <b>Ligado: as regras estão agindo no Taboola.</b>' : '') + '</p>';
-    const rules = tbrData.rules.length ? tbrData.rules.map(r => '<div class="integ-row tbr-rule"><div><div class="rule-name">' + ccEsc(r.name) + ' ' + tbChip(r.type === 'block_pattern' ? 'Bloqueio por nome' : 'Otimização por site', r.type === 'block_pattern' ? 'warn' : '') + (r.enabled ? '' : ' ' + tbChip('Desativada', '')) + '</div><div class="rule-line">' + tbrDescribe(r) + '</div></div><div class="integ-actions"><button type="button" data-tbr-toggle="' + ccEsc(r.id) + '">' + (r.enabled ? 'Desativar' : 'Ativar') + '</button><button type="button" class="danger" data-tbr-del="' + ccEsc(r.id) + '" data-n="' + ccEsc(r.name) + '">Remover</button></div></div>').join('') : '<div class="empty-state" style="padding:18px 0;">Nenhuma regra do Taboola ainda. Comece pelo exemplo da rede UME.</div>';
-    const prev = tbrPreview ? '<div class="tbr-prev"><b>' + (tbrPreview.wouldDo.length ? 'Agora, as regras ' + (tbrPreview.mode === 'on' ? 'fariam' : 'fariam (sem agir)') + ':' : 'Agora nenhuma regra faria nada.') + '</b>' + tbrPreview.wouldDo.map(w => '<div class="rule-line">' + ccEsc(w.site) + ' · ' + ccEsc(w.account) + (w.campaign ? ' · ' + ccEsc(w.campaign) : '') + ' — ' + (w.action === 'block_account' ? 'bloquear na conta' : w.action === 'block_campaign_site' ? 'bloquear na campanha' : 'avisar') + ' (' + ccEsc(w.rule) + ', ' + w.metrics.clicks + ' cliques, $' + w.metrics.cost + ')</div>').join('') + '</div>' : '';
-    const log = (tbrData.log || []).length ? '<div class="integ-subhead">Últimas ações</div><div class="table-scroll"><table><thead><tr><th style="text-align:left;">Quando</th><th style="text-align:left;">Regra</th><th style="text-align:left;">Site</th><th style="text-align:left;">Conta / campanha</th><th>Cliques</th><th>Gasto</th><th style="text-align:left;">Resultado</th></tr></thead><tbody>' + tbrData.log.slice(0, 30).map(l => '<tr><td style="text-align:left;">' + new Date(l.at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + '</td><td style="text-align:left;">' + ccEsc(l.ruleName) + '</td><td style="text-align:left;"><b>' + ccEsc(l.site) + '</b></td><td class="cell-muted" style="text-align:left;">' + ccEsc(l.account) + (l.campaign ? ' · ' + ccEsc(l.campaign) : '') + '</td><td class="num">' + tbInt(l.metrics.clicks) + '</td><td class="num">' + fmtUSD(l.metrics.cost) + '</td><td style="text-align:left;">' + tbChip(l.result, l.result === 'feito' ? 'act' : l.result === 'erro' ? 'warn' : '') + ' <span class="cell-muted">' + ccEsc(l.detail || '') + '</span></td></tr>').join('') + '</tbody></table></div>' : '';
-    return '<div class="integ-subhead" style="border-top:0;padding-top:0;">Modo das regras do Taboola</div>' + modes + modeNote +
-      '<div class="tb-bar"><button type="button" class="rej-edit-btn" data-tbr-new="block_pattern">+ Bloqueio por nome</button><button type="button" class="rej-edit-btn" data-tbr-new="site_optimize">+ Otimização por site</button><button type="button" data-tbr-example>Exemplo: rede UME</button><button type="button" data-tbr-preview' + (tbrBusy ? ' disabled' : '') + '>' + (tbrBusy ? 'Verificando…' : 'Ver o que aconteceria agora') + '</button></div>' +
-      (tbrDraft ? tbrDraftHtml() : '') + prev + '<div class="integ-subhead">Regras</div>' + rules + log;
-  }
-  function tbrReadDraft(root){
-    const d = tbrDraft, f = k => root.querySelector('[data-tbr-f="' + k + '"]');
-    if (f('name')) d.name = f('name').value;
-    if (d.type === 'block_pattern') { if (f('patterns')) d.patterns = f('patterns').value; if (f('minClicks')) d.minClicks = f('minClicks').value; }
-    else { if (f('action')) d.action = f('action').value; d.conditions.forEach((c, i) => { const m = root.querySelector('[data-tbr-m="' + i + '"]'), o = root.querySelector('[data-tbr-o="' + i + '"]'), v = root.querySelector('[data-tbr-v="' + i + '"]'), j = root.querySelector('[data-tbr-j="' + i + '"]'); if (m) c.metric = m.value; if (o) c.op = o.value; if (v) c.value = v.value; if (j) c.join = j.value; }); }
+    const note = '<span class="cell-muted" style="font-size:12.5px;">' + ccEsc(TBR_MODES.find(m => m[0] === mode)[2]) + (mode === 'on' ? ' <b>As regras estão agindo no Taboola.</b>' : '') + '</span>';
+    const tabs = '<div class="tabs" style="margin:14px 0 0;">' + [['cond', 'Regras condicionais'], ['sites', 'Regras de sites']].map(t => '<button type="button" class="tab' + (tbrSection === t[0] ? ' active' : '') + '" data-tbr-sec="' + t[0] + '">' + t[1] + '</button>').join('') + '</div>';
+    return '<div class="tbr-top"><div><div class="integ-subhead" style="border:0;padding:0 0 6px;">Motor das regras do Taboola</div>' + modes + '</div><div style="align-self:flex-end;">' + note + '</div></div>' + tabs +
+      '<section class="panel tbr-panel">' + (tbrSection === 'sites' ? tbrSitesHtml() : tbrCondHtml()) + '</section>';
   }
   function tbrMount(el){
     if (!el) return;
@@ -2322,28 +2403,32 @@
     el.classList.remove('empty-state'); el.classList.add('tb-root');
     if (el.contains(document.activeElement) && document.activeElement.matches('input, textarea, select')) return;
     el.innerHTML = tbrHtml();
+    if (!tbrData) return;
     const rr = () => { renderSourcePanels(); };
+    const rule = id => tbrData.rules.find(x => x.id === id);
+    el.querySelectorAll('[data-tbr-sec]').forEach(b => b.addEventListener('click', () => { tbrSection = b.dataset.tbrSec; savePref('tbrSection', tbrSection); rr(); }));
     el.querySelectorAll('[data-tbr-mode]').forEach(b => b.addEventListener('click', () => {
       const m = b.dataset.tbrMode; if (m === tbrData.mode) return;
       if (m === 'on' && !confirm('Ligar o modo AGIR? As regras vão bloquear sites de verdade no Taboola, sozinhas, a cada minuto.')) return;
       tbrApi('/mode', 'POST', { mode: m }).then(() => { tbrData.mode = m; rr(); }).catch(e => alert(tbrErrText(e.message)));
     }));
-    el.querySelectorAll('[data-tbr-new]').forEach(b => b.addEventListener('click', () => { tbrDraft = b.dataset.tbrNew === 'block_pattern' ? { type: 'block_pattern', name: '', patterns: '', minClicks: 1 } : { type: 'site_optimize', name: '', action: 'block_site', conditions: [{ metric: 'cost', op: '>=', value: 50, join: 'and' }, { metric: 'conversions', op: '=', value: 0, join: 'and' }] }; rr(); }));
-    const ex = el.querySelector('[data-tbr-example]'); if (ex) ex.addEventListener('click', () => { tbrDraft = { type: 'block_pattern', name: 'Rede UME', patterns: 'UME-', minClicks: 1 }; rr(); });
+    el.querySelectorAll('[data-tbr-toggle]').forEach(c => c.addEventListener('change', () => { const r = rule(c.dataset.tbrToggle); tbrApi('', 'POST', Object.assign({}, r, { enabled: c.checked })).then(() => tbrLoad()).catch(e => { c.checked = !c.checked; alert(tbrErrText(e.message)); }); }));
+    el.querySelectorAll('[data-tbr-del]').forEach(b => b.addEventListener('click', () => { const r = rule(b.dataset.tbrDel); if (r && confirm('Excluir a regra "' + r.name + '"?' + (r.type === 'block_pattern' ? ' Os sites que ela já bloqueou continuam bloqueados no Taboola.' : ''))) tbrApi('/' + encodeURIComponent(r.id), 'DELETE').then(() => tbrLoad()).catch(e => alert(tbrErrText(e.message))); }));
+    el.querySelectorAll('[data-tbr-edit]').forEach(b => b.addEventListener('click', () => { const r = rule(b.dataset.tbrEdit); if (r) (r.type === 'block_pattern' ? openTbrSiteSheet : openTbrCondSheet)(r); }));
+    const nc = el.querySelector('[data-tbr-new-cond]'); if (nc) nc.addEventListener('click', () => openTbrCondSheet(null));
+    const ns = el.querySelector('[data-tbr-new-site]'); if (ns) ns.addEventListener('click', () => openTbrSiteSheet(null));
+    const ex = el.querySelector('[data-tbr-example]'); if (ex) ex.addEventListener('click', () => openTbrSiteSheet({ name: 'Rede UME', accounts: [], patterns: ['UME-'], minClicks: 1, notify: true, enabled: true }));
+    el.querySelectorAll('[data-tbr-blocked]').forEach(b => b.addEventListener('click', () => openTbrBlocked(rule(b.dataset.tbrBlocked))));
+    el.querySelectorAll('[data-tbr-run]').forEach(b => b.addEventListener('click', () => {
+      const r = rule(b.dataset.tbrRun);
+      if (tbrData.mode === 'off') { alert('O motor das regras do Taboola está desligado. Escolha "Só avisar" ou "Agir" no topo.'); return; }
+      if (tbrData.mode === 'on' && !confirm('Executar "' + r.name + '" agora? O modo é AGIR: ela vai bloquear de verdade no Taboola.')) return;
+      b.disabled = true;
+      tbrApi('/' + encodeURIComponent(r.id) + '/run', 'POST', {}).then(j => { alert(j.actions ? (j.mode === 'on' ? j.actions + ' site(s) bloqueado(s).' : j.actions + ' site(s) seriam bloqueados (modo Só avisar, nada foi alterado).') : 'Avaliou ' + (j.evaluated || 0) + ' site(s): nenhum para bloquear agora.'); return tbrLoad(); }).catch(e => alert(tbrErrText(e.message))).finally(() => { b.disabled = false; });
+    }));
     const pv = el.querySelector('[data-tbr-preview]'); if (pv) pv.addEventListener('click', () => { tbrBusy = true; tbrPreview = null; rr(); tbrApi('/preview', 'POST', {}).then(j => { tbrPreview = j; }).catch(e => { alert(tbrErrText(e.message)); }).finally(() => { tbrBusy = false; rr(); }); });
-    el.querySelectorAll('[data-tbr-toggle]').forEach(b => b.addEventListener('click', () => { const r = tbrData.rules.find(x => x.id === b.dataset.tbrToggle); tbrApi('', 'POST', Object.assign({}, r, { enabled: !r.enabled })).then(j => { tbrData.rules = j.rules; rr(); }).catch(e => alert(tbrErrText(e.message))); }));
-    el.querySelectorAll('[data-tbr-del]').forEach(b => b.addEventListener('click', () => { if (confirm('Remover a regra "' + b.dataset.n + '"?')) tbrApi('/' + encodeURIComponent(b.dataset.tbrDel), 'DELETE').then(j => { tbrData.rules = j.rules; rr(); }).catch(e => alert(tbrErrText(e.message))); }));
-    if (tbrDraft) {
-      const t = el.querySelector('[data-tbr-f="type"]'); if (t) t.addEventListener('change', () => { tbrReadDraft(el); const n = tbrDraft.name; tbrDraft = t.value === 'block_pattern' ? { type: 'block_pattern', name: n, patterns: '', minClicks: 1 } : { type: 'site_optimize', name: n, action: 'block_site', conditions: [{ metric: 'cost', op: '>=', value: 50, join: 'and' }] }; rr(); });
-      const ac = el.querySelector('[data-tbr-addcond]'); if (ac) ac.addEventListener('click', () => { tbrReadDraft(el); if (tbrDraft.conditions.length < 6) tbrDraft.conditions.push({ metric: 'clicks', op: '>=', value: 10, join: 'and' }); rr(); });
-      el.querySelectorAll('[data-tbr-rm]').forEach(b => b.addEventListener('click', () => { tbrReadDraft(el); tbrDraft.conditions.splice(Number(b.dataset.tbrRm), 1); rr(); }));
-      el.querySelector('[data-tbr-cancel]').addEventListener('click', () => { tbrDraft = null; rr(); });
-      el.querySelector('[data-tbr-save]').addEventListener('click', () => {
-        tbrReadDraft(el); const d = tbrDraft, msg = el.querySelector('[data-tbr-msg]'); msg.textContent = 'Salvando…';
-        const body = d.type === 'block_pattern' ? { type: d.type, name: d.name, patterns: d.patterns, minClicks: Number(d.minClicks) } : { type: d.type, name: d.name, action: { type: d.action }, conditions: d.conditions.map(c => ({ metric: c.metric, op: c.op, value: Number(c.value), join: c.join })) };
-        tbrApi('', 'POST', body).then(j => { tbrData.rules = j.rules; tbrDraft = null; rr(); }).catch(e => { msg.textContent = tbrErrText(e.message); });
-      });
-    }
+    const hi = el.querySelector('[data-tbr-hist]'); if (hi) hi.addEventListener('click', () => openTbrHistory(null));
+    el.querySelectorAll('[data-tbr-rhist]').forEach(b => b.addEventListener('click', () => openTbrHistory(b.dataset.tbrRhist)));
   }
   // ---------- /Taboola Regras ----------
 
