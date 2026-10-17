@@ -849,6 +849,8 @@
     <div class="alert-banner" id="alertBanner" hidden></div>
 
     <div id="painelView">
+      <div class="pill-row source-pills" style="margin-bottom:14px;"></div>
+      <section class="panel src-other-panel"><div class="step-head"><div class="step-head-left"><span class="step-title" data-src-title></span></div></div><div class="empty-state" data-src-body></div></section>
       <div class="tabs period" id="periodTabs"></div>
 
       <section class="summary-grid" id="summaryGrid"></section>
@@ -1146,6 +1148,21 @@
   .integ-actions button.danger:hover{border-color:var(--bad); color:var(--bad);}
   .integ-res{font-size:12px; flex-basis:100%;}
   @media (max-width:720px){ .integ-row{grid-template-columns:1fr;} }
+
+  /* ===== Seletor de fonte compartilhado ===== */
+  .src-other-panel{display:none;}
+  body[data-source-other="1"] #painelView > *:not(.source-pills):not(.src-other-panel),
+  body[data-source-other="1"] #rejeicoesView > *:not(.source-pills):not(.src-other-panel),
+  body[data-source-other="1"] #regrasView > *:not(.source-pills):not(.src-other-panel){display:none !important;}
+  body[data-source-other="1"] .src-other-panel{display:block;}
+  #criarSourceChooser, #criarSourceBar{display:none !important;}
+  .pill .src-dot{display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--line); margin-right:7px; vertical-align:middle;}
+  .pill .src-dot.on{background:var(--good);}
+  .pill .src-dot.part{background:#e0a300;}
+  .pill.active .src-dot:not(.on):not(.part){background:color-mix(in srgb, var(--accent-ink) 35%, transparent);}
+  .integ-section{font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); padding:16px 18px 6px; border-top:1px solid var(--line);}
+  .integ-sub{font-size:13px; font-weight:700; padding:12px 18px 2px;}
+  .integ-note{font-size:12.5px; color:var(--muted); padding:0 18px 12px; line-height:1.5;}
 </style>
 </defs>
 
@@ -1558,6 +1575,7 @@
     </div>
 
     <div id="criarView" hidden>
+      <div class="pill-row source-pills" style="margin-bottom:14px;"></div>
       <div id="criarSourceChooser" hidden>
         <p class="dre-intro" style="padding:0 0 14px;">Escolha a fonte de tráfego. Depois você escolhe a estrutura da campanha.</p>
         <div class="source-card-grid" id="criarSourceGrid"></div>
@@ -1843,6 +1861,8 @@
     </div>
 
     <div id="rejeicoesView" hidden>
+      <div class="pill-row source-pills" style="margin-bottom:14px;"></div>
+      <section class="panel src-other-panel"><div class="step-head"><div class="step-head-left"><span class="step-title" data-src-title></span></div></div><div class="empty-state" data-src-body></div></section>
         <section class="panel">
           <div class="step-head">
             <div class="step-head-left"><span class="step-title">Rejeições</span><span class="cell-muted" id="rejCount"></span></div>
@@ -1861,6 +1881,8 @@
     </div>
 
     <div id="regrasView" hidden>
+      <div class="pill-row source-pills" style="margin-bottom:14px;"></div>
+      <section class="panel src-other-panel"><div class="step-head"><div class="step-head-left"><span class="step-title" data-src-title></span></div></div><div class="empty-state" data-src-body></div></section>
         <section class="panel">
           <div class="step-head">
             <div class="step-head-left"><span class="step-title">Regras</span><span class="cell-muted" id="rulesEngineInfo"></span></div>
@@ -2063,7 +2085,7 @@
 
   let libraryItems = [];
   let view = loadPref('view', 'painel');
-  let criarSource = loadPref('criarSource', '') || null;
+  let criarSource = null;
   let scope = loadPref('scope', 'geral');
   let period = loadPref('period', 'today');
   let metric = loadPref('metric', 'faturamento');
@@ -2075,8 +2097,51 @@
     { key: 'taboola', label: 'Taboola', connected: false },
     { key: 'outbrain', label: 'Outbrain', connected: false },
   ];
-  let campSource = loadPref('campSource', 'newsbreak');
+  // One shared "source" (fonte de tráfego) for every source-scoped screen: Dashboard, Criar Campanha, Campanhas, Rejeições, Regras.
+  let campSource = loadPref('source', loadPref('campSource', 'newsbreak'));
   if (!TRAFFIC_SOURCES.some(x => x.key === campSource)) campSource = 'newsbreak';
+  criarSource = campSource;
+  let taboolaState = { configured: false, ok: false, accounts: [] };
+  const TABOOLA_STATUS_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/taboola/status';
+  const SOURCE_SCOPED_VIEWS = ['painel', 'criar', 'campanhas', 'rejeicoes', 'regras'];
+  const VIEW_TITLES = { dre: 'DRE Mensal', custos: 'Custos Fixos', saldo: 'Saldo', links: 'Links das contas', galeria: 'Galeria de ads', mapa: 'Mapa de Vendas', vturb: 'VSL', contas: 'Contas', notificacoes: 'Notificações', integracoes: 'Integrações' };
+  function sourceDot(x){ return x.key === 'newsbreak' ? 'on' : (x.key === 'taboola' && taboolaState.configured && taboolaState.ok) ? 'part' : ''; }
+  function sourcePanelText(key, what){
+    const x = TRAFFIC_SOURCES.find(t => t.key === key) || { label: key };
+    if (key === 'taboola') {
+      if (!taboolaState.configured) return 'Falta conectar o Taboola: cole o Client ID e o Client Secret em Integrações e clique em Testar.';
+      if (!taboolaState.ok) return 'As chaves do Taboola estão salvas, mas o Taboola não aceitou' + (taboolaState.status ? ' (status ' + taboolaState.status + ')' : '') + '. Confira em Integrações.';
+      const n = (taboolaState.accounts || []).length;
+      return 'Taboola conectado' + (n ? ' · ' + n + ' conta(s): ' + taboolaState.accounts.slice(0, 4).map(a => a.name).join(', ') : '') + '. ' + what + ' do Taboola é o próximo passo da construção.';
+    }
+    return 'A integração com ' + x.label + ' ainda não existe. Quando for construída, as chaves entram em Integrações.';
+  }
+  function renderSourcePanels(){
+    const x = TRAFFIC_SOURCES.find(t => t.key === campSource) || TRAFFIC_SOURCES[0];
+    const WHAT = { painelView: 'O Dashboard', rejeicoesView: 'A aba Rejeições', regrasView: 'A aba Regras' };
+    Object.keys(WHAT).forEach(id => {
+      const panel = document.querySelector('#' + id + ' .src-other-panel'); if (!panel) return;
+      panel.querySelector('[data-src-title]').textContent = x.label;
+      panel.querySelector('[data-src-body]').textContent = sourcePanelText(campSource, WHAT[id]);
+    });
+    if (campSource !== 'newsbreak') {
+      const cb = document.getElementById('campOtherBody'); if (cb) cb.textContent = sourcePanelText(campSource, 'A aba Campanhas');
+      const cr = document.getElementById('criarOtherBody'); if (cr) cr.textContent = sourcePanelText(campSource, 'Criar campanha');
+    }
+  }
+  function setSource(key){
+    if (!TRAFFIC_SOURCES.some(x => x.key === key)) return;
+    campSource = key; criarSource = key;
+    savePref('source', key); savePref('campSource', key); savePref('criarSource', key);
+    renderAll();
+    try { renderCriarSubNav(); } catch (e) {}
+    renderSourcePanels();
+  }
+  function loadTaboolaState(){
+    return fetch(TABOOLA_STATUS_API, { headers: { 'X-Access-Key': COSTS_API_KEY }, cache: 'no-store' }).then(r => r.json())
+      .then(j => { taboolaState = { configured: !!j.configured, ok: !!j.ok, status: j.status, accounts: j.accounts || [] }; renderCampSourcePills(); renderSourcePanels(); })
+      .catch(() => {});
+  }
 
   let mapaPeriod = loadPref('mapaPeriod', 'month');
   let mapaData = null;
@@ -2928,13 +2993,9 @@
   function renderCampSourcePills(){
     document.querySelectorAll('.source-pills').forEach(el => {
       el.innerHTML = TRAFFIC_SOURCES.map(x =>
-        '<button type="button" class="pill' + (x.key === campSource ? ' active' : '') + '" data-source="' + x.key + '">' + x.label + '</button>'
+        '<button type="button" class="pill' + (x.key === campSource ? ' active' : '') + '" data-source="' + x.key + '"><span class="src-dot ' + sourceDot(x) + '"></span>' + x.label + '</button>'
       ).join('');
-      el.querySelectorAll('[data-source]').forEach(btn => btn.addEventListener('click', () => {
-        campSource = btn.dataset.source;
-        savePref('campSource', campSource);
-        renderCampanhas();
-      }));
+      el.querySelectorAll('[data-source]').forEach(btn => btn.addEventListener('click', () => setSource(btn.dataset.source)));
     });
   }
 
@@ -3115,8 +3176,10 @@
   document.addEventListener('click', (e) => { const pop = document.getElementById('balancePop'); if (!pop.hidden && !pop.contains(e.target)) pop.hidden = true; });
 
   function renderPageTitle(){
-    const src = (view === 'criar' && criarSource) ? TRAFFIC_SOURCES.find(x => x.key === criarSource) : null;
-    document.getElementById('pageTitle').textContent = src ? src.label : 'NewsBreak';
+    const scoped = SOURCE_SCOPED_VIEWS.indexOf(view) !== -1;
+    const src = TRAFFIC_SOURCES.find(x => x.key === campSource) || TRAFFIC_SOURCES[0];
+    document.body.dataset.sourceOther = (scoped && campSource !== 'newsbreak') ? '1' : '';
+    document.getElementById('pageTitle').textContent = scoped ? src.label : (VIEW_TITLES[view] || 'RASTRO');
   }
 
   function renderAll(){
@@ -3136,6 +3199,8 @@
     renderLive();
     renderMapaPeriodTabs();
     renderMapa();
+    renderCampSourcePills();
+    renderSourcePanels();
   }
 
   document.querySelectorAll('.nav-item').forEach(btn => btn.addEventListener('click', () => { view = btn.dataset.view; savePref('view', view); renderAll(); if (view === 'rejeicoes') loadRejeicoes(); if (view === 'regras') loadRegras(); if (view === 'notificacoes') loadNotifs(); if (view === 'integracoes') loadIntegrations(); }));
@@ -3218,7 +3283,7 @@
   function renderIntegrations(){
     const el = document.getElementById('integList');
     if (!el) return;
-    el.innerHTML = integData.length ? integData.map(i => {
+    const rowHtml = (i) => {
       const st = i.source === 'app' ? '<span class="rule-chip act">Configurada neste app · ••••' + ccEsc(i.tail || '') + '</span>' : i.source === 'server' ? '<span class="rule-chip">Configurada no servidor (Cloudflare)</span>' : '<span class="rule-chip warn">Não configurada</span>';
       return '<div class="integ-row"><div><div class="rule-name">' + ccEsc(i.label) + '</div><div class="rule-line">' + ccEsc(i.hint) + '</div><div class="rule-line">' + st + '</div></div>' +
         '<div class="integ-actions"><input type="password" autocomplete="off" placeholder="' + (i.source ? 'Colar uma chave nova' : 'Cole a chave aqui') + '" data-integ-input="' + ccEsc(i.key) + '">' +
@@ -3226,13 +3291,21 @@
         '<button type="button" data-integ-test="' + ccEsc(i.key) + '"' + (i.source ? '' : ' disabled') + '>Testar</button>' +
         (i.source === 'app' ? '<button type="button" class="danger" data-integ-del="' + ccEsc(i.key) + '">Remover</button>' : '') +
         '<span class="cell-muted integ-res" data-integ-res="' + ccEsc(i.key) + '"></span></div></div>';
-    }).join('') : '<div class="empty-state">Carregando…</div>';
+    };
+    const tab = integData.filter(i => /^TABOOLA_/.test(i.key)), tools = integData.filter(i => !/^TABOOLA_/.test(i.key));
+    el.innerHTML = integData.length ?
+      '<div class="integ-section">Fontes de tráfego</div>' +
+      '<div class="integ-sub">NewsBreak</div><div class="integ-note">Os tokens das contas da NewsBreak ficam em <b>Contas</b> (cada conta tem o seu).</div>' +
+      '<div class="integ-sub">Taboola</div>' + tab.map(rowHtml).join('') +
+      TRAFFIC_SOURCES.filter(x => ['adskeeper', 'revcontent', 'outbrain'].indexOf(x.key) !== -1).map(x => '<div class="integ-sub">' + ccEsc(x.label) + '</div><div class="integ-note">Em breve. Quando a integração com ' + ccEsc(x.label) + ' for construída, as chaves entram aqui.</div>').join('') +
+      '<div class="integ-section">Ferramentas (vendas e vídeo)</div>' + tools.map(rowHtml).join('')
+      : '<div class="empty-state">Carregando…</div>';
     const res = (k, t) => { const o = el.querySelector('[data-integ-res="' + k + '"]'); if (o) o.textContent = t; };
     el.querySelectorAll('[data-integ-save]').forEach(b => b.addEventListener('click', () => {
       const k = b.dataset.integSave, input = el.querySelector('[data-integ-input="' + k + '"]'), v = input.value.trim();
       if (!v) { res(k, 'Cole a chave primeiro.'); return; }
       res(k, 'Salvando…');
-      integApi('', 'POST', { key: k, value: v }).then(() => { input.value = ''; return loadIntegrationFlags(); }).then(() => { renderIntegrations(); loadVturb(); loadMapaVendas(); loadLivePainel(); setTimeout(() => res(k, 'Salva. Clique em Testar pra conferir.'), 50); })
+      integApi('', 'POST', { key: k, value: v }).then(() => { input.value = ''; return loadIntegrationFlags(); }).then(() => { renderIntegrations(); loadVturb(); loadMapaVendas(); loadLivePainel(); loadTaboolaState(); setTimeout(() => res(k, 'Salva. Clique em Testar pra conferir.'), 50); })
         .catch(e => res(k, e.message === 'value_invalid' ? 'Chave inválida (tamanho ou espaços).' : friendlyError(e.message)));
     }));
     el.querySelectorAll('[data-integ-test]').forEach(b => b.addEventListener('click', () => {
@@ -3882,6 +3955,7 @@
 
   renderAll();
   renderRejeicoes();
+  loadTaboolaState();
   if (view === 'rejeicoes') loadRejeicoes();
   if (view === 'regras') loadRegras();
   if (view === 'notificacoes') loadNotifs();
