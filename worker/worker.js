@@ -35,6 +35,8 @@ async function saveTopups(env, topups) {
 const INTEGRATIONS = [
   { key: "VTURB_API_TOKEN", label: "Vturb", hint: "Token da API do Vturb" },
   { key: "REDTRACK_API_KEY", label: "RedTrack", hint: "API key do RedTrack (plataforma de vendas)" },
+  { key: "TABOOLA_CLIENT_ID", label: "Taboola · Client ID", hint: "Vem do gerente de conta do Taboola (Backstage API). Precisa dos dois: ID e Secret." },
+  { key: "TABOOLA_CLIENT_SECRET", label: "Taboola · Client Secret", hint: "Vem junto com o Client ID." },
 ];
 async function loadIntegrations(env) {
   const raw = await env.COSTS_KV.get("integrations");
@@ -1157,6 +1159,48 @@ async function runRulesEngine(env, data) {
   return { ran: true, evaluated, actions: plan.length };
 }
 
+// ---------------------------------------------------------------------------------------------
+// Taboola (Backstage API): OAuth client-credentials. Step 1 = connection only (token + accounts). `env` must be keyedEnv(env).
+// ---------------------------------------------------------------------------------------------
+const TABOOLA_BASE = "https://backstage.taboola.com/backstage";
+
+async function taboolaToken(env, force) {
+  if (!env.TABOOLA_CLIENT_ID || !env.TABOOLA_CLIENT_SECRET) throw new Error("taboola_not_configured");
+  const cid = String(env.TABOOLA_CLIENT_ID).slice(-6);
+  if (!force) {
+    const raw = await env.COSTS_KV.get("taboola_token");
+    if (raw) { try { const t = JSON.parse(raw); if (t.cid === cid && t.exp > Date.now() + 60000) return t.token; } catch {} }
+  }
+  const resp = await fetch(`${TABOOLA_BASE}/oauth/token`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ client_id: env.TABOOLA_CLIENT_ID, client_secret: env.TABOOLA_CLIENT_SECRET, grant_type: "client_credentials" }).toString(),
+  });
+  if (!resp.ok) throw new Error(`taboola token -> ${resp.status}`);
+  const j = await resp.json();
+  if (!j || !j.access_token) throw new Error("taboola token -> sem access_token");
+  const ttl = Math.max(300, (Number(j.expires_in) || 43200) - 120);
+  await env.COSTS_KV.put("taboola_token", JSON.stringify({ token: j.access_token, exp: Date.now() + ttl * 1000, cid }), { expirationTtl: ttl });
+  return j.access_token;
+}
+
+async function taboolaFetch(env, path, options = {}) {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const token = await taboolaToken(env, attempt > 0);
+    const resp = await fetch(`${TABOOLA_BASE}${path}`, { ...options, headers: { Authorization: `Bearer ${token}`, Accept: "application/json", ...(options.headers || {}) } });
+    if (resp.status === 401 && attempt === 0) continue; // token expired/revoked: get a new one once
+    if (!resp.ok) throw new Error(`taboola ${path} -> ${resp.status}`);
+    return resp.json();
+  }
+  throw new Error("taboola auth -> 401");
+}
+
+async function taboolaAccounts(env) {
+  const j = await taboolaFetch(env, "/api/1.0/users/current/allowed-accounts");
+  const list = Array.isArray(j) ? j : (j && (j.results || j.accounts)) || [];
+  return list.map((a) => ({ id: a.account_id || a.id, name: a.name || a.account_id || a.id, currency: a.currency || null, timezone: a.time_zone_name || null, active: a.is_active !== false }));
+}
+
 export default {
   // Cron (every minute): keeps the live campaigns snapshot warm, so the page never waits on a cold read.
   async scheduled(event, env, ctx) {
@@ -1971,6 +2015,15 @@ export default {
       return json({ ok: true }, 200, origin);
     }
 
+    if (url.pathname === "/taboola/status" && request.method === "GET") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      const e = await keyedEnv(env);
+      if (!e.TABOOLA_CLIENT_ID || !e.TABOOLA_CLIENT_SECRET) return json({ configured: false }, 200, origin);
+      try { return json({ configured: true, ok: true, accounts: await taboolaAccounts(e) }, 200, origin); }
+      catch (err) { const m = String((err && err.message) || err); const st = (m.match(/-> (\d{3})/) || [])[1]; return json({ configured: true, ok: false, status: st ? Number(st) : null }, 200, origin); }
+    }
+
     if (url.pathname === "/integrations/test" && request.method === "POST") {
       const key = request.headers.get("X-Access-Key");
       if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
@@ -1985,6 +2038,11 @@ export default {
           if (!e.REDTRACK_API_KEY) return json({ ok: false, error: "not_configured" }, 200, origin);
           const t = todayKeySaoPaulo();
           await rtFetchReport(e, t, t);
+        } else if (body.key === "TABOOLA_CLIENT_ID" || body.key === "TABOOLA_CLIENT_SECRET") {
+          if (!e.TABOOLA_CLIENT_ID || !e.TABOOLA_CLIENT_SECRET) return json({ ok: false, error: "taboola_needs_both" }, 200, origin);
+          await taboolaToken(e, true);
+          const accs = await taboolaAccounts(e);
+          return json({ ok: true, detail: accs.length + " conta(s): " + accs.slice(0, 4).map((a) => a.name).join(", ") + (accs.length > 4 ? "…" : "") }, 200, origin);
         } else return json({ error: "unknown_integration" }, 400, origin);
         return json({ ok: true }, 200, origin);
       } catch (err) {
