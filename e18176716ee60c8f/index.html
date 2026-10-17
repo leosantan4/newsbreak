@@ -1166,6 +1166,15 @@
   .integ-justify{text-align:justify; text-justify:inter-word; line-height:1.55;}
   .integ-conn .integ-res{display:block; margin-top:4px;}
   @media (max-width:720px){ .integ-row.integ-conn{flex-direction:column; align-items:stretch;} .integ-conn .integ-actions{margin-left:0;} }
+  .tb-bar{display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:12px;}
+  .tb-bar select, .tb-bar input{padding:7px 10px; font-size:13px; border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--bg); color:var(--ink); font-family:inherit; min-width:0;}
+  .tb-bar input{flex:1 1 160px; max-width:280px;}
+  .tb-x{border:0; background:none; color:inherit; cursor:pointer; font:inherit; padding:0 0 0 4px;}
+  .tb-root{padding:12px 16px 16px; text-align:left; color:var(--ink);}
+  .tb-root .tb-fresh{margin:0 0 10px;}
+  .tb-root .summary-grid{margin-bottom:16px;}
+  .tb-root .empty-state{padding:28px 12px;}
+  .pill.small{padding:3px 9px; font-size:11.5px;}
   .integ-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:10px; padding:4px 18px 14px;}
   .integ-card{display:flex; flex-direction:column; align-items:flex-start; gap:8px; text-align:left; padding:14px 16px; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface-raised); color:var(--ink); font:inherit; cursor:pointer; transition:border-color .12s, transform .12s;}
   .integ-card:hover{border-color:var(--accent); transform:translateY(-1px);}
@@ -2136,16 +2145,131 @@
     }
     return 'A integração com ' + x.label + ' ainda não existe. Quando for construída, as chaves entram em Integrações.';
   }
+  // ---------- Taboola: leitura (contas, campanhas, sites = "conjuntos", anúncios) ----------
+  const TB_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/taboola/';
+  let tbTab = loadPref('tbTab', 'campanhas'), tbAcct = '', tbCamp = null, tbSearch = '';
+  const tbCache = {};
+  const TB_STATUS = { RUNNING: ['Ativa', 'act'], PAUSED: ['Pausada', ''], PENDING_APPROVAL: ['Em análise', 'warn'], REJECTED: ['Recusada', 'warn'], DEPLETED: ['Orçamento esgotado', 'warn'], DEPLETED_MONTHLY: ['Esgotada no mês', 'warn'], PENDING_START_DATE: ['Agendada', ''], EXPIRED: ['Expirada', ''], FROZEN: ['Congelada', 'warn'], CRAWLING: ['Lendo imagem', ''] };
+  function tbReady(){ return campSource === 'taboola' && taboolaState.configured && taboolaState.ok; }
+  function tbRange(){ const d = periodDates(period); return [d[0], d[d.length - 1]]; }
+  function tbGet(kind, params){
+    const r = tbRange(), q = new URLSearchParams(Object.assign({ from: r[0], to: r[1] }, params || {}));
+    const key = kind + '?' + q.toString();
+    const c = tbCache[key] = tbCache[key] || {};
+    if (!c.loading && !(c.at && Date.now() - c.at < 20000)) {
+      c.loading = true;
+      fetch(TB_API + kind + '?' + q, { headers: { 'X-Access-Key': COSTS_API_KEY }, cache: 'no-store' })
+        .then(x => x.json().then(j => { if (!x.ok || j.error) throw new Error(j.error || 'falhou'); return j; }))
+        .then(j => { c.data = j; c.error = null; c.at = Date.now(); })
+        .catch(e => { c.error = friendlyError(e.message); c.at = Date.now(); })
+        .finally(() => { c.loading = false; if (!document.activeElement || !document.activeElement.matches('.tb-root input, .tb-root select')) renderSourcePanels(); });
+    }
+    return c;
+  }
+  function tbSum(list){
+    const t = { spent: 0, clicks: 0, impressions: 0, conversions: 0, revenue: 0 };
+    list.forEach(x => { t.spent += x.spent; t.clicks += x.clicks; t.impressions += x.impressions; t.conversions += x.conversions; t.revenue += x.revenue; });
+    t.cpc = t.clicks ? t.spent / t.clicks : 0; t.ctr = t.impressions ? t.clicks / t.impressions * 100 : 0; t.cpa = t.conversions ? t.spent / t.conversions : null;
+    return t;
+  }
+  const tbPct = v => (v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%';
+  const tbInt = v => (v || 0).toLocaleString('pt-BR');
+  function tbMetricCells(x){
+    return '<td class="num">' + fmtUSD(x.spent) + '</td><td class="num">' + tbInt(x.clicks) + '</td><td class="num cell-muted">' + fmtUSD(x.cpc) + '</td><td class="num cell-muted">' + tbInt(x.impressions) + '</td><td class="num cell-muted">' + tbPct(x.ctr) + '</td><td class="num">' + tbInt(x.conversions) + '</td><td class="num">' + (x.cpa === null ? '–' : fmtUSD(x.cpa)) + '</td>';
+  }
+  const TB_HEAD = '<th>Gasto</th><th>Cliques</th><th>CPC</th><th>Impr.</th><th>CTR</th><th>Conv.</th><th>CPA</th>';
+  function tbChip(txt, cls){ return '<span class="rule-chip ' + (cls || '') + '">' + ccEsc(txt) + '</span>'; }
+  function tbFresh(d){
+    const m = d && d.dataUpdatedAt ? String(d.dataUpdatedAt).match(/(\d{2}:\d{2})/) : null;
+    return '<p class="dre-intro tb-fresh">' + (m ? 'Dados do Taboola atualizados até <b>' + m[1] + '</b> (horário de Brasília). O Taboola atualiza por hora e pode corrigir números depois.' : 'O Taboola atualiza os números por hora e pode corrigi-los depois.') + '</p>';
+  }
+  function tbPeriodTabs(){ return '<div class="tabs period">' + PERIODS.map(p => '<button type="button" class="tab small' + (period === p.key ? ' active' : '') + '" data-tb-period="' + p.key + '">' + p.label + '</button>').join('') + '</div>'; }
+  function tbGoButtons(c){
+    const a = ' data-acc="' + ccEsc(c.account) + '" data-id="' + ccEsc(c.id) + '" data-name="' + ccEsc(c.name) + '"';
+    return '<button type="button" class="pill small" data-tb-go="sites"' + a + '>Sites</button> <button type="button" class="pill small" data-tb-go="anuncios"' + a + '>Anúncios</button>';
+  }
+  function tbTableCampanhas(d){
+    const q = tbSearch.trim().toLowerCase();
+    const rows = [];
+    d.accounts.forEach(a => a.campaigns.forEach(c => { if (c.status === 'TERMINATED') return; if (tbAcct && c.account !== tbAcct) return; if (q && (c.name + ' ' + c.accountName).toLowerCase().indexOf(q) === -1) return; rows.push(c); }));
+    rows.sort((x, y) => y.spent - x.spent);
+    if (!rows.length) return '<div class="empty-state">' + (d.accounts.some(a => a.campaigns.length) ? 'Nenhuma campanha com esse filtro.' : 'Ainda não há campanhas nas ' + d.accounts.length + ' contas do Taboola. Quando a primeira subir, ela aparece aqui.') + '</div>';
+    return '<div class="table-scroll"><table class="ctable" style="min-width:980px"><thead><tr><th style="text-align:left;">Estado</th><th style="text-align:left;">Campanha</th><th style="text-align:left;">Conta</th><th>Lance</th><th>Orç. diário</th>' + TB_HEAD + '<th></th></tr></thead><tbody>' + rows.map(c => {
+      const st = TB_STATUS[c.status] || [c.status, ''];
+      return '<tr><td style="text-align:left;">' + tbChip(st[0], st[1]) + (c.rejectReason ? '<div class="rule-line cell-muted">' + ccEsc(c.rejectReason) + '</div>' : '') + '</td><td style="text-align:left;"><b>' + ccEsc(c.name) + '</b></td><td class="cell-muted" style="text-align:left;">' + ccEsc(c.accountName) + '</td><td class="num cell-muted">' + (c.bid === null ? '–' : fmtUSD(c.bid)) + '</td><td class="num cell-muted">' + (c.dailyCap === null ? '–' : fmtUSD(c.dailyCap)) + '</td>' + tbMetricCells(c) +
+        '<td style="white-space:nowrap;">' + tbGoButtons(c) + '</td></tr>';
+    }).join('') + '</tbody></table></div>';
+  }
+  function tbTableSites(){
+    const params = {}; if (tbCamp) { params.account = tbCamp.account; params.campaign = tbCamp.id; } else if (tbAcct) params.account = tbAcct;
+    const c = tbGet('sites', params);
+    if (!c.data) return '<div class="empty-state">' + (c.error || 'Carregando sites…') + '</div>';
+    const q = tbSearch.trim().toLowerCase();
+    const rows = c.data.sites.filter(x => !q || (x.site + ' ' + x.accountName).toLowerCase().indexOf(q) !== -1);
+    return tbFresh(c.data) + (rows.length ? '<div class="table-scroll"><table class="ctable" style="min-width:860px"><thead><tr><th style="text-align:left;">Site</th><th style="text-align:left;">Conta</th>' + TB_HEAD + '</tr></thead><tbody>' + rows.map(x => '<tr><td style="text-align:left;"><b>' + ccEsc(x.site) + '</b></td><td class="cell-muted" style="text-align:left;">' + ccEsc(x.accountName) + '</td>' + tbMetricCells(x) + '</tr>').join('') + '</tbody></table></div>' : '<div class="empty-state">O Taboola só lista o site depois que ele recebe o primeiro clique. Ainda não há sites com cliques neste período.</div>');
+  }
+  function tbTableAnuncios(){
+    if (!tbCamp) return '<div class="empty-state">Escolha uma campanha na aba Campanhas (botão Anúncios) para ver os anúncios dela.</div>';
+    const c = tbGet('items', { account: tbCamp.account, campaign: tbCamp.id });
+    if (!c.data) return '<div class="empty-state">' + (c.error || 'Carregando anúncios…') + '</div>';
+    const q = tbSearch.trim().toLowerCase();
+    const rows = c.data.items.filter(x => !q || x.title.toLowerCase().indexOf(q) !== -1);
+    return tbFresh(c.data) + (rows.length ? '<div class="table-scroll"><table class="ctable" style="min-width:900px"><thead><tr><th style="text-align:left;">Anúncio</th><th style="text-align:left;">Aprovação</th>' + TB_HEAD + '</tr></thead><tbody>' + rows.map(x => {
+      const ap = x.approval === 'REJECTED' ? tbChip('Recusado', 'warn') + (x.rejectReason ? '<div class="rule-line cell-muted">' + ccEsc(x.rejectReason) + '</div>' : '') : x.approval === 'PENDING' ? tbChip('Em análise', '') : x.approval === 'APPROVED' ? tbChip('Aprovado', 'act') : '–';
+      return '<tr><td style="text-align:left;"><div style="display:flex;gap:10px;align-items:center;">' + (x.thumbnail ? '<img src="' + ccEsc(x.thumbnail) + '" alt="" style="width:44px;height:44px;object-fit:cover;border-radius:6px;">' : '') + '<b>' + ccEsc(x.title) + '</b></div></td><td style="text-align:left;">' + ap + '</td>' + tbMetricCells(x) + '</tr>';
+    }).join('') + '</tbody></table></div>' : '<div class="empty-state">Nenhum anúncio nesta campanha.</div>');
+  }
+  function tbBody(ov){ return tbTab === 'sites' ? tbTableSites() : tbTab === 'anuncios' ? tbTableAnuncios() : tbFresh(ov.data) + tbTableCampanhas(ov.data); }
+  function tbHtml(mode){
+    const ov = tbGet('overview');
+    if (!ov.data) return tbPeriodTabs() + '<div class="empty-state">' + (ov.error ? ov.error : 'Carregando dados do Taboola…') + '</div>';
+    const d = ov.data, all = [].concat.apply([], d.accounts.map(a => a.campaigns));
+    const failed = d.accounts.filter(a => !a.ok);
+    const warn = failed.length ? '<p class="dre-intro" style="color:var(--bad);">Não consegui ler ' + failed.map(a => ccEsc(a.name)).join(', ') + ' agora' + (failed[0].status ? ' (status ' + failed[0].status + ')' : '') + '. As outras contas aparecem normalmente.</p>' : '';
+    if (mode === 'dash') {
+      const t = tbSum(d.accounts.map(a => a.total));
+      const cards = [['Gasto', fmtUSD(t.spent)], ['Cliques', tbInt(t.clicks)], ['CPC médio', fmtUSD(t.cpc)], ['Conversões', tbInt(t.conversions)], ['CPA', t.cpa === null ? '–' : fmtUSD(t.cpa)]];
+      return tbPeriodTabs() + warn + '<section class="summary-grid">' + cards.map(c => '<div class="card"><div class="card-label"><span>' + c[0] + '</span></div><div class="card-spend num">' + c[1] + '</div></div>').join('') + '</section>' +
+        '<div class="table-scroll"><table class="ctable" style="min-width:760px"><thead><tr><th style="text-align:left;">Conta</th><th style="text-align:left;">Campanhas</th>' + TB_HEAD + '</tr></thead><tbody>' + d.accounts.map(a => '<tr><td style="text-align:left;"><b>' + ccEsc(a.name) + '</b></td><td class="cell-muted" style="text-align:left;">' + a.campaigns.filter(c => c.status !== 'TERMINATED').length + '</td>' + tbMetricCells(a.total) + '</tr>').join('') + '</tbody></table></div>' + tbFresh(d) +
+        (all.length ? '' : '<div class="empty-state">Ainda não há campanhas nas ' + d.accounts.length + ' contas. Quando a primeira subir, os números aparecem aqui.</div>');
+    }
+    const tabs = [['campanhas', 'Campanhas'], ['sites', 'Sites'], ['anuncios', 'Anúncios']];
+    const accSel = '<select data-tb-acct><option value="">Todas as contas</option>' + d.accounts.map(a => '<option value="' + ccEsc(a.id) + '"' + (tbAcct === a.id ? ' selected' : '') + '>' + ccEsc(a.name) + '</option>').join('') + '</select>';
+    const campChip = tbCamp ? '<span class="rule-chip act">Campanha: ' + ccEsc(tbCamp.name) + ' <button type="button" class="tb-x" data-tb-clear title="Tirar filtro">✕</button></span>' : '';
+    return tbPeriodTabs() + warn + '<div class="tb-bar"><div class="tabs" style="margin:0;">' + tabs.map(t => '<button type="button" class="tab small' + (tbTab === t[0] ? ' active' : '') + '" data-tb-tab="' + t[0] + '">' + t[1] + '</button>').join('') + '</div>' + accSel + '<input type="text" data-tb-search placeholder="Buscar…" value="' + ccEsc(tbSearch) + '">' + campChip + '</div><div id="tbTableBox">' + tbBody(ov) + '</div>';
+  }
+  function tbBindGo(root){
+    root.querySelectorAll('[data-tb-go]').forEach(b => b.addEventListener('click', () => { tbCamp = { account: b.dataset.acc, id: b.dataset.id, name: b.dataset.name }; tbTab = b.dataset.tbGo; savePref('tbTab', tbTab); renderSourcePanels(); }));
+  }
+  function tbMount(el, mode){
+    if (!el) return;
+    el.classList.remove('empty-state'); el.classList.add('tb-root');
+    el.innerHTML = tbHtml(mode);
+    el.querySelectorAll('[data-tb-period]').forEach(b => b.addEventListener('click', () => { period = b.dataset.tbPeriod; savePref('period', period); renderAll(); }));
+    el.querySelectorAll('[data-tb-tab]').forEach(b => b.addEventListener('click', () => { tbTab = b.dataset.tbTab; tbSearch = ''; savePref('tbTab', tbTab); renderSourcePanels(); }));
+    tbBindGo(el);
+    const clr = el.querySelector('[data-tb-clear]'); if (clr) clr.addEventListener('click', () => { tbCamp = null; renderSourcePanels(); });
+    const sel = el.querySelector('[data-tb-acct]'); if (sel) sel.addEventListener('change', () => { tbAcct = sel.value; renderSourcePanels(); });
+    const inp = el.querySelector('[data-tb-search]');
+    if (inp) inp.addEventListener('input', () => { tbSearch = inp.value; const box = el.querySelector('#tbTableBox'), ov = tbGet('overview'); if (box && ov.data) { box.innerHTML = tbBody(ov); tbBindGo(box); } });
+  }
+  function tbUnmount(el){ if (el && el.classList.contains('tb-root')) { el.classList.remove('tb-root'); el.classList.add('empty-state'); } }
+  setInterval(() => { if (tbReady() && (view === 'painel' || view === 'campanhas') && !document.hidden && !(document.activeElement && document.activeElement.matches('.tb-root input, .tb-root select'))) { Object.keys(tbCache).forEach(k => { if (tbCache[k]) tbCache[k].at = 0; }); renderSourcePanels(); } }, 30000);
+  // ---------- /Taboola leitura ----------
+
   function renderSourcePanels(){
     const x = TRAFFIC_SOURCES.find(t => t.key === campSource) || TRAFFIC_SOURCES[0];
     const WHAT = { painelView: 'O Dashboard', rejeicoesView: 'A aba Rejeições', regrasView: 'A aba Regras' };
     Object.keys(WHAT).forEach(id => {
       const panel = document.querySelector('#' + id + ' .src-other-panel'); if (!panel) return;
       panel.querySelector('[data-src-title]').textContent = x.label;
-      panel.querySelector('[data-src-body]').textContent = sourcePanelText(campSource, WHAT[id]);
+      const body = panel.querySelector('[data-src-body]');
+      if (tbReady() && id === 'painelView') { if (view === 'painel') tbMount(body, 'dash'); return; }
+      tbUnmount(body); body.textContent = sourcePanelText(campSource, WHAT[id]);
     });
     if (campSource !== 'newsbreak') {
-      const cb = document.getElementById('campOtherBody'); if (cb) cb.textContent = sourcePanelText(campSource, 'A aba Campanhas');
+      const cb = document.getElementById('campOtherBody');
+      if (cb) { if (tbReady()) { if (view === 'campanhas') tbMount(cb, 'camp'); } else { tbUnmount(cb); cb.textContent = sourcePanelText(campSource, 'A aba Campanhas'); } }
       const cr = document.getElementById('criarOtherBody'); if (cr) cr.textContent = sourcePanelText(campSource, 'Criar campanha');
     }
   }
@@ -3026,7 +3150,7 @@
     document.getElementById('campOtherPanel').hidden = src.connected;
     if (!src.connected){
       document.getElementById('campOtherHead').textContent = 'Campanhas — ' + src.label;
-      document.getElementById('campOtherBody').textContent = 'A integração com ' + src.label + ' ainda não está conectada. Quando for, as campanhas dessa fonte aparecem aqui.';
+      if (tbReady()) renderSourcePanels(); else document.getElementById('campOtherBody').textContent = 'A integração com ' + src.label + ' ainda não está conectada. Quando for, as campanhas dessa fonte aparecem aqui.';
       return;
     }
     renderCampModeTabs();
