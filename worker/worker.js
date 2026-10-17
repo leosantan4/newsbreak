@@ -1378,9 +1378,11 @@ function tbrClean(b, existingId) {
   return { rule };
 }
 
-function tbrNameMatches(rule, row) {
+// returns the first pattern ("prefix") that the site name/id contains, or "" when none does
+function tbrNameMatch(rule, row) {
   const names = [row.site_name, row.site, row.site_id].filter(Boolean).map((x) => String(x).toLowerCase());
-  return rule.patterns.some((p) => { const q = p.toLowerCase(); return names.some((n) => n.includes(q)); });
+  for (const p of rule.patterns) { const q = p.toLowerCase(); if (names.some((n) => n.includes(q))) return p; }
+  return "";
 }
 function tbrCond(c, m) {
   const v = m[c.metric]; if (v === null || v === undefined) return false;
@@ -1435,10 +1437,11 @@ async function planTaboolaRules(env, rules, state, ignoreState) {
         const id = String(r.site || r.site_id || "");
         if (!id || blocked.has(id.toLowerCase()) || tbNum(r.clicks) < 1) continue;
         for (const rule of mine) {
-          if (tbNum(r.clicks) < rule.minClicks || !tbrNameMatches(rule, r)) continue;
+          const prefix = tbrNameMatch(rule, r);
+          if (tbNum(r.clicks) < rule.minClicks || !prefix) continue;
           const key = `${rule.id}:${a.id}:${id}`;
           if (done(key)) continue;
-          plan.push({ kind: "block_account", rule, account: a.id, accountName: a.name, conn: a.conn, siteId: id, site: r.site_name || id, metrics: tbrMetrics(r), key, simulated: !!simmed(key) });
+          plan.push({ kind: "block_account", rule, account: a.id, accountName: a.name, conn: a.conn, siteId: id, site: r.site_name || id, prefix, metrics: tbrMetrics(r), key, simulated: !!simmed(key) });
           break;
         }
       }
@@ -1480,20 +1483,22 @@ function shiftDayKeySP(key, delta) {
   return dt.toISOString().slice(0, 10);
 }
 
-async function runTaboolaRules(env) {
+async function runTaboolaRules(env, opts) {
   const mode = await tbrMode(env);
-  if (mode === "off") return { ran: false };
-  const rules = await tbrLoadRules(env);
+  if (mode === "off") return { ran: false, reason: "off" };
+  let rules = await tbrLoadRules(env);
+  if (opts && opts.onlyRuleId) rules = rules.filter((r) => r.id === opts.onlyRuleId).map((r) => ({ ...r, enabled: true })); // manual run: works even when the rule is paused
   if (!rules.some((r) => r.enabled)) return { ran: false };
   if (!((await loadConnections(env)).taboola || []).length) return { ran: false };
   const stRaw = await env.COSTS_KV.get("taboola_rules_state");
   const state = stRaw ? JSON.parse(stRaw) : {};
   state.done = state.done || {}; state.sim = state.sim || {};
   const { plan, evaluated } = await planTaboolaRules(env, rules, state, false);
-  if (!plan.length) return { ran: true, evaluated, actions: 0 };
+  if (!plan.length) return { ran: true, evaluated, actions: 0, mode };
   const logRaw = await env.COSTS_KV.get("taboola_rules_log");
   const log = logRaw ? JSON.parse(logRaw) : [];
   const lines = [];
+  const blockedAdd = [];
   const fresh = plan.filter((p) => !(mode === "notify" && p.simulated));
   // account-level blocks go in one PATCH per account
   const byAcct = new Map();
@@ -1516,14 +1521,26 @@ async function runTaboolaRules(env) {
       result: failed ? "erro" : (mode === "on" ? "feito" : "simulado"), detail: failed ? p.error : (mode === "on" ? (p.kind === "notify" ? "aviso" : "site bloqueado") : "só aviso: teria feito — " + verb) };
     log.unshift(entry);
     if (!failed) { if (mode === "on") state.done[p.key] = Date.now(); else state.sim[p.key] = Date.now(); }
+    if (p.kind === "block_account" && !failed) blockedAdd.push({ ruleId: p.rule.id, siteId: p.siteId, site: p.site, prefix: p.prefix || "", account: p.accountName, at: Date.now(), simulated: mode !== "on" });
     if (p.rule.notify !== false || p.kind === "notify" || failed) lines.push((failed ? "FALHOU: " : mode === "on" ? (p.kind === "notify" ? "Aviso: " : "Bloqueado: ") : "Teria bloqueado: ") + p.site + " · " + p.accountName + (p.campaign ? " · " + p.campaign : "") + " (" + p.rule.name + ", " + p.metrics.clicks + " cliques, $" + p.metrics.cost + ")");
+  }
+  if (blockedAdd.length) {
+    const braw = await env.COSTS_KV.get("taboola_blocked");
+    const all = braw ? JSON.parse(braw) : {};
+    for (const b of blockedAdd) {
+      const list = all[b.ruleId] || (all[b.ruleId] = []);
+      const i = list.findIndex((x) => x.siteId === b.siteId && x.account === b.account);
+      if (i >= 0) { if (!b.simulated) list[i] = b; } else list.unshift(b);
+      if (list.length > 3000) list.length = 3000;
+    }
+    await env.COSTS_KV.put("taboola_blocked", JSON.stringify(all));
   }
   if (fresh.length) {
     await env.COSTS_KV.put("taboola_rules_state", JSON.stringify(state));
     await env.COSTS_KV.put("taboola_rules_log", JSON.stringify(log.slice(0, 200)));
     if (lines.length) await sendPush(env, "Taboola" + (mode === "notify" ? " (só aviso)" : "") + ": " + lines.length + (lines.length === 1 ? " site" : " sites"), lines.slice(0, 6).join("\n"), "rules");
   }
-  return { ran: true, evaluated, actions: fresh.length };
+  return { ran: true, evaluated, actions: fresh.length, mode };
 }
 
 export default {
@@ -2381,7 +2398,19 @@ export default {
       const sub = url.pathname.split("/")[3] || "";
       if (request.method === "GET" && !sub) {
         const logRaw = await env.COSTS_KV.get("taboola_rules_log");
-        return json({ rules: await tbrLoadRules(env), mode: await tbrMode(env), log: (logRaw ? JSON.parse(logRaw) : []).slice(0, 100) }, 200, origin);
+        const braw = await env.COSTS_KV.get("taboola_blocked");
+        const blocked = braw ? JSON.parse(braw) : {};
+        const rules = (await tbrLoadRules(env)).map((r) => { const l = blocked[r.id] || []; return r.type === "block_pattern" ? { ...r, blockedCount: l.filter((x) => !x.simulated).length, simCount: l.filter((x) => x.simulated).length } : r; });
+        return json({ rules, mode: await tbrMode(env), log: (logRaw ? JSON.parse(logRaw) : []).slice(0, 100) }, 200, origin);
+      }
+      if (request.method === "GET" && sub && url.pathname.split("/")[4] === "blocked") {
+        const braw = await env.COSTS_KV.get("taboola_blocked");
+        const list = (braw ? JSON.parse(braw) : {})[decodeURIComponent(sub)] || [];
+        return json({ sites: list.sort((a, b) => b.at - a.at) }, 200, origin);
+      }
+      if (request.method === "POST" && sub && url.pathname.split("/")[4] === "run") {
+        try { return json(await runTaboolaRules(env, { onlyRuleId: decodeURIComponent(sub) }), 200, origin); }
+        catch (e) { return json({ error: "run_failed", detail: String((e && e.message) || e).slice(0, 200) }, 502, origin); }
       }
       if (request.method === "POST" && sub === "mode") {
         let body; try { body = await request.json(); } catch { return json({ error: "invalid_json" }, 400, origin); }
@@ -2409,8 +2438,11 @@ export default {
         return json({ rules }, 200, origin);
       }
       if (request.method === "DELETE" && sub) {
-        const rules = (await tbrLoadRules(env)).filter((r) => r.id !== decodeURIComponent(sub));
+        const rid = decodeURIComponent(sub);
+        const rules = (await tbrLoadRules(env)).filter((r) => r.id !== rid);
         await env.COSTS_KV.put("taboola_rules", JSON.stringify(rules));
+        const braw = await env.COSTS_KV.get("taboola_blocked");
+        if (braw) { const all = JSON.parse(braw); delete all[rid]; await env.COSTS_KV.put("taboola_blocked", JSON.stringify(all)); }
         return json({ rules }, 200, origin);
       }
       return json({ error: "not_found" }, 404, origin);
