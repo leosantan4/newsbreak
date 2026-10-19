@@ -1581,12 +1581,13 @@ async function runTaboolaRules(env, opts) {
 // ---- Ranking: daily per-ad snapshots (KV rk:<day>), joined with ad identity (rk_meta) and a campaign->niche map ----
 const RK_RANGES = { "7": 7, "30": 30, "all": 100000 };
 
+// Two headlines are "the same" when they only differ in case, spacing or punctuation/symbols (#, !, ?, ..., quotes, dashes...).
+// Apostrophes are dropped (Don't = Dont); any other symbol counts as a space.
 function rkNormHeadline(h) {
   let t = String(h || "").normalize("NFKC").toLowerCase();
-  t = t.replace(/[‘’‚‛]/g, "'").replace(/[“”„‟]/g, '"');
-  t = t.replace(/\s+/g, " ").trim();
-  t = t.replace(/^["'\s]+/, "").replace(/[\s.…!?,;:"']+$/, "");
-  return t;
+  t = t.replace(/['\u2018\u2019\u201a\u201b`\u00b4]/g, "");
+  t = t.replace(/[^\p{L}\p{N}\s]/gu, " ");
+  return t.replace(/\s+/g, " ").trim();
 }
 
 function rkDayOf(d) {
