@@ -91,6 +91,37 @@
   .live-dot.live{animation:pulse 2s ease-in-out infinite;}
 
   .tabs{display:flex; gap:6px; margin-bottom:16px; flex-wrap:wrap;}
+  .rk-filters{display:flex; flex-wrap:wrap; gap:8px 14px; align-items:center; padding:12px 20px 0;}
+  .rk-filters .tabs{margin:0;}
+  .rk-filters select.camp-search{width:auto;}
+  .rk-min{display:flex; align-items:center; gap:6px; font-size:12.5px; color:var(--muted); font-weight:600;}
+  .rk-min input{width:64px; padding:6px 8px; border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--bg); color:var(--ink); font:inherit;}
+  .rk-tabs{padding:12px 20px 0; margin-bottom:6px;}
+  .rk-sec{padding:4px 0 6px;}
+  .rk-sec-title{display:flex; align-items:baseline; gap:10px; padding:10px 20px 6px; font-size:14px; font-weight:700;}
+  .rk-table{min-width:760px; table-layout:fixed;}
+  .rk-table thead th:first-child{width:42px;}
+  .rk-table thead th:not(.l):not(:first-child){width:96px;}
+  .rk-table th, .rk-table td{padding:8px 12px;}
+  .rk-table thead th.l, .rk-table tbody td.l{text-align:left;}
+  .rk-table td.rank{width:34px; color:var(--muted); font-weight:700; text-align:center !important;}
+  .rk-table tr.top1 td.rank{color:var(--accent);}
+  .rk-table td.wrap{white-space:normal; max-width:520px;}
+  .rk-table .rk-name{display:flex; align-items:center; gap:10px;}
+  .rk-table .rk-name > div{min-width:0;}
+  .rk-ad-num{font-weight:700; font-size:13px;}
+  .rk-sub{font-size:11.5px; color:var(--muted); font-weight:400; white-space:normal; max-width:420px; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;}
+  .rk-chip{display:inline-block; font-size:11px; font-weight:700; padding:1px 8px; border-radius:999px; background:var(--neutral-bg); color:var(--ink); margin-right:4px;}
+  .rk-low{padding:6px 20px 12px; font-size:12.5px; color:var(--muted);}
+  .rk-low table{margin-top:6px; opacity:.7;}
+  .rk-warn{margin:12px 20px 0; padding:10px 14px; border-radius:var(--radius-sm); background:var(--neutral-bg); font-size:12.5px;}
+  .rk-warn summary{cursor:pointer; font-weight:600;}
+  .rk-assign{margin-top:10px; max-height:240px; overflow-y:auto;}
+  .rk-assign label{display:flex; gap:8px; align-items:center; padding:3px 0; font-size:12.5px;}
+  .rk-def{display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:12px 20px 0; font-size:12.5px; color:var(--muted);}
+  .rk-def select.camp-search{width:auto;}
+  .rk-assign-bar{display:flex; gap:8px; align-items:center; margin-top:10px; flex-wrap:wrap;}
+
   .tabs.period{margin-bottom:12px;}
   .tab{border:1px solid var(--line); background:var(--surface-raised); color:var(--muted); font:inherit; font-size:13px; font-weight:600; padding:7px 14px; border-radius:var(--radius-sm); cursor:pointer;}
   .tab:hover{color:var(--ink);}
@@ -740,6 +771,7 @@
     <div class="sidenav-group-label">Acompanhamento</div>
     <button class="nav-item" data-view="rejeicoes"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m5.6 5.6 12.8 12.8"/></svg></span>Rejeições<span class="nav-badge" id="rejNavBadge" hidden>0</span></button>
     <button class="nav-item" data-view="regras"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></span>Regras</button>
+    <button class="nav-item" data-view="ranking"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></svg></span>Ranking</button>
     <button class="nav-item" data-view="mapa"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3z"/><path d="M9 3v15M15 6v15"/></svg></span>Mapa de Vendas</button>
     <button class="nav-item" data-view="vturb"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m10 8.5 5.5 3.5-5.5 3.5z"/></svg></span>VSL</button>
     <div class="sidenav-group-label">Configurações</div>
@@ -1944,6 +1976,25 @@
         </section>
     </div>
 
+    <div id="rankingView" hidden>
+      <section class="panel">
+        <div class="step-head">
+          <div class="step-head-left"><span class="step-title">Ranking</span><span class="cell-muted" id="rkInfo"></span></div>
+          <button type="button" class="select-all-btn" id="rkRefreshBtn">Atualizar</button>
+        </div>
+        <div class="rk-filters">
+          <div class="tabs period" id="rkRange"></div>
+          <select id="rkNiche" class="camp-search" title="Nicho"></select>
+          <div class="tabs period" id="rkSort"></div>
+          <label class="rk-min">Gasto mín. $<input type="number" id="rkMin" min="0" step="5"></label>
+          <select id="rkLimit" class="camp-search" title="Quantos mostrar"><option value="10">Top 10</option><option value="25">Top 25</option><option value="1000">Todos</option></select>
+        </div>
+        <div class="tabs rk-tabs" id="rkTabs"></div>
+        <div id="rkUnassigned"></div>
+        <div id="rkBody"></div>
+      </section>
+    </div>
+
     <div id="notificacoesView" hidden>
         <section class="panel">
           <div class="step-head">
@@ -2798,6 +2849,7 @@
     document.getElementById('linksView').hidden = view !== 'links';
     document.getElementById('rejeicoesView').hidden = view !== 'rejeicoes';
     document.getElementById('regrasView').hidden = view !== 'regras';
+    document.getElementById('rankingView').hidden = view !== 'ranking';
     document.getElementById('notificacoesView').hidden = view !== 'notificacoes';
     document.getElementById('integracoesView').hidden = view !== 'integracoes';
     document.getElementById('contasView').hidden = view !== 'contas';
@@ -3803,7 +3855,7 @@
     renderSourcePanels();
   }
 
-  document.querySelectorAll('.nav-item').forEach(btn => btn.addEventListener('click', () => { view = btn.dataset.view; savePref('view', view); renderAll(); if (view === 'rejeicoes') loadRejeicoes(); if (view === 'regras') loadRegras(); if (view === 'notificacoes') loadNotifs(); if (view === 'integracoes') { integOpen = null; loadIntegrations(); } }));
+  document.querySelectorAll('.nav-item').forEach(btn => btn.addEventListener('click', () => { view = btn.dataset.view; savePref('view', view); renderAll(); if (view === 'rejeicoes') loadRejeicoes(); if (view === 'regras') loadRegras(); if (view === 'ranking') loadRanking(); if (view === 'notificacoes') loadNotifs(); if (view === 'integracoes') { integOpen = null; loadIntegrations(); } }));
 
   document.getElementById('costDate').value = todayKey();
   document.getElementById('costForm').addEventListener('submit', (e) => {
@@ -4624,11 +4676,181 @@
   document.getElementById('rejApply').addEventListener('click', rejApplyAll);
   // ---------- /Rejeições ----------
 
+  // ---------- Ranking (anúncios, headlines, nichos, fontes) ----------
+  const RANK_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/rank';
+  const RK_SORTS = { venda: ['Vendas', 'venda'], lucro: ['Lucro', 'lucro'], cpa: ['CPA', 'cpa'], roas: ['ROAS', 'roas'] };
+  const RK_TABS = [['ads', 'Anúncios'], ['heads', 'Headlines'], ['niches', 'Nichos'], ['src', 'Fontes']];
+  let rkData = null, rkErr = '', rkBusy = false, rkSelUn = new Set();
+  let rkState = {
+    range: loadPref('rkRange', '30'), tab: loadPref('rkTab', 'ads'), sort: loadPref('rkSort', 'venda'),
+    min: Number(loadPref('rkMin', '20')), limit: Number(loadPref('rkLimit', '10')), niche: loadPref('rkNiche', 'all'),
+  };
+  if (!isFinite(rkState.min) || rkState.min < 0) rkState.min = 20;
+  function rkSave(){ ['range', 'tab', 'sort', 'min', 'limit', 'niche'].forEach(k => savePref('rk' + k[0].toUpperCase() + k.slice(1), String(rkState[k]))); }
+  function rkApi(path, method, body){
+    return fetch(RANK_API + (path || ''), { method: method || 'GET', cache: 'no-store', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY }, body: body ? JSON.stringify(body) : undefined })
+      .then(r => r.json().then(j => { if (!r.ok) throw new Error(j.error || 'falhou'); return j; }));
+  }
+  function loadRanking(silent){
+    if (rkBusy) return Promise.resolve();
+    rkBusy = true;
+    const b = document.getElementById('rkRefreshBtn');
+    if (!silent && b) { b.disabled = true; b.textContent = 'Atualizando…'; }
+    return rkApi('?days=' + rkState.range).then(j => { rkData = j; rkErr = ''; })
+      .catch(e => { rkErr = friendlyError(e.message); })
+      .finally(() => { rkBusy = false; if (b) { b.disabled = false; b.textContent = 'Atualizar'; } renderRanking(); });
+  }
+  function rkNicheLabel(n){ return n ? n : 'Sem nicho'; }
+  function rkSorted(list){
+    const key = RK_SORTS[rkState.sort][1], asc = rkState.sort === 'cpa';
+    return list.slice().sort((a, b) => {
+      const x = a[key], y = b[key];
+      if (x == null && y == null) return b.lucro - a.lucro;
+      if (x == null) return 1;
+      if (y == null) return -1;
+      if (key === 'cpa' && !a.venda !== !b.venda) return a.venda ? -1 : 1;
+      return (asc ? x - y : y - x) || (b.lucro - a.lucro);
+    });
+  }
+  const rkNum = (v, f) => v == null ? '<span class="cell-muted">–</span>' : f(v);
+  const rkMoney = (v) => '<span' + (v < 0 ? ' style="color:var(--bad)"' : '') + '>' + fmtUSD(v) + '</span>';
+  function rkCells(r){
+    return '<td class="num">' + fmtInt(r.venda) + '</td><td class="num">' + rkMoney(r.lucro) + '</td><td class="num">' + fmtUSD(r.cost) + '</td><td class="num">' + rkNum(r.cpa, fmtUSD) + '</td><td class="num">' + rkNum(r.roas, v => v.toFixed(2) + 'x') + '</td>';
+  }
+  const RK_HEAD_NUMS = '<th>Vendas</th><th>Lucro</th><th>Gasto</th><th>CPA</th><th>ROAS</th>';
+  function rkThumb(r){
+    if (!r.thumb) return '<span class="ctable-thumb"></span>';
+    return r.type === 'VIDEO' ? '<video class="ctable-thumb" src="' + ccEsc(r.thumb) + '" muted preload="metadata"></video>' : '<img class="ctable-thumb" loading="lazy" src="' + ccEsc(r.thumb) + '" alt="">';
+  }
+  function rkAdRows(list){
+    return list.map((r, i) => '<tr class="' + (i === 0 ? 'top1' : '') + '"><td class="rank">' + (i + 1) + '</td><td class="l"><div class="rk-name">' + rkThumb(r) + '<div><div class="rk-ad-num">' + (r.num ? ccEsc(r.num) : 'Anúncio ' + ccEsc(r.name || '—')) + (r.niche ? ' <span class="rk-chip">' + ccEsc(r.niche) + '</span>' : '') + '</div><div class="rk-sub">' + ccEsc(r.headline || '') + '</div></div></div></td>' + rkCells(r) + '<td class="num">' + r.campaigns + '</td></tr>').join('');
+  }
+  function rkAdTable(list, nicheTitle){
+    if (!list.length) return '';
+    const ok = list.filter(r => r.cost >= rkState.min), low = list.filter(r => r.cost < rkState.min);
+    const top = rkSorted(ok).slice(0, rkState.limit);
+    const t = (rows) => '<div class="table-scroll"><table class="rk-table"><thead><tr><th>#</th><th class="l">Anúncio</th>' + RK_HEAD_NUMS + '<th>Campanhas</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+    return '<div class="rk-sec"><div class="rk-sec-title">' + ccEsc(nicheTitle) + '<span class="cell-muted" style="font-size:12px;font-weight:400;">' + ok.length + ' com gasto ≥ ' + fmtUSD(rkState.min) + '</span></div>' +
+      (top.length ? t(rkAdRows(top)) : '<div class="rk-low">Nenhum anúncio passou do gasto mínimo ainda.</div>') +
+      (low.length ? '<details class="rk-low"><summary>' + low.length + ' com poucos dados (gasto abaixo de ' + fmtUSD(rkState.min) + ')</summary>' + t(rkAdRows(rkSorted(low).slice(0, 50))) + '</details>' : '') + '</div>';
+  }
+  function rkHeadlineRows(){
+    let list = rkData.headlines;
+    if (rkState.niche !== 'all') {
+      const n = rkState.niche === 'none' ? '' : rkState.niche;
+      list = list.filter(h => h.byNiche && h.byNiche[n]).map(h => ({ ...h, ...h.byNiche[n], text: h.text, niches: h.niches }));
+    }
+    return list;
+  }
+  function rkHeadTable(list){
+    const ok = list.filter(r => r.cost >= rkState.min), low = list.filter(r => r.cost < rkState.min);
+    const rows = (arr) => arr.map((r, i) => '<tr class="' + (i === 0 ? 'top1' : '') + '"><td class="rank">' + (i + 1) + '</td><td class="l wrap">' + ccEsc(r.text) + '</td><td class="l">' + (r.niches || []).map(n => '<span class="rk-chip">' + ccEsc(rkNicheLabel(n)) + '</span>').join('') + '</td>' + rkCells(r) + '<td class="num">' + r.ads + '</td></tr>').join('');
+    const t = (arr) => '<div class="table-scroll"><table class="rk-table"><thead><tr><th>#</th><th class="l">Headline</th><th class="l">Nichos</th>' + RK_HEAD_NUMS + '<th>Anúncios</th></tr></thead><tbody>' + rows(arr) + '</tbody></table></div>';
+    return '<div class="rk-sec">' + (ok.length ? t(rkSorted(ok).slice(0, rkState.limit)) : '<div class="rk-low">Nenhuma headline passou do gasto mínimo ainda.</div>') +
+      (low.length ? '<details class="rk-low"><summary>' + low.length + ' com poucos dados (gasto abaixo de ' + fmtUSD(rkState.min) + ')</summary>' + t(rkSorted(low).slice(0, 50)) + '</details>' : '') + '</div>';
+  }
+  function rkSimpleTable(list, labelFn, firstHead, extraHead, extraFn){
+    const rows = rkSorted(list).map((r, i) => '<tr class="' + (i === 0 ? 'top1' : '') + '"><td class="rank">' + (i + 1) + '</td><td class="l"><b>' + ccEsc(labelFn(r)) + '</b></td>' + rkCells(r) + (extraFn ? extraFn(r) : '') + '</tr>').join('');
+    return '<div class="table-scroll"><table class="rk-table"><thead><tr><th>#</th><th class="l">' + firstHead + '</th>' + RK_HEAD_NUMS + (extraHead || '') + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
+  }
+  function rkUnassignedHtml(){
+    const un = (rkData && rkData.unassigned) || [];
+    const opts = topNiches().map(n => '<option value="' + ccEsc(n) + '">' + ccEsc(n) + '</option>').join('');
+    const def = '<div class="rk-def">Campanhas sem nicho no nome contam como <select id="rkDefNiche" class="camp-search"><option value="">(nenhum — ficam em “Sem nicho”)</option>' + topNiches().map(n => '<option value="' + ccEsc(n) + '"' + (rkData.defaultNiche === n ? ' selected' : '') + '>' + ccEsc(n) + '</option>').join('') + '</select><span class="cell-muted" id="rkDefMsg"></span></div>';
+    if (!un.length) return def;
+    return def + '<details class="rk-warn"' + (rkSelUn.size ? ' open' : '') + '><summary>' + un.length + ' campanha' + (un.length === 1 ? '' : 's') + ' sem nicho no nome — marque o nicho delas pra entrarem no ranking certo</summary>' +
+      '<div class="cell-muted" style="margin-top:6px;">Campanhas novas já trazem o nicho no nome (ex.: HL - …) e entram sozinhas. Estas aqui não têm nicho no nome nem nicho padrão. Como o número do anúncio só vale dentro do nicho, é melhor marcar.</div>' +
+      '<div class="rk-assign">' + un.map(c => '<label><input type="checkbox" data-rk-un="' + ccEsc(c.id) + '"' + (rkSelUn.has(c.id) ? ' checked' : '') + '> ' + ccEsc(c.name) + ' <span class="cell-muted">· ' + ccEsc(c.account) + ' · ' + fmtUSD(c.cost) + ' · ' + c.venda + ' venda' + (c.venda === 1 ? '' : 's') + '</span></label>').join('') + '</div>' +
+      '<div class="rk-assign-bar"><button type="button" class="select-all-btn" id="rkUnAll">Marcar todas</button><select id="rkUnNiche" class="camp-search"><option value="">Escolher nicho…</option>' + opts + '</select><button type="button" class="rej-edit-btn" id="rkUnApply">Aplicar nas marcadas</button><span class="cell-muted" id="rkUnMsg"></span></div></details>';
+  }
+  function renderRanking(){
+    const body = document.getElementById('rkBody'); if (!body) return;
+    // controls
+    document.getElementById('rkRange').innerHTML = [['7', '7 dias'], ['30', '30 dias'], ['all', 'Tudo']].map(r => '<button class="tab small' + (rkState.range === r[0] ? ' active' : '') + '" data-rk-range="' + r[0] + '">' + r[1] + '</button>').join('');
+    document.getElementById('rkSort').innerHTML = '<span class="cell-muted" style="font-size:12px;align-self:center;">Ordenar:</span>' + Object.keys(RK_SORTS).map(k => '<button class="tab small' + (rkState.sort === k ? ' active' : '') + '" data-rk-sort="' + k + '">' + RK_SORTS[k][0] + '</button>').join('');
+    document.getElementById('rkTabs').innerHTML = RK_TABS.map(t => '<button class="tab' + (rkState.tab === t[0] ? ' active' : '') + '" data-rk-tab="' + t[0] + '">' + t[1] + '</button>').join('');
+    const nsel = document.getElementById('rkNiche');
+    nsel.innerHTML = '<option value="all">Todos os nichos</option>' + topNiches().map(n => '<option value="' + ccEsc(n) + '">' + ccEsc(n) + '</option>').join('') + '<option value="none">Sem nicho</option>';
+    nsel.value = rkState.niche; if (nsel.value !== rkState.niche) { rkState.niche = 'all'; nsel.value = 'all'; }
+    nsel.hidden = rkState.tab === 'niches' || rkState.tab === 'src';
+    const mi = document.getElementById('rkMin'); if (document.activeElement !== mi) mi.value = rkState.min;
+    document.getElementById('rkLimit').value = String(rkState.limit);
+    document.getElementById('rkLimit').hidden = rkState.tab === 'src';
+    const unBox = document.getElementById('rkUnassigned');
+    if (!rkData) { unBox.innerHTML = ''; body.innerHTML = '<div class="empty-state">' + (rkErr || 'Carregando o ranking…') + '</div>'; return; }
+    const info = document.getElementById('rkInfo');
+    info.textContent = rkData.days ? ' · ' + rkData.days + ' dia' + (rkData.days === 1 ? '' : 's') + ' de dados (' + rkData.from.split('-').reverse().slice(0, 2).join('/') + ' a ' + rkData.to.split('-').reverse().slice(0, 2).join('/') + ')' : '';
+    if (!rkData.days) {
+      unBox.innerHTML = '';
+      body.innerHTML = '<div class="empty-state">Ainda não há dados guardados. ' + (rkData.backfilled ? 'Eles começam a aparecer nos próximos minutos.' : 'O servidor importa os últimos 30 dias sozinho no próximo minuto, ou você pode pedir agora.') + '<br><br><button type="button" class="rej-edit-btn" id="rkBackfill">Importar últimos 30 dias agora</button><div class="cell-muted" id="rkBackfillMsg" style="margin-top:8px;"></div></div>';
+      return;
+    }
+    unBox.innerHTML = rkUnassignedHtml();
+    if (rkState.tab === 'ads') {
+      let ads = rkData.ads;
+      if (rkState.niche !== 'all') { const n = rkState.niche === 'none' ? '' : rkState.niche; ads = ads.filter(a => a.niche === n); body.innerHTML = rkAdTable(ads, rkState.niche === 'all' ? '' : rkNicheLabel(n)) || '<div class="empty-state">Nenhum anúncio desse nicho com dados no período.</div>'; }
+      else {
+        const by = {}; ads.forEach(a => { (by[a.niche] = by[a.niche] || []).push(a); });
+        const order = Object.keys(by).sort((a, b) => (a === '') - (b === '') || by[b].reduce((s, x) => s + x.venda, 0) - by[a].reduce((s, x) => s + x.venda, 0));
+        body.innerHTML = order.map(n => rkAdTable(by[n], rkNicheLabel(n))).join('') || '<div class="empty-state">Sem anúncios com dados no período.</div>';
+      }
+    } else if (rkState.tab === 'heads') {
+      const list = rkHeadlineRows();
+      body.innerHTML = list.length ? rkHeadTable(list) : '<div class="empty-state">Nenhuma headline com dados nesse filtro.</div>';
+    } else if (rkState.tab === 'niches') {
+      body.innerHTML = rkSimpleTable(rkData.niches, r => rkNicheLabel(r.niche), 'Nicho', '<th>Anúncios</th><th>Campanhas</th>', r => '<td class="num">' + r.ads + '</td><td class="num">' + r.campaigns + '</td>');
+    } else {
+      body.innerHTML = '<div class="rk-sec-title">Fontes de tráfego</div>' + rkSimpleTable(rkData.sources, r => r.label, 'Fonte') +
+        '<div class="rk-low">O Taboola entra aqui quando começar a ter vendas guardadas.</div>' +
+        '<div class="rk-sec-title">Dentro do NewsBreak, por conta</div>' + rkSimpleTable(rkData.accounts, r => r.name, 'Conta');
+    }
+  }
+  function rkBind(){
+    const view$ = document.getElementById('rankingView');
+    view$.addEventListener('click', (e) => {
+      const t = e.target.closest('[data-rk-range],[data-rk-sort],[data-rk-tab],#rkBackfill,#rkUnAll,#rkUnApply');
+      if (!t) return;
+      if (t.dataset.rkRange) { rkState.range = t.dataset.rkRange; rkSave(); rkData = null; renderRanking(); loadRanking(true); }
+      else if (t.dataset.rkSort) { rkState.sort = t.dataset.rkSort; rkSave(); renderRanking(); }
+      else if (t.dataset.rkTab) { rkState.tab = t.dataset.rkTab; rkSave(); renderRanking(); }
+      else if (t.id === 'rkBackfill') {
+        t.disabled = true; document.getElementById('rkBackfillMsg').textContent = 'Importando… pode levar alguns segundos.';
+        rkApi('/backfill', 'POST').then(j => { if (!j.days || !j.days.length) throw new Error('A NewsBreak não devolveu dados por dia (' + (j.failed || []).join('; ') + ').'); return loadRanking(); })
+          .catch(err => { const m = document.getElementById('rkBackfillMsg'); if (m) m.textContent = 'Não consegui importar: ' + friendlyError(err.message); t.disabled = false; });
+      }
+      else if (t.id === 'rkUnAll') { const ids = ((rkData && rkData.unassigned) || []).map(c => c.id); if (rkSelUn.size === ids.length) rkSelUn = new Set(); else rkSelUn = new Set(ids); renderRanking(); }
+      else if (t.id === 'rkUnApply') {
+        const niche = document.getElementById('rkUnNiche').value, msg = document.getElementById('rkUnMsg');
+        if (!niche) { msg.textContent = 'Escolha o nicho.'; return; }
+        if (!rkSelUn.size) { msg.textContent = 'Marque as campanhas.'; return; }
+        t.disabled = true; msg.textContent = 'Salvando…';
+        rkApi('/niche', 'POST', { campaignIds: [...rkSelUn], niche }).then(() => { rkSelUn = new Set(); return loadRanking(true); })
+          .catch(err => { msg.textContent = 'Não consegui salvar: ' + friendlyError(err.message); t.disabled = false; });
+      }
+    });
+    view$.addEventListener('change', (e) => {
+      const t = e.target;
+      if (t.id === 'rkNiche') { rkState.niche = t.value; rkSave(); renderRanking(); }
+      else if (t.id === 'rkLimit') { rkState.limit = Number(t.value); rkSave(); renderRanking(); }
+      else if (t.id === 'rkMin') { const v = Number(t.value); rkState.min = isFinite(v) && v >= 0 ? v : 20; rkSave(); renderRanking(); }
+      else if (t.id === 'rkDefNiche') {
+        const msg = document.getElementById('rkDefMsg'); msg.textContent = 'Salvando…';
+        rkApi('/default-niche', 'POST', { niche: t.value }).then(() => loadRanking(true)).catch(err => { msg.textContent = 'Não consegui salvar: ' + friendlyError(err.message); });
+      }
+      else if (t.dataset && t.dataset.rkUn) { if (t.checked) rkSelUn.add(t.dataset.rkUn); else rkSelUn.delete(t.dataset.rkUn); }
+    });
+    document.getElementById('rkRefreshBtn').addEventListener('click', () => loadRanking());
+    setInterval(() => { if (view === 'ranking' && !document.hidden) loadRanking(true); }, 60000);
+  }
+  rkBind();
+  // ---------- /Ranking ----------
+
   renderAll();
   renderRejeicoes();
   loadTaboolaState();
   if (view === 'rejeicoes') loadRejeicoes();
   if (view === 'regras') loadRegras();
+  if (view === 'ranking') loadRanking();
   if (view === 'notificacoes') loadNotifs();
   if (view === 'integracoes') loadIntegrations();
   loadIntegrationFlags().then(() => { loadVturb(); loadMapaVendas(); });

@@ -1564,6 +1564,201 @@ async function runTaboolaRules(env, opts) {
   return { ran: true, evaluated, actions: fresh.length, mode };
 }
 
+
+// ---- Ranking: daily per-ad snapshots (KV rk:<day>), joined with ad identity (rk_meta) and a campaign->niche map ----
+const RK_RANGES = { "7": 7, "30": 30, "all": 100000 };
+
+function rkNormHeadline(h) {
+  let t = String(h || "").normalize("NFKC").toLowerCase();
+  t = t.replace(/[‘’‚‛]/g, "'").replace(/[“”„‟]/g, '"');
+  t = t.replace(/\s+/g, " ").trim();
+  t = t.replace(/^["'\s]+/, "").replace(/[\s.…!?,;:"']+$/, "");
+  return t;
+}
+
+function rkDayOf(d) {
+  if (d == null) return null;
+  if (typeof d === "string") {
+    if (/^\d{4}-\d{2}-\d{2}/.test(d)) return d.slice(0, 10);
+    if (/^\d{8}$/.test(d)) return d.slice(0, 4) + "-" + d.slice(4, 6) + "-" + d.slice(6, 8);
+    const n = Number(d); if (!isFinite(n)) return null; d = n;
+  }
+  if (typeof d === "number") {
+    const ms = d < 1e11 ? d * 1000 : d;
+    return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ms));
+  }
+  return null;
+}
+
+async function rkNicheCodes(env) {
+  const list = await loadNiches(env);
+  const out = new Set();
+  for (const n of list || []) {
+    const parts = String(n).split("/");
+    if (parts.length === 1 && ["NEWSBREAK", "TABOOLA"].indexOf(parts[0].toUpperCase()) === -1) out.add(parts[0].toUpperCase());
+    else if (parts.length === 2 && ["NEWSBREAK", "TABOOLA"].indexOf(parts[0].toUpperCase()) !== -1) out.add(parts[1].toUpperCase());
+  }
+  return out;
+}
+
+async function rkListDays(env) {
+  const days = [];
+  let cursor;
+  do {
+    const r = await env.COSTS_KV.list({ prefix: "rk:", cursor });
+    for (const k of r.keys) days.push(k.name.slice(3));
+    cursor = r.list_complete ? undefined : r.cursor;
+  } while (cursor);
+  return days.sort();
+}
+
+async function rkStoreDay(env, day, adsMap) {
+  const raw = await env.COSTS_KV.get("rk:" + day);
+  let rec = { ads: {} };
+  if (raw) { try { rec = JSON.parse(raw); if (!rec.ads) rec.ads = {}; } catch {} }
+  Object.assign(rec.ads, adsMap);
+  rec.at = Date.now();
+  await env.COSTS_KV.put("rk:" + day, JSON.stringify(rec));
+}
+
+// opts: { backfill, yesterday }. Never throws for one failed account; reports it in the diagnostics.
+async function rkRefresh(env, opts) {
+  opts = opts || {};
+  const diag = { rows: 0, failed: [], days: [], mode: opts.backfill ? "backfill" : "refresh" };
+  const tokens = await getAllTokens(env);
+  const today = todayKeySaoPaulo(), yesterday = shiftDayKeySP(today, -1);
+  const perDay = {};
+  const put = (day, r) => {
+    if (!day || !r.adId) return;
+    const d = nbRowToDoc(r);
+    (perDay[day] = perDay[day] || {})[r.adId] = [d.cost, d.ic, d.venda, d.faturamento, d.click, d.impression];
+  };
+  await Promise.all(tokens.map(async ([key, token]) => {
+    try {
+      if (opts.backfill) {
+        const rows = await nbFetchReport(token, "LAST_30_DAYS", ["DATE", "AD"], ["IMPRESSION"]);
+        diag.rows += rows.length;
+        if (rows.length && !diag.sample) diag.sample = { date: rows[0].date, keys: Object.keys(rows[0]).slice(0, 12) };
+        for (const r of rows) put(rkDayOf(r.date), r);
+      } else {
+        const rows = await nbFetchReport(token, "TODAY", ["AD"], ["IMPRESSION"]);
+        diag.rows += rows.length;
+        for (const r of rows) put(today, r);
+        if (opts.yesterday) { for (const r of await nbFetchReport(token, "YESTERDAY", ["AD"], ["IMPRESSION"])) put(yesterday, r); }
+      }
+    } catch (e) { diag.failed.push(key + ": " + String((e && e.message) || e).slice(0, 80)); }
+  }));
+  for (const day of Object.keys(perDay)) { await rkStoreDay(env, day, perDay[day]); diag.days.push(day); }
+  // ad identity (number, headline, thumbnail, campaign) comes from the live snapshot; kept even after an ad is deleted
+  try {
+    const rawLive = await env.COSTS_KV.get("live_campanhas");
+    const live = rawLive && JSON.parse(rawLive).data;
+    if (live && live.campaigns) {
+      const mraw = await env.COSTS_KV.get("rk_meta");
+      const meta = mraw ? JSON.parse(mraw) : {};
+      for (const c of live.campaigns) for (const a of c.adSets || []) for (const ad of a.ads || []) {
+        meta[ad.id] = { k: c.accountKey, c: c.id, cn: c.name, an: c.adAccountName, n: ad.name, h: ad.headline || "", t: ad.assetUrl || "", ty: ad.creativeType || "" };
+      }
+      await env.COSTS_KV.put("rk_meta", JSON.stringify(meta));
+    }
+  } catch (e) { diag.metaError = String((e && e.message) || e).slice(0, 80); }
+  if (opts.backfill && !diag.failed.length && diag.days.length) await env.COSTS_KV.put("rk_backfilled", String(Date.now()));
+  return diag;
+}
+
+async function rkLoadNicheMap(env) {
+  const raw = await env.COSTS_KV.get("rk_niche_map");
+  try { return raw ? JSON.parse(raw) : {}; } catch { return {}; }
+}
+
+function rkAddTotals(t, a) {
+  t.cost += a[0]; t.ic += a[1]; t.venda += a[2]; t.fat += a[3]; t.click += a[4]; t.impr += a[5];
+}
+function rkTotals() { return { cost: 0, ic: 0, venda: 0, fat: 0, click: 0, impr: 0 }; }
+function rkFinish(t) {
+  return { ic: t.ic, venda: t.venda, click: t.click, impr: t.impr, cost: round2(t.cost), fat: round2(t.fat), lucro: round2(t.fat - t.cost), cpa: t.venda ? round2(t.cost / t.venda) : null, roas: t.cost ? round4(t.fat / t.cost) : null };
+}
+
+async function computeRank(env, daysKey) {
+  const limit = RK_RANGES[daysKey] || 30;
+  let allDays = await rkListDays(env);
+  const days = allDays.slice(-limit);
+  const sums = {};
+  for (let i = 0; i < days.length; i += 40) {
+    const chunk = days.slice(i, i + 40);
+    const recs = await Promise.all(chunk.map((d) => env.COSTS_KV.get("rk:" + d)));
+    for (const raw of recs) {
+      if (!raw) continue;
+      let rec; try { rec = JSON.parse(raw); } catch { continue; }
+      for (const [adId, arr] of Object.entries(rec.ads || {})) { rkAddTotals(sums[adId] = sums[adId] || rkTotals(), arr); }
+    }
+  }
+  const mraw = await env.COSTS_KV.get("rk_meta");
+  const meta = mraw ? JSON.parse(mraw) : {};
+  const nicheMap = await rkLoadNicheMap(env);
+  const codes = await rkNicheCodes(env);
+  let defNiche = String((await env.COSTS_KV.get("rk_default_niche")) || "").toUpperCase();
+  if (!codes.has(defNiche)) defNiche = "";
+  // order: niche in the campaign name -> niche marked by hand for that campaign -> the system's default niche (old campaigns)
+  const nicheOf = (m) => {
+    if (!m) return "";
+    const byName = String(m.cn || "").split(" - ")[0].trim().toUpperCase();
+    if (codes.has(byName)) return byName;
+    return nicheMap[m.c] || defNiche;
+  };
+  const ads = {}, heads = {}, niches = {}, camps = {}, accounts = {};
+  let total = rkTotals();
+  for (const [adId, t] of Object.entries(sums)) {
+    if (!t.cost && !t.venda && !t.ic) continue;
+    const m = meta[adId];
+    const niche = nicheOf(m);
+    const num = m && /^\d{1,6}$/.test(String(m.n || "").trim()) ? String(m.n).trim() : "";
+    const gkey = num ? (niche || "?") + "|" + num : "id|" + adId;
+    const g = ads[gkey] = ads[gkey] || { key: gkey, niche, num, name: m ? m.n : "", headline: "", thumb: "", type: "", ids: 0, campaigns: new Set(), _best: -1, ...rkTotals() };
+    rkAddTotals(g, [t.cost, t.ic, t.venda, t.fat, t.click, t.impr]);
+    g.ids++;
+    if (m) {
+      g.campaigns.add(m.c);
+      if (t.cost > g._best) { g._best = t.cost; g.headline = m.h || g.headline; g.thumb = m.t || g.thumb; g.type = m.ty || g.type; }
+    }
+    // headlines (all niches together; the niches it ran in are listed)
+    const hn = m ? rkNormHeadline(m.h) : "";
+    if (hn) {
+      const h = heads[hn] = heads[hn] || { key: hn, text: "", _best: -1, niches: new Set(), adKeys: new Set(), campaigns: new Set(), perNiche: {}, ...rkTotals() };
+      rkAddTotals(h, [t.cost, t.ic, t.venda, t.fat, t.click, t.impr]);
+      h.adKeys.add(gkey); h.campaigns.add(m.c); h.niches.add(niche || "");
+      if (t.cost > h._best) { h._best = t.cost; h.text = m.h; }
+      const pn = h.perNiche[niche || ""] = h.perNiche[niche || ""] || rkTotals();
+      rkAddTotals(pn, [t.cost, t.ic, t.venda, t.fat, t.click, t.impr]);
+    }
+    const nk = niche || "";
+    const n = niches[nk] = niches[nk] || { niche: nk, adKeys: new Set(), campaigns: new Set(), ...rkTotals() };
+    rkAddTotals(n, [t.cost, t.ic, t.venda, t.fat, t.click, t.impr]); n.adKeys.add(gkey); if (m) n.campaigns.add(m.c);
+    if (m) {
+      const ak = m.k || "?";
+      const ac = accounts[ak] = accounts[ak] || { account: ak, name: m.an || ak, ...rkTotals() };
+      rkAddTotals(ac, [t.cost, t.ic, t.venda, t.fat, t.click, t.impr]);
+      if (!niche) {
+        const c = camps[m.c] = camps[m.c] || { id: m.c, name: m.cn, accountKey: ak, account: m.an || ak, ...rkTotals() };
+        rkAddTotals(c, [t.cost, t.ic, t.venda, t.fat, t.click, t.impr]);
+      }
+    }
+    rkAddTotals(total, [t.cost, t.ic, t.venda, t.fat, t.click, t.impr]);
+  }
+  const out = (g, extra) => ({ ...rkFinish(g), ...extra });
+  return {
+    days: days.length, from: days[0] || null, to: days[days.length - 1] || null, range: daysKey,
+    sources: [out(total, { source: "newsbreak", label: "NewsBreak" })],
+    niches: Object.values(niches).map((n) => out(n, { niche: n.niche, ads: n.adKeys.size, campaigns: n.campaigns.size })),
+    ads: Object.values(ads).map((g) => out(g, { key: g.key, niche: g.niche, num: g.num, name: g.name, headline: g.headline, thumb: g.thumb, type: g.type, campaigns: g.campaigns.size })),
+    headlines: Object.values(heads).map((h) => out(h, { key: h.key, text: h.text, niches: [...h.niches], ads: h.adKeys.size, campaigns: h.campaigns.size, byNiche: Object.fromEntries(Object.entries(h.perNiche).map(([k, v]) => [k, rkFinish(v)])) })),
+    accounts: Object.values(accounts).map((a) => out(a, { account: a.account, name: a.name })),
+    unassigned: Object.values(camps).map((c) => out(c, { id: c.id, name: c.name, accountKey: c.accountKey, account: c.account })).sort((a, b) => b.cost - a.cost),
+    defaultNiche: defNiche,
+    generatedAt: new Date().toISOString(),
+  };
+}
+
 export default {
   // Cron (every minute): keeps the live campaigns snapshot warm, so the page never waits on a cold read.
   async scheduled(event, env, ctx) {
@@ -1583,6 +1778,14 @@ export default {
       } catch (e) {
         note = "error:" + String((e && e.message) || e);
       }
+      try {
+        const at = new Date((event && event.scheduledTime) || Date.now());
+        const first = !(await env.COSTS_KV.get("rk_backfilled"));
+        if (first || at.getUTCMinutes() % 10 === 0) {
+          const rr = await rkRefresh(env, first ? { backfill: true } : { yesterday: at.getUTCMinutes() % 30 === 0 });
+          note += "; rank:" + rr.mode + " dias:" + rr.days.length + (rr.failed.length ? " falhas:" + rr.failed.length : "");
+        }
+      } catch (e) { note += "; rank_erro:" + String((e && e.message) || e).slice(0, 120); }
       try { const tr = await runTaboolaRules(env); if (tr && tr.ran) note += "; tb_regras_eval:" + tr.evaluated + " tb_acoes:" + tr.actions; } catch (e) { note += "; tb_regras_erro:" + String((e && e.message) || e).slice(0, 120); }
       await env.COSTS_KV.put("cron_heartbeat", JSON.stringify({ at: started, ms: Date.now() - started, note }));
     })());
@@ -2265,6 +2468,65 @@ export default {
       } catch (e) {
         return json({ error: "nb_create_ad_failed", detail: String(e.message || e) }, 502, origin);
       }
+    }
+
+    if (url.pathname === "/rank" && request.method === "GET") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      const days = url.searchParams.get("days") || "30";
+      if (!RK_RANGES[days]) return json({ error: "invalid_days" }, 400, origin);
+      try {
+        const data = await getCached(env, "rank:" + days, 45, () => computeRank(env, days));
+        return json({ ...data, backfilled: !!(await env.COSTS_KV.get("rk_backfilled")) }, 200, origin);
+      } catch (e) {
+        return json({ error: "rank_failed", detail: String((e && e.message) || e) }, 502, origin);
+      }
+    }
+
+    if (url.pathname === "/rank/backfill" && request.method === "POST") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      try {
+        const diag = await rkRefresh(env, { backfill: true });
+        for (const k of ["7", "30", "all"]) await env.COSTS_KV.delete("rank:" + k);
+        return json(diag, 200, origin);
+      } catch (e) {
+        return json({ error: "rank_backfill_failed", detail: String((e && e.message) || e) }, 502, origin);
+      }
+    }
+
+    if (url.pathname === "/rank/default-niche" && request.method === "POST") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      let body;
+      try { body = await request.json(); } catch { return json({ error: "invalid_json" }, 400, origin); }
+      const niche = String(body.niche || "").trim().toUpperCase();
+      if (niche) {
+        const codes = await rkNicheCodes(env);
+        if (!codes.has(niche)) return json({ error: "unknown_niche" }, 400, origin);
+        await env.COSTS_KV.put("rk_default_niche", niche);
+      } else await env.COSTS_KV.delete("rk_default_niche");
+      for (const k of ["7", "30", "all"]) await env.COSTS_KV.delete("rank:" + k);
+      return json({ ok: true, niche }, 200, origin);
+    }
+
+    if (url.pathname === "/rank/niche" && request.method === "POST") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      let body;
+      try { body = await request.json(); } catch { return json({ error: "invalid_json" }, 400, origin); }
+      const ids = Array.isArray(body.campaignIds) ? body.campaignIds.map(String).filter(Boolean).slice(0, 500) : [];
+      const niche = String(body.niche || "").trim().toUpperCase();
+      if (!ids.length) return json({ error: "no_campaigns" }, 400, origin);
+      if (niche) {
+        const codes = await rkNicheCodes(env);
+        if (!codes.has(niche)) return json({ error: "unknown_niche" }, 400, origin);
+      }
+      const map = await rkLoadNicheMap(env);
+      for (const id of ids) { if (niche) map[id] = niche; else delete map[id]; }
+      await env.COSTS_KV.put("rk_niche_map", JSON.stringify(map));
+      for (const k of ["7", "30", "all"]) await env.COSTS_KV.delete("rank:" + k);
+      return json({ ok: true, count: ids.length }, 200, origin);
     }
 
     if (url.pathname === "/metrics" && request.method === "GET") {
