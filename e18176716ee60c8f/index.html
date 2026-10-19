@@ -108,14 +108,14 @@
   .rk-stage{display:grid; grid-template-columns:1fr 1.15fr 1fr; gap:14px; align-items:end; max-width:760px; margin:0 auto;}
   .rk-col{display:flex; flex-direction:column; min-width:0;}
   .rk-ped{display:grid; place-items:center; font-weight:800; font-size:22px; border-radius:0 0 12px 12px; color:color-mix(in srgb, var(--ink) 55%, transparent); border:1px solid var(--line); border-top:none;}
-  .rk-col.first .rk-ped{height:46px; background:color-mix(in srgb, #e2b33c 28%, var(--surface-raised));}
-  .rk-col.second .rk-ped{height:30px; background:color-mix(in srgb, #b9c0c9 28%, var(--surface-raised));}
-  .rk-col.third .rk-ped{height:18px; background:color-mix(in srgb, #cf8f5c 28%, var(--surface-raised)); font-size:0;}
+  .rk-col.first .rk-ped{height:56px; background:color-mix(in srgb, #e2b33c 28%, var(--surface-raised));}
+  .rk-col.second .rk-ped{height:42px; background:color-mix(in srgb, #b9c0c9 28%, var(--surface-raised));}
+  .rk-col.third .rk-ped{height:30px; background:color-mix(in srgb, #cf8f5c 28%, var(--surface-raised)); font-size:18px;}
   .rk-pc{position:relative; display:flex; flex-direction:column; gap:8px; padding:16px 14px 14px; background:var(--surface-raised); border:1px solid var(--line); border-radius:var(--radius-lg) var(--radius-lg) 0 0; cursor:pointer; transition:border-color .12s, transform .12s, box-shadow .12s; min-width:0;}
   .rk-pc:hover{border-color:var(--accent); transform:translateY(-2px); box-shadow:0 12px 28px -14px rgba(0,0,0,.45);}
-  .rk-medal{position:absolute; top:-12px; left:14px; width:30px; height:30px; border-radius:50%; display:grid; place-items:center; font-weight:800; font-size:14px; color:#1b1b1b; border:2px solid var(--surface-raised); z-index:1;}
-  .rk-medal.m1{background:#e2b33c;} .rk-medal.m2{background:#c2c8d0;} .rk-medal.m3{background:#cf8f5c;}
-  .rk-medal.m4,.rk-medal.m5{background:var(--neutral-bg); color:var(--ink); border-color:var(--line);}
+  .rk-medal{position:absolute; top:-22px; left:10px; z-index:1; line-height:0; filter:drop-shadow(0 2px 3px rgba(0,0,0,.28));}
+  .rk-medal-svg{display:block;}
+  .rk-rn{display:inline-grid; place-items:center; border-radius:50%; background:var(--neutral-bg); color:var(--ink); font-weight:800; font-size:12px; border:1px solid var(--line);}
   .rk-media{width:100%; aspect-ratio:1/1; object-fit:cover; border-radius:10px; background:var(--neutral-bg); display:block;}
   .rk-col.first .rk-media{aspect-ratio:4/5;}
   .rk-ph{width:100%; aspect-ratio:4/3; border-radius:10px; background:var(--neutral-bg); display:grid; place-items:center; font-size:30px; font-weight:800; letter-spacing:.02em; color:var(--muted); padding:6px; text-align:center; overflow:hidden;}
@@ -133,6 +133,7 @@
   .rk-mini{position:relative; display:flex; align-items:center; gap:12px; padding:12px 14px 12px 20px; background:var(--surface-raised); border:1px solid var(--line); border-radius:var(--radius-lg); cursor:pointer; min-width:0; transition:border-color .12s;}
   .rk-mini:hover, .rk-li:hover{border-color:var(--accent);}
   .rk-mini .rk-medal{top:50%; left:-12px; transform:translateY(-50%);}
+  .rk-list.wide{max-width:none; margin-top:0;}
   .rk-mini .rk-thumb{width:54px; height:70px;}
   .rk-mini-main{flex:1; min-width:0;}
   .rk-mini-main .rk-pc-title{font-size:13.5px;}
@@ -141,7 +142,7 @@
   .rk-mini-big span{font-size:11px; color:var(--muted);}
   .rk-list{display:flex; flex-direction:column; gap:8px; margin:14px auto 0; max-width:760px;}
   .rk-li{display:flex; align-items:center; gap:12px; padding:9px 14px; border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--surface-raised); cursor:pointer; min-width:0;}
-  .rk-li .n{width:22px; font-weight:800; color:var(--muted); text-align:center; flex:none;}
+  .rk-li .n{width:24px; display:flex; justify-content:center; flex:none; line-height:0;}
   .rk-thumb{width:36px; height:46px; border-radius:6px; object-fit:cover; background:var(--neutral-bg); flex:none; display:block;}
   .rk-li-main{flex:1; min-width:0;}
   .rk-li-main .t{font-weight:600; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
@@ -4796,11 +4797,21 @@
     if (!it.thumb) return '<span class="' + cls + '"></span>';
     return it.type === 'VIDEO' ? '<video class="' + cls + '" src="' + ccEsc(it.thumb) + '" muted preload="metadata"></video>' : '<img class="' + cls + '" loading="lazy" src="' + ccEsc(it.thumb) + '" alt="">';
   }
+  const RK_MEDAL = { 1: ['#f7dc6f', '#d4a017', '#8a6508'], 2: ['#f1f3f6', '#aeb6c1', '#69727e'], 3: ['#f0b98a', '#c47a3f', '#7d4a1c'] };
+  function rkMedal(rank, size){
+    const c = RK_MEDAL[rank];
+    if (!c) return '<span class="rk-rn" style="width:' + size + 'px;height:' + size + 'px;">' + rank + '</span>';
+    const id = 'mg' + rank + '_' + size;
+    return '<svg class="rk-medal-svg" width="' + size + '" height="' + Math.round(size * 1.25) + '" viewBox="0 0 32 40" aria-label="' + rank + 'º lugar">' +
+      '<defs><linearGradient id="' + id + '" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="' + c[0] + '"/><stop offset="1" stop-color="' + c[1] + '"/></linearGradient></defs>' +
+      '<path d="M8 0h6l3 14h-7zM24 0h-6l-3 14h7z" fill="' + c[2] + '" opacity=".85"/><circle cx="16" cy="25" r="12.5" fill="url(#' + id + ')" stroke="' + c[2] + '" stroke-width="1.5"/>' +
+      '<circle cx="16" cy="25" r="9" fill="none" stroke="' + c[2] + '" stroke-width=".8" opacity=".5"/><text x="16" y="30" text-anchor="middle" font-size="14" font-weight="800" fill="' + c[2] + '" font-family="Inter,sans-serif">' + rank + '</text></svg>';
+  }
   const rkChips = (it) => (it.chips || []).map(c => '<span class="rk-chip">' + ccEsc(c) + '</span>').join('');
   function rkCard(it, rank){
     const hasMedia = it.kind === 'ad', big = rkBig(it.r);
     const media = hasMedia ? rkThumbHtml(it, 'rk-media') : (it.kind === 'head' ? '' : '<div class="rk-ph">' + ccEsc(it.ph || it.title) + '</div>');
-    return '<div class="rk-pc" data-rk-open="' + ccEsc(it.id) + '" tabindex="0"><span class="rk-medal m' + rank + '">' + rank + '</span>' + media +
+    return '<div class="rk-pc" data-rk-open="' + ccEsc(it.id) + '" tabindex="0"><span class="rk-medal">' + rkMedal(rank, 40) + '</span>' + media +
       '<div class="rk-pc-title' + (it.kind === 'head' ? ' text' : '') + '">' + (it.kind === 'head' ? ccEsc(it.title) : ccEsc(it.title) + ' ' + rkChips(it)) + '</div>' +
       (it.kind === 'head' ? '<div class="rk-pc-sub" style="min-height:0">' + rkChips(it) + '</div>' : '<div class="rk-pc-sub">' + ccEsc(it.sub || '') + '</div>') +
       '<div class="rk-pc-big"><b>' + big[0] + '</b><span>' + big[1] + '</span></div>' +
@@ -4808,23 +4819,24 @@
   }
   function rkMini(it, rank){
     const big = rkBig(it.r);
-    return '<div class="rk-mini" data-rk-open="' + ccEsc(it.id) + '" tabindex="0"><span class="rk-medal m' + rank + '">' + rank + '</span>' + (it.kind === 'ad' ? rkThumbHtml(it, 'rk-thumb') : '') +
+    return '<div class="rk-mini" data-rk-open="' + ccEsc(it.id) + '" tabindex="0"><span class="rk-medal">' + rkMedal(rank, 30) + '</span>' + (it.kind === 'ad' ? rkThumbHtml(it, 'rk-thumb') : '') +
       '<div class="rk-mini-main"><div class="rk-pc-title' + (it.kind === 'head' ? ' text' : '') + '">' + ccEsc(it.title) + (it.kind === 'head' ? '' : ' ' + rkChips(it)) + '</div>' + (it.kind === 'head' ? '<div class="rk-pc-sub" style="min-height:0">' + rkChips(it) + '</div>' : '<div class="rk-pc-sub" style="min-height:0;-webkit-line-clamp:1;">' + ccEsc(it.sub || '') + '</div>') + '</div>' +
       '<div class="rk-mini-big"><b>' + big[0] + '</b><span>' + big[1] + '</span></div></div>';
   }
   function rkRow(it, rank){
     const r = it.r;
-    return '<div class="rk-li" data-rk-open="' + ccEsc(it.id) + '" tabindex="0"><span class="n">' + rank + '</span>' + (it.kind === 'ad' ? rkThumbHtml(it, 'rk-thumb') : '') +
+    return '<div class="rk-li" data-rk-open="' + ccEsc(it.id) + '" tabindex="0"><span class="n">' + rkMedal(rank, 24) + '</span>' + (it.kind === 'ad' ? rkThumbHtml(it, 'rk-thumb') : '') +
       '<div class="rk-li-main"><div class="t">' + ccEsc(it.title) + (it.kind === 'ad' && it.chips && it.chips[0] ? ' · ' + ccEsc(it.chips[0]) : '') + '</div><div class="s">' + ccEsc(it.sub || '') + '</div></div>' +
       '<div class="rk-li-stats"><span><small>Vendas</small>' + rkFmt.venda(r) + '</span><span><small>Lucro</small>' + rkFmt.lucro(r) + '</span><span><small>Gasto</small>' + rkFmt.cost(r) + '</span><span><small>CPA</small>' + rkFmt.cpa(r) + '</span></div></div>';
   }
   // top 10 fixed: podium (1-3), two big cards (4-5), list (6-10)
-  function rkSection(title, hint, items){
+  function rkSection(title, hint, items, visual){
     items.forEach(it => { rkItems[it.id] = it; });
     const top = rkSorted(items.map(it => ({ ...it.r, _it: it }))).slice(0, 10).map(x => x._it);
+    if (top.length && !visual) return '<div class="rk-sec"><div class="rk-sec-head"><h3>' + title + '</h3><span>' + hint + '</span></div><div class="rk-list wide">' + top.map((it, k) => rkRow(it, k + 1)).join('') + '</div><div style="height:14px"></div></div>';
     if (!top.length) return '<div class="rk-sec"><div class="rk-sec-head"><h3>' + title + '</h3></div><div class="rk-empty">Nada com dados nesse filtro ainda.</div></div>';
     const cols = [{ i: 1, cls: 'second' }, { i: 0, cls: 'first' }, { i: 2, cls: 'third' }].filter(c => top[c.i]);
-    const stage = '<div class="rk-stage">' + cols.map(c => '<div class="rk-col ' + c.cls + '">' + rkCard(top[c.i], c.i + 1) + '<div class="rk-ped">' + (c.i + 1) + '</div></div>').join('') + '</div>';
+    const stage = '<div class="rk-stage">' + cols.map(c => '<div class="rk-col ' + c.cls + '">' + rkCard(top[c.i], c.i + 1) + '<div class="rk-ped">' + (c.i + 1) + 'º</div></div>').join('') + '</div>';
     const mini = top.length > 3 ? '<div class="rk-mini-row">' + top.slice(3, 5).map((it, k) => rkMini(it, k + 4)).join('') + '</div>' : '';
     const list = top.length > 5 ? '<div class="rk-list">' + top.slice(5).map((it, k) => rkRow(it, k + 6)).join('') + '</div>' : '';
     return '<div class="rk-sec"><div class="rk-sec-head"><h3>' + title + '</h3><span>' + hint + '</span></div>' + stage + mini + list + '<div style="height:14px"></div></div>';
@@ -4907,7 +4919,7 @@
     const sortName = RK_SORTS[rkState.sort][0].toLowerCase();
     const hint = 'top 10 por ' + sortName;
     const all = rkState.niche === 'all';
-    body.innerHTML = (all ? rkSection('Nichos', hint, rkNicheItems()) : '') + rkSection('Anúncios', hint, rkAdItems()) + rkSection('Headlines', hint, rkHeadItems()) +
+    body.innerHTML = (all ? rkSection('Nichos', hint, rkNicheItems()) : '') + rkSection('Anúncios', hint, rkAdItems(), true) + rkSection('Headlines', hint, rkHeadItems()) +
       '<div class="rk-sec"><div class="rk-sec-head"><h3>Fontes</h3><span>' + (all ? 'todos os nichos' : 'só ' + ccEsc(rkNicheLabel(rkNicheKey()))) + '</span></div>' + rkSourcesStrip() + '</div>' + rkSection('Contas', hint, rkAccountItems());
     unBox.innerHTML = rkUnassignedHtml();
   }
