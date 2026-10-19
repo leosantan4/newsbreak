@@ -1662,7 +1662,8 @@ async function rkRefresh(env, opts) {
       await env.COSTS_KV.put("rk_meta", JSON.stringify(meta));
     }
   } catch (e) { diag.metaError = String((e && e.message) || e).slice(0, 80); }
-  if (opts.backfill && !diag.failed.length && diag.days.length) await env.COSTS_KV.put("rk_backfilled", String(Date.now()));
+  // contas com token quebrado sempre falham; basta uma conta ter dado certo pra não repetir a importação
+  if (opts.backfill && diag.days.length) await env.COSTS_KV.put("rk_backfilled", String(Date.now()));
   return diag;
 }
 
