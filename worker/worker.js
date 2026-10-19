@@ -1728,19 +1728,23 @@ async function computeRank(env, daysKey) {
     const niche = nicheOf(m);
     const num = m && /^\d{1,6}$/.test(String(m.n || "").trim()) ? String(m.n).trim() : "";
     const gkey = num ? (niche || "?") + "|" + num : "id|" + adId;
-    const g = ads[gkey] = ads[gkey] || { key: gkey, niche, num, name: m ? m.n : "", headline: "", thumb: "", type: "", ids: 0, campaigns: new Set(), _best: -1, ...rkTotals() };
+    const g = ads[gkey] = ads[gkey] || { key: gkey, niche, num, name: m ? m.n : "", headline: "", thumb: "", type: "", ids: 0, campaigns: new Set(), camps: {}, _best: -1, ...rkTotals() };
     rkAddTotals(g, [t.cost, t.ic, t.venda, t.fat, t.click, t.impr]);
     g.ids++;
     if (m) {
       g.campaigns.add(m.c);
+      const cc = g.camps[m.c] = g.camps[m.c] || { id: m.c, name: m.cn, cost: 0, venda: 0 };
+      cc.cost += t.cost; cc.venda += t.venda;
       if (t.cost > g._best) { g._best = t.cost; g.headline = m.h || g.headline; g.thumb = m.t || g.thumb; g.type = m.ty || g.type; }
     }
     // headlines (all niches together; the niches it ran in are listed)
     const hn = m ? rkNormHeadline(m.h) : "";
     if (hn) {
-      const h = heads[hn] = heads[hn] || { key: hn, text: "", _best: -1, niches: new Set(), adKeys: new Set(), campaigns: new Set(), perNiche: {}, ...rkTotals() };
+      const h = heads[hn] = heads[hn] || { key: hn, text: "", _best: -1, niches: new Set(), adKeys: new Set(), campaigns: new Set(), perNiche: {}, adMap: {}, ...rkTotals() };
       rkAddTotals(h, [t.cost, t.ic, t.venda, t.fat, t.click, t.impr]);
       h.adKeys.add(gkey); h.campaigns.add(m.c); h.niches.add(niche || "");
+      const ha = h.adMap[gkey] = h.adMap[gkey] || { key: gkey, num, niche, cost: 0, venda: 0 };
+      ha.cost += t.cost; ha.venda += t.venda;
       if (t.cost > h._best) { h._best = t.cost; h.text = m.h; }
       const pn = h.perNiche[niche || ""] = h.perNiche[niche || ""] || rkTotals();
       rkAddTotals(pn, [t.cost, t.ic, t.venda, t.fat, t.click, t.impr]);
@@ -1749,8 +1753,8 @@ async function computeRank(env, daysKey) {
     const n = niches[nk] = niches[nk] || { niche: nk, adKeys: new Set(), campaigns: new Set(), ...rkTotals() };
     rkAddTotals(n, [t.cost, t.ic, t.venda, t.fat, t.click, t.impr]); n.adKeys.add(gkey); if (m) n.campaigns.add(m.c);
     if (m) {
-      const ak = m.k || "?";
-      const ac = accounts[ak] = accounts[ak] || { account: ak, name: m.an || ak, ...rkTotals() };
+      const ak = (m.k || "?") + "|" + niche;
+      const ac = accounts[ak] = accounts[ak] || { account: m.k || "?", niche, name: m.an || m.k || "?", ...rkTotals() };
       rkAddTotals(ac, [t.cost, t.ic, t.venda, t.fat, t.click, t.impr]);
       if (!niche) {
         const c = camps[m.c] = camps[m.c] || { id: m.c, name: m.cn, accountKey: ak, account: m.an || ak, ...rkTotals() };
@@ -1764,9 +1768,9 @@ async function computeRank(env, daysKey) {
     days: days.length, from: days[0] || null, to: days[days.length - 1] || null, range: daysKey,
     sources: [out(total, { source: "newsbreak", label: "NewsBreak" })],
     niches: Object.values(niches).map((n) => out(n, { niche: n.niche, ads: n.adKeys.size, campaigns: n.campaigns.size })),
-    ads: Object.values(ads).map((g) => out(g, { key: g.key, niche: g.niche, num: g.num, name: g.name, headline: g.headline, thumb: g.thumb, type: g.type, campaigns: g.campaigns.size })),
-    headlines: Object.values(heads).map((h) => out(h, { key: h.key, text: h.text, niches: [...h.niches], ads: h.adKeys.size, campaigns: h.campaigns.size, byNiche: Object.fromEntries(Object.entries(h.perNiche).map(([k, v]) => [k, rkFinish(v)])) })),
-    accounts: Object.values(accounts).map((a) => out(a, { account: a.account, name: a.name })),
+    ads: Object.values(ads).map((g) => out(g, { key: g.key, niche: g.niche, num: g.num, name: g.name, headline: g.headline, thumb: g.thumb, type: g.type, campaigns: g.campaigns.size, campaignsList: Object.values(g.camps).sort((a, b) => b.cost - a.cost).slice(0, 10).map((c) => ({ id: c.id, name: c.name, cost: round2(c.cost), venda: c.venda })) })),
+    headlines: Object.values(heads).map((h) => out(h, { key: h.key, text: h.text, niches: [...h.niches], ads: h.adKeys.size, campaigns: h.campaigns.size, adList: Object.values(h.adMap).sort((a, b) => b.venda - a.venda || b.cost - a.cost).slice(0, 8).map((a) => ({ key: a.key, num: a.num, niche: a.niche, cost: round2(a.cost), venda: a.venda })), byNiche: Object.fromEntries(Object.entries(h.perNiche).map(([k, v]) => [k, rkFinish(v)])) })),
+    accounts: Object.values(accounts).map((a) => out(a, { account: a.account, name: a.name, niche: a.niche })),
     unassigned: Object.values(camps).map((c) => out(c, { id: c.id, name: c.name, accountKey: c.accountKey, account: c.account })).sort((a, b) => b.cost - a.cost),
     defaultNiche: defNiche,
     generatedAt: new Date().toISOString(),
