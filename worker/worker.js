@@ -36,7 +36,7 @@ const METRIC_RANGES = ["TODAY", "YESTERDAY", "LAST_3_DAYS", "LAST_7_DAYS", "LAST
 async function computeMetricsByLevel(env, range) {
   const out = { campaign: {}, adset: {}, ad: {} };
   const failed = [];
-  const tokens = await getAllTokens(env);
+  const tokens = await getAllTokens(env, { visibleOnly: true });
   await Promise.all(tokens.map(async ([key, token]) => {
     try {
       const [c, a, d] = await Promise.all([
@@ -227,13 +227,26 @@ const NB_TOKEN_ENV = { vini: "NEWSBREAK_TOKEN_VINI", pretorian: "NEWSBREAK_TOKEN
 
 // All usable [accountKey, token] pairs: the hardcoded 5 (env secrets) plus
 // any self-service accounts registered via /accounts (tokens stored in KV).
-async function getAllTokens(env) {
-  const entries = Object.entries(NB_TOKEN_ENV)
+// An account switched off in "Contas" still shows on the day it was switched off (e.g. restricted today) and disappears
+// from the next day on; legacy switched-off accounts (no "since" date) are hidden right away. Their history stays in the records.
+function accountVisible(settings, key, today) {
+  const s = settings && settings[key];
+  if (!s || s.active !== false) return true;
+  return !!s.since && s.since === today;
+}
+
+// opts.visibleOnly: leave out the accounts that are switched off (live data, metrics, rules). Records/backfill use all.
+async function getAllTokens(env, opts) {
+  let entries = Object.entries(NB_TOKEN_ENV)
     .map(([key, envVar]) => [key, env[envVar]])
     .filter(([, token]) => !!token);
   const custom = await loadCustomAccounts(env);
   for (const [key, meta] of Object.entries(custom)) {
     if (meta && meta.token && !meta.createOnly) entries.push([key, meta.token]);
+  }
+  if (opts && opts.visibleOnly) {
+    const st = await loadAccountSettings(env), today = todayKeySaoPaulo();
+    entries = entries.filter(([key]) => accountVisible(st, key, today));
   }
   return entries;
 }
@@ -442,7 +455,7 @@ async function computeLivePainel(env) {
   const accounts = {};
   const subAccountCosts = {};
   const failedAccounts = [];
-  const tokenEntries = await getAllTokens(env);
+  const tokenEntries = await getAllTokens(env, { visibleOnly: true });
   await Promise.all(
     tokenEntries.map(async ([key, token]) => {
       try {
@@ -477,7 +490,7 @@ async function computeLivePainel(env) {
 
 async function computeLiveCampanhas(env) {
   const failedAccounts = [];
-  const tokenEntries = await getAllTokens(env);
+  const tokenEntries = await getAllTokens(env, { visibleOnly: true });
   const custom = await loadCustomAccounts(env);
   const perAccount = await Promise.all(
     tokenEntries.map(async ([key, token]) => {
@@ -1097,7 +1110,7 @@ function ruleMatches(rule, mt) {
 // Lifetime (last 30 days) metrics per ad set, per account key.
 async function fetchLifetimeAdsetMetrics(env, errs) {
   const out = {};
-  const tokens = await getAllTokens(env);
+  const tokens = await getAllTokens(env, { visibleOnly: true });
   await Promise.all(tokens.map(async ([key, token]) => {
     try {
       const rows = await nbFetchReport(token, "LAST_30_DAYS", ["AD_SET"], ["IMPRESSION"]);
@@ -1625,7 +1638,7 @@ async function rkStoreDay(env, day, adsMap) {
 async function rkRefresh(env, opts) {
   opts = opts || {};
   const diag = { rows: 0, failed: [], days: [], mode: opts.backfill ? "backfill" : "refresh" };
-  const tokens = await getAllTokens(env);
+  const tokens = await getAllTokens(env, opts.backfill ? undefined : { visibleOnly: true });
   const today = todayKeySaoPaulo(), yesterday = shiftDayKeySP(today, -1);
   const perDay = {};
   const put = (day, r) => {
@@ -2195,8 +2208,13 @@ export default {
       try { body = await request.json(); } catch { return json({ error: "invalid_json" }, 400, origin); }
       if (!body.key || typeof body.active !== "boolean") return json({ error: "invalid_fields" }, 400, origin);
       const settings = await loadAccountSettings(env);
-      settings[body.key] = { active: body.active };
+      const prev = settings[body.key];
+      if (body.active) settings[body.key] = { active: true };
+      else if (prev && prev.active === false) settings[body.key] = prev.since ? { active: false, since: prev.since } : { active: false };
+      else settings[body.key] = { active: false, since: todayKeySaoPaulo() };
       await saveAccountSettings(env, settings);
+      await env.COSTS_KV.delete("live_campanhas");
+      await env.COSTS_KV.delete("live_painel");
       return json({ settings }, 200, origin);
     }
 

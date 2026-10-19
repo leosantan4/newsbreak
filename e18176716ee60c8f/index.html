@@ -2126,7 +2126,7 @@
       <section class="panel">
         <div class="step-head">
           <div class="step-head-left"><span class="step-title">Contas</span></div>
-          <span class="step-desc">desative uma conta pra ela parar de aparecer no Dashboard e no seletor da Criar Campanha — não apaga histórico nem dados já sincronizados</span>
+          <span class="step-desc">desative uma conta pra ela parar de aparecer no Dashboard, nas Campanhas e na Criar Campanha. No dia em que você desativa ela ainda aparece (por exemplo, se foi restrita hoje); a partir do dia seguinte some e fica só nos registros (DRE, custos, vendas), sem apagar nada</span>
         </div>
         <div id="accountsList" class="accounts-list"></div>
         <div style="padding:0 18px 18px;">
@@ -2171,7 +2171,11 @@
   let accountSettings = {};
   function isAccountActive(key){ return accountSettings[key] ? accountSettings[key].active !== false : true; }
   // createOnly accounts (e.g. PARETO) are used only to create campaigns: no data, cards or totals in the dashboard
-  function activeAccounts(){ return ACCOUNTS.filter(a => isAccountActive(a.key) && !a.createOnly); }
+  function todaySP(){ return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()); }
+  // switched off today = still visible today (e.g. restricted today); from tomorrow on it only lives in the records
+  function isAccountVisible(key){ const st = accountSettings[key]; if (!st || st.active !== false) return true; return !!st.since && st.since === todaySP(); }
+  let archiveScope = null; // an account opened through "Ver registros" in Contas
+  function activeAccounts(){ return ACCOUNTS.filter(a => isAccountVisible(a.key) && !a.createOnly); }
   function creatableAccounts(){ return ACCOUNTS.filter(a => isAccountActive(a.key)); }
   const WEEKDAYS = ['Dom','Seg','Ter','Qua','Qui','Sex','Sab'];
   const MONTHS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
@@ -2771,13 +2775,15 @@
 
   function sortedDates(map){ return Object.keys(map).sort(); }
 
-  function geralDocs(){
+  // all=true: every account, even the switched-off ones (DRE keeps the whole history)
+  function geralDocs(all){
+    const list = all ? ACCOUNTS : ACCOUNTS.filter(a => isAccountVisible(a.key));
     const dates = new Set();
-    ACCOUNTS.forEach(a => sortedDates(data[a.key]).forEach(d => dates.add(d)));
+    list.forEach(a => sortedDates(data[a.key]).forEach(d => dates.add(d)));
     const out = {};
     Array.from(dates).sort().forEach(d => {
       let cost=0, click=0, ic=0, venda=0, fat=0, partial=false;
-      ACCOUNTS.forEach(a => {
+      list.forEach(a => {
         const row = data[a.key][d];
         if (!row) return;
         cost += row.cost||0; click += row.click||0; ic += row.ic||0; venda += row.venda||0; fat += row.faturamento||0;
@@ -2932,9 +2938,10 @@
 
   function renderTabs(){
     const wrap = document.getElementById('scopeTabs');
-    const tabs = [{key:'geral', label:'Geral'}, ...ACCOUNTS.filter(a => !a.createOnly)];
+    if (scope !== 'geral' && !isAccountVisible(scope) && scope !== archiveScope) { scope = 'geral'; savePref('scope', 'geral'); }
+    const tabs = [{key:'geral', label:'Geral'}, ...ACCOUNTS.filter(a => !a.createOnly && (isAccountVisible(a.key) || a.key === archiveScope))];
     wrap.innerHTML = tabs.map(t => '<button class="tab' + (scope===t.key?' active':'') + '" data-scope="' + t.key + '">' + t.label + '</button>').join('');
-    wrap.querySelectorAll('.tab').forEach(btn => btn.addEventListener('click', () => { scope = btn.dataset.scope; savePref('scope', scope); renderAll(); }));
+    wrap.querySelectorAll('.tab').forEach(btn => btn.addEventListener('click', () => { scope = btn.dataset.scope; if (scope !== archiveScope) archiveScope = null; savePref('scope', scope); renderAll(); }));
   }
 
   function renderMetricToggle(){
@@ -3011,7 +3018,7 @@
     const docs = scopeDocs();
     const dates = lastNDates(docs, 14).slice().reverse();
     const showNet = scope === 'geral';
-    document.getElementById('tableTitle').textContent = 'Detalhe diário — ' + (scope==='geral' ? 'Geral (' + activeAccounts().length + ' contas)' : ACCOUNTS.find(a=>a.key===scope).label);
+    document.getElementById('tableTitle').textContent = 'Detalhe diário — ' + (scope==='geral' ? 'Geral (' + activeAccounts().length + ' contas)' : ACCOUNTS.find(a=>a.key===scope).label + (isAccountVisible(scope) ? '' : ' (conta desativada — registro)'));
     const tbody = dates.map(d => {
       const r = docs[d];
       const {wd, short} = fmtDate(d);
@@ -3056,7 +3063,7 @@
   }
 
   function renderDRE(){
-    const docs = geralDocs();
+    const docs = geralDocs(true);
     const months = new Set();
     sortedDates(docs).forEach(d => months.add(d.slice(0,7)));
     costs.forEach(c => { if (c.date) months.add(c.date.slice(0,7)); });
@@ -7162,9 +7169,10 @@ function ccPreviewLines(adsets, nameOf){
         '<div class="account-row' + (active ? '' : ' inactive') + '">' +
           '<div>' +
             '<div class="acc-row-name">' + a.label + (isCustom ? ' <span class="cell-muted" style="font-weight:400; font-size:11.5px;">(adicionada)</span>' : '') + '</div>' +
-            '<div class="acc-row-status">' + (active ? (a.createOnly ? 'Ativa — só pra criar campanhas (nenhum dado vai pro Dashboard)' : 'Ativa — aparece no Dashboard e na Criar Campanha') : 'Inativa — escondida do Dashboard e da Criar Campanha') + '</div>' +
+            '<div class="acc-row-status">' + (active ? (a.createOnly ? 'Ativa — só pra criar campanhas (nenhum dado vai pro Dashboard)' : 'Ativa — aparece no Dashboard e na Criar Campanha') : (isAccountVisible(a.key) ? 'Desativada hoje — ainda aparece hoje; amanhã some e fica só nos registros' : 'Desativada — só nos registros (não aparece no Dashboard nem nas Campanhas)')) + '</div>' +
           '</div>' +
           '<div style="display:flex; align-items:center; gap:14px;">' +
+            (!active && !a.createOnly ? '<button type="button" class="select-all-btn" data-account-records="' + a.key + '">Ver registros</button>' : '') +
             (isCustom ? '<button type="button" class="remove-btn" data-remove-account="' + a.key + '" title="Remover conta">×</button>' : '') +
             '<label class="toggle-switch">' +
               '<input type="checkbox" data-account-toggle="' + a.key + '"' + (active ? ' checked' : '') + '>' +
@@ -7187,6 +7195,10 @@ function ccPreviewLines(adsets, nameOf){
         renderAll();
         loadAllSubAccounts();
       }).catch(() => { e.target.checked = !active; renderAccountsList(); });
+    }));
+    el.querySelectorAll('[data-account-records]').forEach(btn => btn.addEventListener('click', () => {
+      archiveScope = btn.dataset.accountRecords; scope = archiveScope; savePref('scope', scope);
+      view = 'painel'; savePref('view', view); renderAll();
     }));
     el.querySelectorAll('[data-remove-account]').forEach(btn => btn.addEventListener('click', () => {
       const key = btn.dataset.removeAccount;
