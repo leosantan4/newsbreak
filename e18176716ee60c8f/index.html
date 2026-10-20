@@ -383,13 +383,16 @@
   .create-log .err{color:var(--bad); font-weight:600;}
 
   .account-picker{display:flex; flex-direction:column; gap:10px; padding:16px 18px;}
-  .account-select{padding:16px 18px 0;}
+  .account-select{padding:18px 20px 20px;}
   .account-select-trigger{width:100%; display:flex; align-items:center; justify-content:space-between; gap:10px; border:2px solid var(--line); border-radius:var(--radius-md); padding:14px 18px; background:var(--surface-raised); color:var(--ink); font:inherit; font-size:14.5px; font-weight:600; cursor:pointer;}
   .account-select-trigger:hover{border-color:color-mix(in srgb, var(--accent) 45%, var(--line));}
   .account-select-chevron{color:var(--muted); font-size:12px; transition:transform .15s ease; flex:none;}
   .account-select.open .account-select-chevron{transform:rotate(180deg);}
   .account-select.open .account-select-trigger{border-color:var(--accent);}
-  .account-select-dropdown{background:var(--bg); border:1px solid var(--line); border-radius:var(--radius-md) var(--radius-md) 0 0; max-height:320px; overflow-y:auto; margin:8px 0 0; padding:10px;}
+  .account-select-dropdown{background:var(--bg); border:1px solid var(--line); border-radius:var(--radius-md) var(--radius-md) 0 0; max-height:340px; overflow-y:auto; margin:10px 0 0; padding:10px; gap:8px;}
+  .account-select-dropdown .account-card{padding:11px 16px; gap:14px;}
+  .account-select-dropdown .account-card .acc-id{flex:1 1 auto;}
+  .account-card .acc-sub{font-size:11.5px; color:var(--muted); margin-top:2px; font-variant-numeric:tabular-nums;}
   .account-select-footer{background:var(--bg); border:1px solid var(--line); border-top:none; border-radius:0 0 var(--radius-md) var(--radius-md); padding:8px 10px; display:flex; justify-content:flex-end;}
   .account-select-footer button{border:none; background:var(--accent); color:var(--accent-ink); font:inherit; font-weight:700; font-size:12.5px; padding:7px 18px; border-radius:var(--radius-sm); cursor:pointer;}
   .cc-account-blocks{display:flex; flex-direction:column; gap:10px;}
@@ -6158,6 +6161,9 @@
     return cleanName || s.accountLabel || '';
   }
 
+  // exactly as it is on NewsBreak (with the "[Agency Aurora]" part): used where the user picks an account
+  function subAccountNbName(s){ return (s.name || '').trim() || s.accountLabel || ''; }
+
   function subAccountLabel(s){
     return subAccountCleanName(s) + ' ···' + s.id.slice(-3);
   }
@@ -6172,7 +6178,7 @@
     const label = document.getElementById('accountSelectLabel');
     const accs = allSubAccounts.filter(a => selectedSubAccountIds.indexOf(a.id) !== -1);
     if (!accs.length) label.textContent = 'Selecione a conta';
-    else if (accs.length === 1) label.textContent = subAccountLabel(accs[0]);
+    else if (accs.length === 1) label.textContent = subAccountNbName(accs[0]) + ' ···' + accs[0].id.slice(-3);
     else label.textContent = accs.length + ' contas selecionadas';
     document.getElementById('accountSelectWrap').classList.toggle('open', accountSelectOpen);
     document.getElementById('ccSubAccounts').hidden = !accountSelectOpen;
@@ -6467,7 +6473,8 @@ function ccPreviewLines(adsets, nameOf){
       return '<div class="account-card' + (isSelected ? ' selected' : '') + '" data-account-card="' + a.id + '">' +
         '<span class="acc-check">✓</span>' +
         '<div class="acc-id">' +
-          '<div class="acc-name">' + subAccountLabel(a) + '</div>' +
+          '<div class="acc-name">' + ccEsc(subAccountNbName(a)) + '</div>' +
+          '<div class="acc-sub">Account ID: ' + ccEsc(a.id) + '</div>' +
         '</div>' +
       '</div>';
     }).join('');
