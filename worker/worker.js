@@ -295,13 +295,37 @@ function nbRowToDoc(r) {
   };
 }
 
-// NewsBreak sometimes returns ad accounts with an empty name (new accounts). Give those a stable name: "<account label>-1", "-2"...
-// numbered by id (oldest first). Accounts that already have a name are left alone.
-function nbNameBlanks(list, label) {
-  const blank = list.filter((a) => !a.name || a.name === a.id).sort((a, b) => (a.id.length - b.id.length) || (a.id < b.id ? -1 : 1));
-  const names = {};
-  blank.forEach((a, i) => { names[a.id] = label + "-" + (i + 1); });
-  return list.map((a) => (names[a.id] ? { ...a, name: names[a.id] } : a));
+// Ad accounts added by hand (Contas > lista manual) may have no name saved. Ask NewsBreak for the real name through the org listing
+// (the same call that already returns "[Agency Aurora] Troya"...). Names are never invented: if NewsBreak does not tell, it stays blank.
+async function nbFillNames(env, token, accountKey, custom, list) {
+  const isBlank = (a) => !a.name || a.name === a.id;
+  if (!list.some(isBlank)) return list;
+  let cache = {};
+  try { cache = JSON.parse((await env.COSTS_KV.get("adacc_names")) || "{}"); } catch {}
+  list = list.map((a) => (isBlank(a) && cache[a.id] ? { ...a, name: cache[a.id] } : a));
+  const blank = list.filter(isBlank);
+  if (!blank.length) return list;
+  // don't hit NewsBreak on every page load when it has nothing to tell: retry every 10 minutes
+  const triedAt = Number(await env.COSTS_KV.get("adacc_names_try:" + accountKey)) || 0;
+  if (Date.now() - triedAt < 600000) return list;
+  await env.COSTS_KV.put("adacc_names_try:" + accountKey, String(Date.now()));
+  const cands = [custom[accountKey] && custom[accountKey].orgId, ...Object.values(NB_ORG_ID_FALLBACK)].filter(Boolean);
+  const tried = new Set(), found = {};
+  for (const org of cands) {
+    if (tried.has(org)) continue;
+    tried.add(org);
+    try {
+      for (const a of await nbGetAdAccountsForToken(token, accountKey, org)) if (a.name) found[a.id] = a.name;
+    } catch {}
+    if (blank.every((a) => found[a.id])) break;
+  }
+  const out = list.map((a) => ((!a.name || a.name === a.id) && found[a.id] ? { ...a, name: found[a.id] } : a));
+  if (Object.keys(found).some((id) => blank.find((a) => a.id === id))) {
+    let cur = {}; try { cur = JSON.parse((await env.COSTS_KV.get("adacc_names")) || "{}"); } catch {}
+    for (const a of blank) if (found[a.id]) cur[a.id] = found[a.id];
+    await env.COSTS_KV.put("adacc_names", JSON.stringify(cur));
+  }
+  return out;
 }
 
 async function nbGetAdAccounts(token) {
@@ -502,7 +526,7 @@ async function computeLiveCampanhas(env) {
   const tokenEntries = await getAllTokens(env, { visibleOnly: true });
   const custom = await loadCustomAccounts(env);
   let blankNames = {};
-  try { blankNames = JSON.parse((await env.COSTS_KV.get("adacc_blank_names")) || "{}"); } catch {}
+  try { blankNames = JSON.parse((await env.COSTS_KV.get("adacc_names")) || "{}"); } catch {}
   const perAccount = await Promise.all(
     tokenEntries.map(async ([key, token]) => {
       const attempt = async () => {
@@ -516,7 +540,7 @@ async function computeLiveCampanhas(env) {
           nbFetchReport(token, "TODAY", ["AD_SET"], extra).catch(() => []),
           nbFetchReport(token, "TODAY", ["AD"], extra).catch(() => []),
         ]);
-        // names given to blank-named ad accounts by /nb/ad-accounts (numbered over the whole account, so they stay consistent here)
+        // real names that /nb/ad-accounts found for accounts added by hand without a name
         for (const id of Object.keys(adAccounts)) { if ((!adAccounts[id] || adAccounts[id] === id) && blankNames[id]) adAccounts[id] = blankNames[id]; }
         const campaignMetrics = {};
         for (const r of campaignRows) campaignMetrics[r.campaignId] = nbRowToDoc(r);
@@ -2070,20 +2094,11 @@ export default {
       try {
         const custom = await loadCustomAccounts(env);
         const manual = custom[accountKey] && custom[accountKey].manualAccounts;
-        const label = (custom[accountKey] && custom[accountKey].label) || String(accountKey || "").toUpperCase();
+        let token = null;
+        try { token = await tokenForAccountKey(env, accountKey); } catch (e) { if (!(manual && manual.length)) throw e; }
         let raw = manual && manual.length ? manual : null;
-        if (!raw) {
-          const token = await tokenForAccountKey(env, accountKey);
-          const orgIdOverride = custom[accountKey] && custom[accountKey].orgId;
-          raw = await nbGetAdAccountsForToken(token, accountKey, orgIdOverride);
-        }
-        const accounts = nbNameBlanks(raw, label);
-        const filled = {};
-        accounts.forEach((a, i) => { if (a.name !== raw[i].name) filled[a.id] = a.name; });
-        if (Object.keys(filled).length) {
-          let cur = {}; try { cur = JSON.parse((await env.COSTS_KV.get("adacc_blank_names")) || "{}"); } catch {}
-          await env.COSTS_KV.put("adacc_blank_names", JSON.stringify({ ...cur, ...filled }));
-        }
+        if (!raw) raw = await nbGetAdAccountsForToken(token, accountKey, custom[accountKey] && custom[accountKey].orgId);
+        const accounts = token ? await nbFillNames(env, token, accountKey, custom, raw) : raw;
         return json({ accounts }, 200, origin);
       } catch (e) {
         return json({ error: "nb_ad_accounts_failed", detail: String(e.message || e) }, 502, origin);
