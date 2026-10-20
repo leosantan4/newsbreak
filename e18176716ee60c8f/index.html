@@ -6479,8 +6479,7 @@ function ccPreviewLines(adsets, nameOf){
       return '<div class="account-card' + (isSelected ? ' selected' : '') + '" data-account-card="' + a.id + '">' +
         '<span class="acc-check">✓</span>' +
         '<div class="acc-id">' +
-          '<div class="acc-name">' + ccEsc(subAccountNbName(a)) + '</div>' +
-          '<div class="acc-sub">Account ID: ' + ccEsc(a.id) + '</div>' +
+          '<div class="acc-name">' + ccEsc(subAccountNbName(a)) + ' ···' + ccEsc(a.id.slice(-3)) + '</div>' +
         '</div>' +
       '</div>';
     }).join('');
