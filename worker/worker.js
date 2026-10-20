@@ -579,6 +579,8 @@ async function loadCustomAccounts(env) {
 }
 async function saveCustomAccounts(env, accounts) {
   await env.COSTS_KV.put("custom_accounts", JSON.stringify(accounts));
+  // the ad-account lists are cached (see /nb/ad-accounts); any change to the accounts makes them stale
+  for (const k of Object.keys(accounts || {})) await env.COSTS_KV.delete("adacc:" + k);
 }
 
 async function tokenForAccountKey(env, accountKey) {
@@ -2091,6 +2093,12 @@ export default {
       const key = request.headers.get("X-Access-Key");
       if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
       const accountKey = url.searchParams.get("accountKey");
+      // The list of ad accounts barely changes but NewsBreak rate-limits us: cache it 5 min and, if NewsBreak fails,
+      // answer with the last good list instead of an error (an empty list made accounts vanish from the pickers).
+      const ck = "adacc:" + accountKey;
+      let cached = null;
+      try { cached = JSON.parse((await env.COSTS_KV.get(ck)) || "null"); } catch {}
+      if (cached && Date.now() - cached.ts < 300000) return json({ accounts: cached.data }, 200, origin);
       try {
         const custom = await loadCustomAccounts(env);
         const manual = custom[accountKey] && custom[accountKey].manualAccounts;
@@ -2099,8 +2107,10 @@ export default {
         let raw = manual && manual.length ? manual : null;
         if (!raw) raw = await nbGetAdAccountsForToken(token, accountKey, custom[accountKey] && custom[accountKey].orgId);
         const accounts = token ? await nbFillNames(env, token, accountKey, custom, raw) : raw;
+        await env.COSTS_KV.put(ck, JSON.stringify({ ts: Date.now(), data: accounts }));
         return json({ accounts }, 200, origin);
       } catch (e) {
+        if (cached && cached.data && cached.data.length) return json({ accounts: cached.data, stale: true }, 200, origin);
         return json({ error: "nb_ad_accounts_failed", detail: String(e.message || e) }, 502, origin);
       }
     }

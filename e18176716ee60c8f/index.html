@@ -6136,17 +6136,23 @@
   }
 
   // ---- Sub-contas (multi-seleção pra espelhar campanha), cada card já traz o link ----
+  let subAccRetries = 0;
   function loadAllSubAccounts(){
-    return Promise.all(creatableAccounts().map(a =>
-      fetch(NB_ADACCOUNTS_API + '?accountKey=' + a.key, { headers: { 'X-Access-Key': COSTS_API_KEY } })
+    const prev = allSubAccounts, failed = [];
+    return Promise.all(creatableAccounts().map(a => {
+      // one account failing (NewsBreak rate limit, a hiccup) must never make its ad accounts vanish: retry, then keep the last good list
+      const once = (n) => fetch(NB_ADACCOUNTS_API + '?accountKey=' + a.key, { headers: { 'X-Access-Key': COSTS_API_KEY } })
         .then(r => r.json())
-        .then(json => (json.accounts || []).map(acc => ({ id: acc.id, name: acc.name, accountKey: a.key, accountLabel: a.label })))
-        .catch(() => [])
-    )).then(results => {
+        .then(json => { if (!json || !Array.isArray(json.accounts)) throw new Error('bad payload'); return json.accounts.map(acc => ({ id: acc.id, name: acc.name, accountKey: a.key, accountLabel: a.label })); })
+        .catch(() => n < 2 ? new Promise(res => setTimeout(res, 700 * (n + 1))).then(() => once(n + 1)) : null);
+      return once(0).then(list => { if (list) return list; failed.push(a.key); return prev.filter(s => s.accountKey === a.key); });
+    })).then(results => {
       allSubAccounts = results.flat();
       subAccountsLoaded = true;
       renderAccountCards();
       renderAccountsList();
+      if (failed.length && subAccRetries < 6) { subAccRetries++; setTimeout(loadAllSubAccounts, 6000 * subAccRetries); }
+      else if (!failed.length) subAccRetries = 0;
     });
   }
 
