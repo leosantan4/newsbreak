@@ -295,6 +295,15 @@ function nbRowToDoc(r) {
   };
 }
 
+// NewsBreak sometimes returns ad accounts with an empty name (new accounts). Give those a stable name: "<account label>-1", "-2"...
+// numbered by id (oldest first). Accounts that already have a name are left alone.
+function nbNameBlanks(list, label) {
+  const blank = list.filter((a) => !a.name || a.name === a.id).sort((a, b) => (a.id.length - b.id.length) || (a.id < b.id ? -1 : 1));
+  const names = {};
+  blank.forEach((a, i) => { names[a.id] = label + "-" + (i + 1); });
+  return list.map((a) => (names[a.id] ? { ...a, name: names[a.id] } : a));
+}
+
 async function nbGetAdAccounts(token) {
   const rows = await nbFetchReport(token, "LAST_30_DAYS", ["AD_ACCOUNT"]);
   const seen = {};
@@ -492,6 +501,8 @@ async function computeLiveCampanhas(env) {
   const failedAccounts = [];
   const tokenEntries = await getAllTokens(env, { visibleOnly: true });
   const custom = await loadCustomAccounts(env);
+  let blankNames = {};
+  try { blankNames = JSON.parse((await env.COSTS_KV.get("adacc_blank_names")) || "{}"); } catch {}
   const perAccount = await Promise.all(
     tokenEntries.map(async ([key, token]) => {
       const attempt = async () => {
@@ -505,6 +516,8 @@ async function computeLiveCampanhas(env) {
           nbFetchReport(token, "TODAY", ["AD_SET"], extra).catch(() => []),
           nbFetchReport(token, "TODAY", ["AD"], extra).catch(() => []),
         ]);
+        // names given to blank-named ad accounts by /nb/ad-accounts (numbered over the whole account, so they stay consistent here)
+        for (const id of Object.keys(adAccounts)) { if ((!adAccounts[id] || adAccounts[id] === id) && blankNames[id]) adAccounts[id] = blankNames[id]; }
         const campaignMetrics = {};
         for (const r of campaignRows) campaignMetrics[r.campaignId] = nbRowToDoc(r);
         const adsetMetrics = {};
@@ -2057,12 +2070,20 @@ export default {
       try {
         const custom = await loadCustomAccounts(env);
         const manual = custom[accountKey] && custom[accountKey].manualAccounts;
-        if (manual && manual.length) {
-          return json({ accounts: manual }, 200, origin);
+        const label = (custom[accountKey] && custom[accountKey].label) || String(accountKey || "").toUpperCase();
+        let raw = manual && manual.length ? manual : null;
+        if (!raw) {
+          const token = await tokenForAccountKey(env, accountKey);
+          const orgIdOverride = custom[accountKey] && custom[accountKey].orgId;
+          raw = await nbGetAdAccountsForToken(token, accountKey, orgIdOverride);
         }
-        const token = await tokenForAccountKey(env, accountKey);
-        const orgIdOverride = custom[accountKey] && custom[accountKey].orgId;
-        const accounts = await nbGetAdAccountsForToken(token, accountKey, orgIdOverride);
+        const accounts = nbNameBlanks(raw, label);
+        const filled = {};
+        accounts.forEach((a, i) => { if (a.name !== raw[i].name) filled[a.id] = a.name; });
+        if (Object.keys(filled).length) {
+          let cur = {}; try { cur = JSON.parse((await env.COSTS_KV.get("adacc_blank_names")) || "{}"); } catch {}
+          await env.COSTS_KV.put("adacc_blank_names", JSON.stringify({ ...cur, ...filled }));
+        }
         return json({ accounts }, 200, origin);
       } catch (e) {
         return json({ error: "nb_ad_accounts_failed", detail: String(e.message || e) }, 502, origin);
