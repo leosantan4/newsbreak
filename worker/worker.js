@@ -2115,6 +2115,26 @@ export default {
       }
     }
 
+    // read-only: the raw NewsBreak object of one ad (to see every flag NewsBreak puts on it, e.g. quality issues)
+    if (url.pathname === "/nb/ad-raw" && request.method === "GET") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      const accountKey = url.searchParams.get("accountKey"), adId = url.searchParams.get("adId");
+      try {
+        const token = await tokenForAccountKey(env, accountKey);
+        const custom = await loadCustomAccounts(env);
+        const manual = custom[accountKey] && custom[accountKey].manualAccounts;
+        const accs = url.searchParams.get("adAccountId") ? [{ id: url.searchParams.get("adAccountId") }] : (manual && manual.length ? manual : await nbGetAdAccountsForToken(token, accountKey, custom[accountKey] && custom[accountKey].orgId));
+        for (const a of accs) {
+          const ad = (await nbGetList("ad", token, a.id)).find((x) => String(x.id) === String(adId));
+          if (ad) return json({ ad }, 200, origin);
+        }
+        return json({ error: "not_found" }, 404, origin);
+      } catch (e) {
+        return json({ error: "nb_ad_raw_failed", detail: String((e && e.message) || e) }, 502, origin);
+      }
+    }
+
     if (url.pathname === "/nb/tracking-id" && request.method === "GET") {
       const key = request.headers.get("X-Access-Key");
       if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
