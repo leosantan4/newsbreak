@@ -960,7 +960,7 @@ function rejectedActiveAds(data) {
 }
 
 // ---- Push recipients: the server default (secret PUSHCUT_URL) + people who paste their own Pushcut URL in the app. ----
-const PUSH_TYPES = ["rejections", "rules"];
+const PUSH_TYPES = ["rejections", "rules", "balance"];
 async function loadRecipients(env) {
   const raw = await env.COSTS_KV.get("push_recipients");
   if (!raw) return [];
@@ -1674,13 +1674,101 @@ async function rkStoreDay(env, day, adsMap) {
   await env.COSTS_KV.put("rk:" + day, JSON.stringify(rec));
 }
 
+// Daily cost per ad account (ac:<day>), the base of the Saldo screen for accounts the old data.json sync does not know.
+async function rkStoreAc(env, day, accounts) {
+  const raw = await env.COSTS_KV.get("ac:" + day);
+  let rec = { accounts: {} };
+  if (raw) { try { rec = JSON.parse(raw); if (!rec.accounts) rec.accounts = {}; } catch {} }
+  Object.assign(rec.accounts, accounts);
+  await env.COSTS_KV.put("ac:" + day, JSON.stringify(rec));
+}
+
+async function computeSaldoCosts(env) {
+  const days = [];
+  let cursor;
+  do {
+    const r = await env.COSTS_KV.list({ prefix: "ac:", cursor });
+    for (const k of r.keys) days.push(k.name.slice(3));
+    cursor = r.list_complete ? undefined : r.cursor;
+  } while (cursor);
+  days.sort();
+  const subs = {};
+  for (let i = 0; i < days.length; i += 40) {
+    const chunk = days.slice(i, i + 40);
+    const recs = await Promise.all(chunk.map((d) => env.COSTS_KV.get("ac:" + d)));
+    recs.forEach((raw, j) => {
+      if (!raw) return;
+      let rec; try { rec = JSON.parse(raw); } catch { return; }
+      for (const [id, v] of Object.entries(rec.accounts || {})) {
+        const sub = subs[id] = subs[id] || { name: "", accountKey: v.k, costByDate: {} };
+        sub.costByDate[chunk[j]] = v.c;
+        if (v.n && v.n !== id) sub.name = v.n;
+        if (v.k) sub.accountKey = v.k;
+      }
+    });
+  }
+  return { subAccounts: subs, days: days.length, generatedAt: new Date().toISOString() };
+}
+
+function isFridaySP() {
+  const [y, m, d] = todayKeySaoPaulo().split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d)).getUTCDay() === 5;
+}
+
+// Low balance (deposits minus spend since the first deposit; 300, or 500 on Fridays) -> phone, once, then a reminder every 6h while it lasts.
+async function pushBalanceAlerts(env) {
+  if (!(await pushTargets(env, "balance")).length) return { sent: 0 };
+  const topups = await loadTopups(env);
+  if (!topups.length) return { sent: 0 };
+  const subs = (await computeSaldoCosts(env)).subAccounts;
+  const settings = await loadAccountSettings(env), today = todayKeySaoPaulo();
+  const threshold = isFridaySP() ? 500 : 300;
+  const byAcc = {};
+  for (const t of topups) (byAcc[t.accountId] = byAcc[t.accountId] || []).push(t);
+  const alerts = [];
+  for (const [id, list] of Object.entries(byAcc)) {
+    const sub = subs[id];
+    if (!sub || !accountVisible(settings, sub.accountKey, today)) continue;
+    const earliest = list.map((t) => t.date).sort()[0];
+    const spent = Object.entries(sub.costByDate).filter(([d]) => d >= earliest).reduce((a, [, c]) => a + (c || 0), 0);
+    const balance = list.reduce((a, t) => a + t.amount, 0) - spent;
+    if (balance <= threshold) alerts.push({ id, name: list[0].accountName || sub.name || id, balance: round2(balance) });
+  }
+  const repeatMs = 6 * 60 * 60 * 1000, now = Date.now();
+  const raw = await env.COSTS_KV.get("push_state_bal");
+  const state = raw ? JSON.parse(raw) : {};
+  const next = {}, fresh = [], again = [];
+  for (const a of alerts) {
+    const prev = state[a.id];
+    if (!prev) { fresh.push(a); next[a.id] = { last: now }; }
+    else if (now - prev.last >= repeatMs) { again.push(a); next[a.id] = { last: now }; }
+    else next[a.id] = prev;
+  }
+  const line = (a) => a.name + " — saldo $" + a.balance;
+  let sent = 0;
+  if (fresh.length) {
+    const r = await sendPush(env, "Saldo baixo" + (fresh.length > 1 ? " (" + fresh.length + " contas)" : ""), (isFridaySP() ? "Sexta-feira, abaixo de $500\n" : "Abaixo de $300\n") + fresh.slice(0, 6).map(line).join("\n"), "balance");
+    if (r.ok) sent += fresh.length; else fresh.forEach((a) => { delete next[a.id]; });
+  }
+  if (again.length) {
+    const r = await sendPush(env, "Saldo ainda baixo" + (again.length > 1 ? " (" + again.length + ")" : ""), again.slice(0, 6).map(line).join("\n"), "balance");
+    if (r.ok) sent += again.length; else again.forEach((a) => { next[a.id] = state[a.id]; });
+  }
+  await env.COSTS_KV.put("push_state_bal", JSON.stringify(next));
+  return { sent };
+}
+
 // opts: { backfill, yesterday }. Never throws for one failed account; reports it in the diagnostics.
 async function rkRefresh(env, opts) {
   opts = opts || {};
   const diag = { rows: 0, failed: [], days: [], mode: opts.backfill ? "backfill" : "refresh" };
   const tokens = await getAllTokens(env, opts.backfill ? undefined : { visibleOnly: true });
   const today = todayKeySaoPaulo(), yesterday = shiftDayKeySP(today, -1);
-  const perDay = {};
+  const perDay = {}, acDay = {};
+  const putAc = (day, r, key) => {
+    if (!day || !r.adAccountId) return;
+    (acDay[day] = acDay[day] || {})[r.adAccountId] = { c: round2((r.costDecimal || 0) / 100), n: r.adAccount || "", k: key };
+  };
   const put = (day, r) => {
     if (!day || !r.adId) return;
     const d = nbRowToDoc(r);
@@ -1693,15 +1781,22 @@ async function rkRefresh(env, opts) {
         diag.rows += rows.length;
         if (rows.length && !diag.sample) diag.sample = { date: rows[0].date, keys: Object.keys(rows[0]).slice(0, 12) };
         for (const r of rows) put(rkDayOf(r.date), r);
+        try { for (const r of await nbFetchReport(token, "LAST_30_DAYS", ["DATE", "AD_ACCOUNT"], [])) putAc(rkDayOf(r.date), r, key); } catch {}
       } else {
         const rows = await nbFetchReport(token, "TODAY", ["AD"], ["IMPRESSION"]);
         diag.rows += rows.length;
         for (const r of rows) put(today, r);
         if (opts.yesterday) { for (const r of await nbFetchReport(token, "YESTERDAY", ["AD"], ["IMPRESSION"])) put(yesterday, r); }
+        try {
+          for (const r of await nbFetchReport(token, "TODAY", ["AD_ACCOUNT"], [])) putAc(today, r, key);
+          if (opts.yesterday) for (const r of await nbFetchReport(token, "YESTERDAY", ["AD_ACCOUNT"], [])) putAc(yesterday, r, key);
+        } catch {}
       }
     } catch (e) { diag.failed.push(key + ": " + String((e && e.message) || e).slice(0, 80)); }
   }));
   for (const day of Object.keys(perDay)) { await rkStoreDay(env, day, perDay[day]); diag.days.push(day); }
+  for (const day of Object.keys(acDay)) await rkStoreAc(env, day, acDay[day]);
+  if (opts.backfill && Object.keys(acDay).length) await env.COSTS_KV.put("ac_backfilled", String(Date.now()));
   // ad identity (number, headline, thumbnail, campaign) comes from the live snapshot; kept even after an ad is deleted
   try {
     const rawLive = await env.COSTS_KV.get("live_campanhas");
@@ -1838,10 +1933,11 @@ export default {
       }
       try {
         const at = new Date((event && event.scheduledTime) || Date.now());
-        const first = !(await env.COSTS_KV.get("rk_backfilled"));
+        const first = !(await env.COSTS_KV.get("rk_backfilled")) || !(await env.COSTS_KV.get("ac_backfilled"));
         if (first || at.getUTCMinutes() % 10 === 0) {
           const rr = await rkRefresh(env, first ? { backfill: true } : { yesterday: at.getUTCMinutes() % 30 === 0 });
           note += "; rank:" + rr.mode + " dias:" + rr.days.length + (rr.failed.length ? " falhas:" + rr.failed.length : "");
+          try { const bl = await pushBalanceAlerts(env); if (bl && bl.sent) note += "; saldo_avisos:" + bl.sent; } catch (e) { note += "; saldo_erro:" + String((e && e.message) || e).slice(0, 100); }
         }
       } catch (e) { note += "; rank_erro:" + String((e && e.message) || e).slice(0, 120); }
       try { const tr = await runTaboolaRules(env); if (tr && tr.ran) note += "; tb_regras_eval:" + tr.evaluated + " tb_acoes:" + tr.actions; } catch (e) { note += "; tb_regras_erro:" + String((e && e.message) || e).slice(0, 120); }
@@ -2585,6 +2681,16 @@ export default {
       }
     }
 
+    if (url.pathname === "/saldo/costs" && request.method === "GET") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      try {
+        return json(await getCached(env, "saldo_costs", 60, () => computeSaldoCosts(env)), 200, origin);
+      } catch (e) {
+        return json({ error: "saldo_costs_failed", detail: String((e && e.message) || e) }, 502, origin);
+      }
+    }
+
     if (url.pathname === "/rank" && request.method === "GET") {
       const key = request.headers.get("X-Access-Key");
       if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
@@ -2963,7 +3069,7 @@ export default {
       const key = request.headers.get("X-Access-Key");
       if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
       const recs = await loadRecipients(env);
-      return json({ serverDefault: !!env.PUSHCUT_URL, recipients: recs.map((r) => ({ id: r.id, name: r.name, urlMasked: maskPushUrl(r.url), enabled: r.enabled !== false, types: { rejections: (r.types || {}).rejections !== false, rules: (r.types || {}).rules !== false }, createdAt: r.createdAt })) }, 200, origin);
+      return json({ serverDefault: !!env.PUSHCUT_URL, recipients: recs.map((r) => ({ id: r.id, name: r.name, urlMasked: maskPushUrl(r.url), enabled: r.enabled !== false, types: { rejections: (r.types || {}).rejections !== false, rules: (r.types || {}).rules !== false, balance: (r.types || {}).balance !== false }, createdAt: r.createdAt })) }, 200, origin);
     }
 
     if (url.pathname === "/push/recipients" && request.method === "POST") {

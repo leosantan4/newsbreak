@@ -342,7 +342,19 @@
   .rej-pick-head{font-size:12.5px; font-weight:650; margin-bottom:6px;}
   .rej-pick-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(78px,1fr)); gap:8px; margin:8px 0; max-height:210px; overflow-y:auto;}
   .rej-pick-item{position:relative; border:2px solid var(--line); border-radius:8px; overflow:hidden; cursor:pointer; aspect-ratio:9/13; background:var(--neutral-bg);}
-  .rej-pick-item.on{border-color:var(--accent);}
+  .rej-pick-item.on{border-color:var(--accent); box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);}
+  .rej-chosen{border:2px solid var(--accent); background:color-mix(in srgb, var(--accent) 9%, var(--surface-raised)); border-radius:12px; padding:10px 12px; margin:8px 0;}
+  .rej-chosen-title{font-size:11px; text-transform:uppercase; letter-spacing:.07em; font-weight:700; color:var(--muted); margin-bottom:8px;}
+  .rej-chosen-list{display:flex; flex-wrap:wrap; gap:8px;}
+  .rej-chosen-item{display:flex; align-items:center; gap:8px; border:1px solid var(--line); background:var(--surface-raised); border-radius:10px; padding:4px 6px 4px 4px; font-size:13px; font-weight:650;}
+  .rej-chosen-item img, .rej-chosen-item video{width:30px; height:42px; border-radius:6px; object-fit:cover; background:var(--line);}
+  .rej-chosen-item small{display:block; font-weight:500; color:var(--muted); font-size:11px;}
+  .rej-chosen-item button{border:none; background:var(--neutral-bg); color:var(--ink); border-radius:50%; width:22px; height:22px; font-size:13px; line-height:1; cursor:pointer; flex:none;}
+  .rej-chosen-item button.rej-x:hover{background:var(--bad-bg); color:var(--bad);}
+  .rej-chosen-item button:disabled{opacity:.35; cursor:not-allowed;}
+  .rej-step{display:inline-flex; align-items:center; gap:4px; background:var(--neutral-bg); border-radius:999px; padding:2px;}
+  .rej-step b{min-width:16px; text-align:center; font-size:12.5px;}
+  .rej-step button{background:var(--surface-raised);}
   .rej-pick-item img, .rej-pick-item video{width:100%; height:100%; object-fit:cover; display:block;}
   .rej-pick-item span{position:absolute; left:0; right:0; bottom:0; background:rgba(0,0,0,.6); color:#fff; font-size:10.5px; padding:2px 4px; text-align:center;}
   .rej-pick-item b{position:absolute; top:3px; right:3px; background:var(--accent); color:var(--accent-ink); border-radius:50%; width:18px; height:18px; font-size:11px; display:flex; align-items:center; justify-content:center;}
@@ -367,6 +379,10 @@
   .cc-multi-thumb .cc-thumb-num{position:absolute; top:3px; left:3px; max-width:calc(100% - 30px); background:rgba(0,0,0,.7); color:#fff; font-size:11px; font-weight:700; padding:2px 6px; border-radius:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; pointer-events:none;}
   .cc-multi-thumb .cc-thumb-x{position:absolute; top:3px; right:3px; width:20px; height:20px; border:none; border-radius:4px; background:rgba(0,0,0,.7); color:#fff; font-size:15px; line-height:20px; padding:0; cursor:pointer;}
   .cc-multi-thumb .cc-thumb-x:hover{background:var(--bad);}
+  .cc-thumb-step{position:absolute; left:3px; right:3px; bottom:3px; display:flex; align-items:center; justify-content:space-between; background:rgba(0,0,0,.72); border-radius:999px; padding:2px; color:#fff;}
+  .cc-thumb-step b{font-size:12px;}
+  .cc-thumb-step button{border:none; width:22px; height:22px; border-radius:50%; background:rgba(255,255,255,.18); color:#fff; font-size:14px; line-height:1; cursor:pointer;}
+  .cc-thumb-step button:hover{background:var(--accent); color:var(--accent-ink);}
 
   .form-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px; padding:16px 18px;}
   .form-field{display:flex; flex-direction:column; gap:5px;}
@@ -910,6 +926,7 @@
       </div>
       <div class="rej-pick">
         <div class="rej-pick-head">Trocar o criativo <span class="cell-muted">(opcional — escolha da galeria)</span></div>
+        <div class="rej-chosen" id="rejChosen" hidden></div>
         <input type="text" id="rejPickSearch" placeholder="Digite o nome/número do anúncio…" list="mediaNamesList">
         <div class="rej-pick-grid" id="rejPickGrid"></div>
         <div class="cell-muted" id="rejPickNote" style="font-size:12px;"></div>
@@ -2065,7 +2082,7 @@
         <section class="panel">
           <div class="step-head">
             <div class="step-head-left"><span class="step-title">Notificações</span></div>
-            <span class="step-desc">Quem recebe os avisos no celular (anúncio recusado e ações das regras). Cada pessoa cola aqui o endereço (webhook) da <b>própria</b> notificação do Pushcut, sem precisar de acesso à Cloudflare. O endereço fica guardado no servidor e <b>nunca mais aparece inteiro</b>.</span>
+            <span class="step-desc">Quem recebe os avisos no celular. Cada pessoa escolhe o que quer receber: anúncio recusado, ações das regras e saldo baixo. Cada pessoa cola aqui o endereço (webhook) da <b>própria</b> notificação do Pushcut, sem precisar de acesso à Cloudflare. O endereço fica guardado no servidor e <b>nunca mais aparece inteiro</b>.</span>
           </div>
           <div id="notifList"></div>
         </section>
@@ -2077,6 +2094,7 @@
             <div class="notif-types">
               <label class="rule-notify"><input type="checkbox" id="notifTypeRej" checked> Anúncios recusados</label>
               <label class="rule-notify"><input type="checkbox" id="notifTypeRules" checked> Ações das regras</label>
+              <label class="rule-notify"><input type="checkbox" id="notifTypeBal" checked> Saldo baixo</label>
             </div>
             <div class="rej-summary" id="notifMsg"></div>
             <button type="button" class="rej-edit-btn" id="notifAddBtn">Adicionar</button>
@@ -3782,12 +3800,33 @@
     return {hasTopup:true, name, totalTopup, totalSpend, totalSpendAllTime, balance, avgDaily, daysLeft};
   }
 
+  // Ad accounts the old sync (data.json) does not know (accounts added later) get their daily costs from the server (/saldo/costs).
+  const SALDO_COSTS_API = TOPUPS_API.replace(/\/topups$/, '') + '/saldo/costs';
+  let workerSubs = {};
+  function mergeWorkerSubs(){
+    Object.entries(workerSubs).forEach(([id, v]) => {
+      if (subAccounts[id] && !subAccounts[id]._fromWorker) return; // the old sync has the longer history
+      const nb = allSubAccounts.find(a => a.id === id);
+      subAccounts[id] = { name: v.name || id, accountKey: v.accountKey, costByDate: v.costByDate || {}, _fromWorker: true,
+        displayName: nb ? subAccountNbName(nb) + ' ···' + id.slice(-3) : (v.name ? v.name + ' ···' + id.slice(-3) : undefined) };
+    });
+  }
+  function loadSaldoCosts(){
+    return fetch(SALDO_COSTS_API, { headers: { 'X-Access-Key': COSTS_API_KEY }, cache: 'no-store' }).then(r => r.json()).then(j => {
+      if (!j || !j.subAccounts) return;
+      workerSubs = j.subAccounts; mergeWorkerSubs(); renderSaldo(); renderAlertBanner();
+    }).catch(() => {});
+  }
   function renderTopupAccountSelect(){
     const sel = document.getElementById('topupAccount');
-    if (sel.dataset.filled) return;
-    const ids = Object.keys(subAccounts).sort((a,b) => subDisplayName(a).localeCompare(subDisplayName(b)));
-    sel.innerHTML = ids.map(id => '<option value="' + id + '">' + subDisplayName(id) + '</option>').join('');
-    if (ids.length) sel.dataset.filled = '1';
+    const ids = Object.keys(subAccounts).filter(id => { const a = subAccounts[id]; return !a.accountKey || isAccountVisible(a.accountKey); })
+      .sort((a,b) => subDisplayName(a).localeCompare(subDisplayName(b)));
+    const sig = ids.map(id => id + ':' + subDisplayName(id)).join('|');
+    if (sel.dataset.sig === sig) return;
+    const keep = sel.value;
+    sel.innerHTML = ids.map(id => '<option value="' + id + '">' + ccEsc(subDisplayName(id)) + '</option>').join('');
+    if (keep && ids.indexOf(keep) !== -1) sel.value = keep;
+    sel.dataset.sig = sig;
   }
 
   function renderSaldo(){
@@ -4143,7 +4182,7 @@
       '<div class="notif-row' + (r.enabled ? '' : ' off') + '"><div>' +
       '<div class="rule-name">' + ccEsc(r.name) + '</div>' +
       '<div class="rule-line notif-url">' + ccEsc(r.urlMasked) + '</div>' +
-      '<div class="rule-line"><label class="notif-type"><input type="checkbox" data-notif-type="rejections" data-id="' + ccEsc(r.id) + '"' + (r.types.rejections ? ' checked' : '') + '> Anúncios recusados</label><label class="notif-type"><input type="checkbox" data-notif-type="rules" data-id="' + ccEsc(r.id) + '"' + (r.types.rules ? ' checked' : '') + '> Ações das regras</label></div></div>' +
+      '<div class="rule-line"><label class="notif-type"><input type="checkbox" data-notif-type="rejections" data-id="' + ccEsc(r.id) + '"' + (r.types.rejections ? ' checked' : '') + '> Anúncios recusados</label><label class="notif-type"><input type="checkbox" data-notif-type="rules" data-id="' + ccEsc(r.id) + '"' + (r.types.rules ? ' checked' : '') + '> Ações das regras</label><label class="notif-type"><input type="checkbox" data-notif-type="balance" data-id="' + ccEsc(r.id) + '"' + (r.types.balance !== false ? ' checked' : '') + '> Saldo baixo</label></div></div>' +
       '<div class="rule-actions"><span class="cell-muted notif-res" data-res="' + ccEsc(r.id) + '"></span><label class="switch" title="' + (r.enabled ? 'Recebendo' : 'Pausado') + '"><input type="checkbox" data-notif-on="' + ccEsc(r.id) + '"' + (r.enabled ? ' checked' : '') + '><span class="switch-track"></span></label>' +
       '<button type="button" data-notif-test="' + ccEsc(r.id) + '">Teste</button><button type="button" class="danger" data-notif-del="' + ccEsc(r.id) + '">Excluir</button></div></div>'));
     el.innerHTML = rows.length ? rows.join('') : '<div class="empty-state">Ninguém cadastrado ainda. Adicione abaixo.</div>';
@@ -4170,7 +4209,7 @@
     if (!name) { msg.textContent = 'Escreva o nome da pessoa.'; return; }
     if (!url) { msg.textContent = 'Cole o endereço do Pushcut.'; return; }
     msg.textContent = 'Salvando…';
-    notifApi('/recipients', 'POST', { name, url, types: { rejections: document.getElementById('notifTypeRej').checked, rules: document.getElementById('notifTypeRules').checked } })
+    notifApi('/recipients', 'POST', { name, url, types: { rejections: document.getElementById('notifTypeRej').checked, rules: document.getElementById('notifTypeRules').checked, balance: document.getElementById('notifTypeBal').checked } })
       .then(() => { document.getElementById('notifName').value = ''; document.getElementById('notifUrl').value = ''; msg.textContent = 'Adicionado. Use "Teste" pra confirmar que chega no celular.'; return loadNotifs(); })
       .catch(e => { msg.textContent = notifErrorText(e.message); });
   });
@@ -4453,6 +4492,7 @@
   let rejAccFilter = 'all';
   let rejSelected = new Set();
   let rejPickIds = [];
+  let rejPickFull = false;
   let rejBusy = false;
 
   // Short, plain reason for the list ("uso de celebridade"); full NewsBreak text goes in the tooltip.
@@ -4588,19 +4628,46 @@
     grid.innerHTML = items.map(it => {
       const isVideo = (it.contentType || '').indexOf('video') === 0;
       const url = LIBRARY_API + '/' + it.id + '/file';
-      const n = rejPickIds.indexOf(it.id);
+      const n = rejPickIds.indexOf(it.id), cnt = rejPickIds.filter(x => x === it.id).length;
       return '<div class="rej-pick-item' + (n !== -1 ? ' on' : '') + '" data-pick="' + it.id + '">' +
         (isVideo ? '<video src="' + url + '" muted preload="metadata"></video>' : '<img src="' + url + '" loading="lazy">') +
-        (n !== -1 ? '<b>' + (n + 1) + '</b>' : '') + '<span>' + ccEsc(it.name) + ' · ' + ccEsc(itemCategory(it)) + '</span></div>';
+        (n !== -1 ? '<b>' + (cnt > 1 ? '×' + cnt : n + 1) + '</b>' : '') + '<span>' + ccEsc(it.name) + ' · ' + ccEsc(itemCategory(it)) + '</span></div>';
     }).join('') || '<div class="cell-muted" style="grid-column:1/-1;">Nada encontrado na galeria.</div>';
+    // one creative per ad at most: with 1 ad selected the new click replaces the creative; with N ads, up to N creatives
+    // (1 = same for all; clicking the same image again uses it for one more ad). Picked ones are listed above with an ✕ to remove them.
+    const maxPick = Math.max(1, rejSelectedAds().length);
     grid.querySelectorAll('[data-pick]').forEach(el => el.addEventListener('click', () => {
-      const id = el.dataset.pick; const i = rejPickIds.indexOf(id);
-      if (i === -1) rejPickIds.push(id); else rejPickIds.splice(i, 1);
+      const id = el.dataset.pick;
+      if (maxPick === 1) rejPickIds = [id];
+      else if (rejPickIds.length >= maxPick) { rejPickFull = true; renderRejPick(); return; }
+      else rejPickIds.push(id);
+      rejPickFull = false;
       renderRejPick(); renderRejSummary();
     }));
-    document.getElementById('rejPickNote').textContent = rejPickIds.length
-      ? rejPickIds.length + ' escolhido' + (rejPickIds.length === 1 ? '' : 's') + ': ' + rejPickIds.map(id => (libraryItems.find(i => i.id === id) || {}).name).join(', ')
-      : 'Sem troca de criativo: só os textos acima serão alterados.';
+    const chosen = document.getElementById('rejChosen');
+    const ads = rejSelectedAds();
+    // copies of the same creative stay together: [−] n [+] changes how many ads use it, ✕ takes it out completely
+    const order = []; rejPickIds.forEach(id => { if (order.indexOf(id) === -1) order.push(id); });
+    rejPickIds = [].concat(...order.map(id => rejPickIds.filter(x => x === id)));
+    chosen.hidden = !rejPickIds.length;
+    let pos = 0;
+    chosen.innerHTML = rejPickIds.length ? '<div class="rej-chosen-title">Escolhido' + (rejPickIds.length === 1 ? '' : 's') + ' (' + rejPickIds.length + (maxPick > 1 ? ' de ' + maxPick : '') + ')</div><div class="rej-chosen-list">' + order.map(id => {
+      const qty = rejPickIds.filter(x => x === id).length, start = pos; pos += qty;
+      const it = libraryItems.find(x => x.id === id) || { name: '?', contentType: '' };
+      const url = LIBRARY_API + '/' + id + '/file';
+      const media = (it.contentType || '').indexOf('video') === 0 ? '<video src="' + url + '" muted preload="metadata"></video>' : '<img src="' + url + '" loading="lazy">';
+      const names = ads.slice(start, start + qty).map(x => x.name);
+      const target = maxPick > 1 ? (rejPickIds.length === ads.length ? '→ anúncio' + (qty > 1 ? 's ' : ' ') + ccEsc(names.join(', ')) : (rejPickIds.length === 1 ? 'vale pros ' + maxPick + ' anúncios' : '')) : '';
+      const step = maxPick > 1 ? '<span class="rej-step"><button type="button" data-gdec="' + id + '" title="Menos um">−</button><b>' + qty + '</b><button type="button" data-ginc="' + id + '" title="Mais um"' + (rejPickIds.length >= maxPick ? ' disabled' : '') + '>+</button></span>' : '';
+      return '<div class="rej-chosen-item">' + media + '<span>' + ccEsc(it.name) + (target ? '<small>' + target + '</small>' : '') + '</span>' + step + '<button type="button" class="rej-x" data-gdel="' + id + '" title="Tirar este">✕</button></div>';
+    }).join('') + '</div>' : '';
+    const redo = () => { rejPickFull = false; renderRejPick(); renderRejSummary(); };
+    chosen.querySelectorAll('[data-gdel]').forEach(b => b.addEventListener('click', () => { rejPickIds = rejPickIds.filter(x => x !== b.dataset.gdel); redo(); }));
+    chosen.querySelectorAll('[data-gdec]').forEach(b => b.addEventListener('click', () => { const i = rejPickIds.lastIndexOf(b.dataset.gdec); if (i !== -1) rejPickIds.splice(i, 1); redo(); }));
+    chosen.querySelectorAll('[data-ginc]').forEach(b => b.addEventListener('click', () => { if (rejPickIds.length >= maxPick) return; const i = rejPickIds.lastIndexOf(b.dataset.ginc); rejPickIds.splice(i + 1, 0, b.dataset.ginc); redo(); }));
+    document.getElementById('rejPickNote').textContent = (rejPickFull ? 'Máximo de ' + maxPick + ' criativos (um por anúncio). Tire um (✕) pra escolher outro. ' : '') + (rejPickIds.length
+      ? rejPickIds.length + ' escolhido' + (rejPickIds.length === 1 ? '' : 's') + ': ' + rejPickIds.map(id => (libraryItems.find(i => i.id === id) || {}).name).join(', ') + (maxPick > 1 && rejPickIds.length === 1 ? ' (vale pros ' + maxPick + ' anúncios)' : '')
+      : (maxPick > 1 ? 'Escolha 1 criativo (vale pros ' + maxPick + ') ou até ' + maxPick + ' (um pra cada, na ordem da lista). Sem escolher, só os textos mudam.' : 'Sem troca de criativo: só os textos acima serão alterados.'));
   }
 
   function rejPlan(){
@@ -4631,7 +4698,7 @@
   function openRejSheet(){
     if (!rejSelectedAds().length) return;
     ['rejHeadline', 'rejDescription', 'rejPickSearch'].forEach(id => { document.getElementById(id).value = ''; });
-    rejPickIds = [];
+    rejPickIds = []; rejPickFull = false;
     document.getElementById('rejLog').innerHTML = '';
     document.getElementById('rejSheetTitle').textContent = 'Editar ' + rejSelectedAds().length + ' anúncio' + (rejSelectedAds().length === 1 ? '' : 's') + ' recusado' + (rejSelectedAds().length === 1 ? '' : 's');
     document.getElementById('rejEditing').innerHTML = rejSelectedAds().map(a => {
@@ -5057,12 +5124,14 @@
       ACCOUNTS.forEach(a => { data[a.key] = json.accounts[a.key] || {}; });
       if ((json.campaigns || []).length || !campaigns.length) campaigns = json.campaigns || [];
       subAccounts = json.subAccounts || {};
+      mergeWorkerSubs();
       renderAll();
     }).catch(() => {
       document.getElementById('footerNote').textContent = 'Não foi possível carregar os dados agora — tente recarregar a página.';
     });
     loadCosts();
     loadTopups();
+    loadSaldoCosts();
   }
   function loadLivePainel(){
     fetch(LIVE_PAINEL_API, {cache:'no-store'}).then(r => r.json()).then(json => {
@@ -6179,6 +6248,7 @@
     })).then(results => {
       allSubAccounts = results.flat();
       subAccountsLoaded = true;
+      mergeWorkerSubs(); renderSaldo();
       renderAccountCards();
       renderAccountsList();
       if (failed.length && subAccRetries < 6) { subAccRetries++; setTimeout(loadAllSubAccounts, 6000 * subAccRetries); }
@@ -6300,6 +6370,20 @@ function ccPreviewLines(adsets, nameOf){
     ccCards[cardIdx].ads.push(id);
     ccStructureChanged();
   }
+  // same creative used n times on a card: [−] n [+] adds/removes one copy (kept next to the others), × removes them all
+  function ccChangeQty(cardIdx, id, delta){
+    const c = ccCards[cardIdx]; if (!c) return;
+    const last = c.ads.lastIndexOf(id); if (last === -1) return;
+    if (delta > 0) c.ads.splice(last + 1, 0, id); else c.ads.splice(last, 1);
+    if (!c.ads.length) c.allInAll = false;
+    ccStructureChanged();
+  }
+  function ccRemoveAllOf(cardIdx, id){
+    const c = ccCards[cardIdx]; if (!c) return;
+    c.ads = c.ads.filter(x => x !== id);
+    if (!c.ads.length) c.allInAll = false;
+    ccStructureChanged();
+  }
   function ccRemoveAdAt(cardIdx, pos){
     if (!ccCards[cardIdx]) return;
     ccCards[cardIdx].ads.splice(pos, 1);
@@ -6369,9 +6453,9 @@ function ccPreviewLines(adsets, nameOf){
         return '<div class="cc-camp-card mirrored"><div class="cc-camp-head"><span class="cc-camp-title">Campanha ' + ccPad2(ci + 1) + '</span><span class="cc-camp-badge">igual à 01</span></div></div>';
       }
       const card = ccCards[ci];
-      const items = card.ads.map((id, pos) => ({ it: libraryItems.find(i => i.id === id), id, pos }));
-      const thumbs = items.length
-        ? '<div class="cc-selected-preview">' + items.map(({ it, id, pos }) => it ? ccThumbHtml(it, pos, ci) : '').join('') + '</div>'
+      const groups = []; card.ads.forEach(id => { const g = groups.find(x => x.id === id); if (g) g.qty++; else groups.push({ id, qty: 1 }); });
+      const thumbs = groups.length
+        ? '<div class="cc-selected-preview">' + groups.map(g => { const it = libraryItems.find(i => i.id === g.id); return it ? ccThumbHtml(it, g.id, ci, g.qty) : ''; }).join('') + '</div>'
         : '<div class="cc-camp-empty">clique ou arraste os anúncios pra cá</div>';
       const d = ccDistribute(card.ads, S, card.allInAll);
       const prev = ccPreviewLines(d, ccNameOf).join(' · ');
@@ -6399,8 +6483,10 @@ function ccPreviewLines(adsets, nameOf){
     });
     el.querySelectorAll('.cc-thumb-x').forEach(btn => btn.addEventListener('click', (e) => {
       e.stopPropagation();
-      ccRemoveAdAt(Number(btn.dataset.card), Number(btn.dataset.pos));
+      ccRemoveAllOf(Number(btn.dataset.card), btn.dataset.gdel);
     }));
+    el.querySelectorAll('[data-gdec]').forEach(btn => btn.addEventListener('click', (e) => { e.stopPropagation(); ccChangeQty(Number(btn.dataset.card), btn.dataset.gdec, -1); }));
+    el.querySelectorAll('[data-ginc]').forEach(btn => btn.addEventListener('click', (e) => { e.stopPropagation(); ccChangeQty(Number(btn.dataset.card), btn.dataset.ginc, 1); }));
     el.querySelectorAll('[data-allinall]').forEach(cb => cb.addEventListener('change', () => {
       ccCards[Number(cb.dataset.allinall)].allInAll = cb.checked;
       ccStructureChanged();
@@ -6411,13 +6497,14 @@ function ccPreviewLines(adsets, nameOf){
     }));
   }
 
-  function ccThumbHtml(it, pos, ci){
+  function ccThumbHtml(it, id, ci, qty){
     const isVideo = (it.contentType || '').indexOf('video') === 0;
     const fileUrl = LIBRARY_API + '/' + it.id + '/file';
     const media = isVideo ? '<video src="' + fileUrl + '" muted></video>' : '<img src="' + fileUrl + '" loading="lazy" draggable="false">';
     return '<div class="media-item cc-multi-thumb" draggable="true" data-id="' + it.id + '">' + media +
       '<div class="cc-thumb-num">' + ccEsc(it.name) + '</div>' +
-      '<button type="button" class="cc-thumb-x" data-card="' + ci + '" data-pos="' + pos + '" title="Tirar este anúncio">×</button></div>';
+      '<button type="button" class="cc-thumb-x" data-card="' + ci + '" data-gdel="' + id + '" title="Tirar este anúncio">×</button>' +
+      '<div class="cc-thumb-step"><button type="button" data-card="' + ci + '" data-gdec="' + id + '" title="Menos um">−</button><b>' + qty + '</b><button type="button" data-card="' + ci + '" data-ginc="' + id + '" title="Mais um">+</button></div></div>';
   }
   function applyStructureToNames(){
     const suffix = ccSuffix();
