@@ -481,6 +481,9 @@
   .ct-pencil:hover{color:var(--accent); border-color:var(--accent);}
   .ctable-name-link:hover{color:var(--accent); text-decoration:underline;}
   .ctable th, .ctable td{padding:8px 10px;}
+  /* a light line between columns */
+  .ctable thead th:not(:last-child), .ctable tbody td:not(:last-child), .ctable tfoot td:not(:last-child){border-right:1px solid color-mix(in srgb, var(--line) 55%, transparent);}
+  .ctable thead th.spacer, .ctable tbody td.spacer, .ctable tfoot td.spacer{border-right:none;}
   .ctable thead th{cursor:pointer; user-select:none;}
   .ctable thead th.l, .ctable tbody td.l, .ctable tfoot td.l{text-align:left;}
   .ctable thead th.r, .ctable tbody td.r, .ctable tfoot td.r{text-align:right;}
@@ -3484,10 +3487,10 @@
   const CT_PERIOD_LABEL = { TODAY: 'hoje', YESTERDAY: 'ontem', LAST_3_DAYS: 'os últimos 3 dias', LAST_7_DAYS: 'os últimos 7 dias', LAST_14_DAYS: 'os últimos 14 dias', LAST_30_DAYS: 'os últimos 30 dias', MONTH_TO_DATE: 'este mês' };
   const fmtInt = v => Math.round(v).toLocaleString('pt-BR');
   const CT_CATALOG = {
-    budget: { label: 'Orçamento/dia', fmt: fmtUSD },
+    budget: { label: 'Orçamento', fmt: fmtUSD },
     cost: { label: 'Gasto', fmt: fmtUSD },
     fat: { label: 'Valor de conversão', fmt: fmtUSD },
-    ic: { label: 'IC (checkouts)', fmt: fmtInt },
+    ic: { label: 'IC checkout', fmt: fmtInt },
     custoIc: { label: 'Custo por IC', fmt: fmtUSD },
     venda: { label: 'Conversões (vendas)', fmt: fmtInt },
     cpa: { label: 'CPA', fmt: fmtUSD },
@@ -3551,7 +3554,7 @@
   function ctColLabel(k){
     if (k === 'origin') return campTab === 'ads' ? 'Conjunto · Campanha · Conta' : campTab === 'adsets' ? 'Campanha · Conta' : 'Conta';
     if (k === 'status') return 'Status';
-    return k === 'budget' && campTab === 'campaigns' ? 'Orç. ativo/dia' : CT_CATALOG[k].label;
+    return CT_CATALOG[k].label;
   }
   const ctPanelName = (k) => k === 'origin' ? 'Conjunto · Campanha · Conta' : k === 'status' ? 'Status' : CT_CATALOG[k].label;
 
@@ -4592,7 +4595,7 @@
   // ---------- Regras (rules engine UI) ----------
   const RULES_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/rules';
   const RULE_METRICS_UI = {
-    cost: { label: 'Gasto', unit: '$' }, ic: { label: 'IC (checkouts)', unit: '' }, sales: { label: 'Vendas', unit: '' }, cpic: { label: 'Custo por IC', unit: '$' },
+    cost: { label: 'Gasto', unit: '$' }, ic: { label: 'IC checkout', unit: '' }, sales: { label: 'Vendas', unit: '' }, cpic: { label: 'Custo por IC', unit: '$' },
     cpc: { label: 'CPC', unit: '$' }, cpm: { label: 'CPM', unit: '$' }, ctr: { label: 'CTR', unit: '%' }, clicks: { label: 'Cliques', unit: '' },
     impressions: { label: 'Impressões', unit: '' }, cpa: { label: 'CPA (custo por venda)', unit: '$' }, roas: { label: 'ROAS', unit: 'x' }, revenue: { label: 'Faturamento', unit: '$' },
   };
