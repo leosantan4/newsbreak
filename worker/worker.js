@@ -2126,7 +2126,8 @@ export default {
         const manual = custom[accountKey] && custom[accountKey].manualAccounts;
         const accs = url.searchParams.get("adAccountId") ? [{ id: url.searchParams.get("adAccountId") }] : (manual && manual.length ? manual : await nbGetAdAccountsForToken(token, accountKey, custom[accountKey] && custom[accountKey].orgId));
         for (const a of accs) {
-          const ad = (await nbGetList("ad", token, a.id)).find((x) => String(x.id) === String(adId));
+          const entity = ["ad", "ad-set", "campaign"].includes(url.searchParams.get("entity")) ? url.searchParams.get("entity") : "ad";
+          const ad = (await nbGetList(entity, token, a.id)).find((x) => String(x.id) === String(adId));
           if (ad) return json({ ad }, 200, origin);
         }
         return json({ error: "not_found" }, 404, origin);
