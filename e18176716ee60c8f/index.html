@@ -4511,12 +4511,11 @@
       });
     });
     out.sort((x, y) => String(y.id).localeCompare(String(x.id)));
-    // campaign WARNING with nothing inside explaining it (no ad set in WARNING, no ad under review) = quality issue flagged by NewsBreak
+    // campaign WARNING while every running ad is approved (none under review) = quality issue flagged by NewsBreak (an ad set stuck in WARNING is just NewsBreak lagging)
     const warn = [];
     (campaigns || []).forEach(c => {
       if (c.status !== 'ON' || c.onlineStatus !== 'WARNING') return;
       const sets = (c.adSets || []).filter(sx => sx.status === 'ON');
-      if (sets.some(sx => sx.onlineStatus === 'WARNING')) return;
       const ads = []; let reviewing = false;
       sets.forEach(sx => (sx.ads || []).forEach(ad => {
         if (ad.status !== 'ON') return;
@@ -4568,7 +4567,7 @@
     document.getElementById('rejCount').textContent = rejLoaded ? vis.length + ' recusado' + (vis.length === 1 ? '' : 's') + (rejWarn.length ? ' · ' + rejWarn.length + ' com aviso' : '') : '';
     const wbox = document.getElementById('rejWarn');
     if (wbox) wbox.innerHTML = rejWarn.map(w => '<div class="rej-warn-card"><div class="rej-title">' + ccEsc(w.name) + ' <span class="rej-chip">' + ccEsc(w.adAccountName) + '</span> <span class="rej-chip warn">Aviso da NewsBreak</span></div>' +
-      '<div class="rej-warn-text">A NewsBreak marcou esta campanha com <b>aviso (WARNING)</b> e nada dentro explica: anúncios aprovados e conjuntos prontos. Costuma ser <b>problema de qualidade</b> num anúncio, que fica ativo mas quase não gasta. A API não diz qual é o anúncio nem o motivo: abra os anúncios na NewsBreak e procure o sinal vermelho (Fix Issues).</div>' +
+      '<div class="rej-warn-text">A NewsBreak marcou esta campanha com <b>aviso (WARNING)</b> e nada dentro explica: todos os anúncios ligados estão aprovados. Costuma ser <b>problema de qualidade</b> num anúncio, que fica ativo mas quase não gasta. A API não diz qual é o anúncio nem o motivo: abra os anúncios na NewsBreak e procure o sinal vermelho (Fix Issues).</div>' +
       '<div class="rej-warn-ads">' + w.ads.map(a => '<span>' + ccEsc(a.name) + ' <span class="cell-muted">· hoje ' + (a.todayCost != null ? fmtUSD(a.todayCost) : '$0,00') + '</span></span>').join('') + '</div>' +
       '<div class="cell-muted" style="font-size:12px;">Campanha: gasto hoje ' + fmtUSD(w.cost) + (w.budget ? ' de ' + fmtUSD(w.budget) + '/dia' : '') + '</div></div>').join('');
     const failNote = rejFailed.length ? '<div class="empty-state" style="color:var(--bad);">Não consegui ler: ' + ccEsc(rejFailed.join(' · ')) + '</div>' : '';

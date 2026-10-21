@@ -928,13 +928,13 @@ async function triggerSync(env) {
 
 // ---- Push alerts for rejected ads (Pushcut). Inert unless the secret PUSHCUT_URL is set on the Worker. ----
 // NewsBreak flags ads with "quality issues" (they barely spend) but the API shows nothing on the ad. The only trace is the CAMPAIGN
-// turning WARNING while everything inside looks fine: no ad set in WARNING and no ad under review (those explain a WARNING by themselves).
+// turning WARNING while every ad running inside is approved. An ad still under review explains the WARNING by itself (skipped); an ad set
+// stuck in WARNING ("No active ads") with approved ads inside is just NewsBreak lagging behind, so it does not hide the campaign.
 function warnedCampaigns(data) {
   const out = [];
   for (const c of (data && data.campaigns) || []) {
     if (c.status !== "ON" || c.onlineStatus !== "WARNING") continue;
     const sets = (c.adSets || []).filter((s) => s.status === "ON");
-    if (sets.some((s) => s.onlineStatus === "WARNING")) continue;
     const ads = [];
     let reviewing = false;
     for (const s of sets) for (const ad of s.ads || []) {
@@ -958,16 +958,22 @@ async function pushQualityWarnings(env, data) {
   const next = {};
   for (const [id, st] of Object.entries(state)) { if (st && st.acc && failed.has(st.acc)) next[id] = st; }
   const fresh = [], reminders = [];
+  // wait 10 min with the campaign in this state before the first alert: right after an approval NewsBreak's statuses lag a few minutes
+  const dwellMs = 10 * 60 * 1000;
   for (const c of warnedCampaigns(data)) {
     const prev = state[c.id];
-    if (!prev) { fresh.push(c); next[c.id] = { first: now, last: now, acc: c.acc }; }
-    else if (now - prev.last >= repeatMs) { reminders.push(c); next[c.id] = { first: prev.first, last: now, acc: c.acc }; }
+    if (!prev) next[c.id] = { first: now, last: 0, acc: c.acc, notified: false };
+    else if (!prev.notified) {
+      if (now - prev.first >= dwellMs) { fresh.push(c); next[c.id] = { first: prev.first, last: now, acc: c.acc, notified: true }; }
+      else next[c.id] = { ...prev, acc: c.acc };
+    }
+    else if (now - prev.last >= repeatMs) { reminders.push(c); next[c.id] = { ...prev, last: now, acc: c.acc }; }
     else next[c.id] = { ...prev, acc: c.acc };
   }
   const line = (c) => c.account + " · " + c.name + " — " + c.ads.length + " anúncio" + (c.ads.length === 1 ? "" : "s") + " aprovado" + (c.ads.length === 1 ? "" : "s") + ", gasto hoje $" + round2(c.cost) + (c.budget ? " de $" + round2(c.budget) : "");
   if (fresh.length) {
     const r = await sendPush(env, "Campanha com aviso da NewsBreak" + (fresh.length > 1 ? " (" + fresh.length + ")" : ""), fresh.slice(0, 5).map(line).join("\n") + "\nPode ser problema de qualidade: o anúncio quase não gasta.", "rejections");
-    if (!r.ok) fresh.forEach((c) => { delete next[c.id]; });
+    if (!r.ok) fresh.forEach((c) => { next[c.id] = { ...next[c.id], notified: false }; });
   }
   if (reminders.length) {
     const r = await sendPush(env, "Ainda com aviso" + (reminders.length > 1 ? " (" + reminders.length + ")" : ""), reminders.slice(0, 5).map(line).join("\n"), "rejections");
