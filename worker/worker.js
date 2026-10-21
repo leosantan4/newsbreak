@@ -394,7 +394,7 @@ async function nbBuildCampaignsForAccount(token, accountKey, adAccountId, adAcco
       adsetSummaries.push({
         id: a.id, name: a.name, status: a.status, onlineStatus: a.onlineStatus,
         budget: a.budget != null ? a.budget / 100 : null,
-        budgetType: a.budgetType, adsOn, adsTotal: myAds.length, reallyActive: adsetReallyOn,
+        budgetType: a.budgetType, startTime: a.startTime || null, endTime: a.endTime || null, adsOn, adsTotal: myAds.length, reallyActive: adsetReallyOn,
         ads: myAds.map((ad) => {
           const content = (ad.creative && ad.creative.content) || {};
           return {
@@ -934,7 +934,9 @@ function warnedCampaigns(data) {
   const out = [];
   for (const c of (data && data.campaigns) || []) {
     if (c.status !== "ON" || c.onlineStatus !== "WARNING") continue;
-    const sets = (c.adSets || []).filter((s) => s.status === "ON");
+    // a campaign that has not started yet (scheduled start in the future) is WARNING by itself: only ad sets that started 10+ min ago count
+    const started = (s) => !s.startTime || s.startTime * 1000 <= Date.now() - 10 * 60 * 1000;
+    const sets = (c.adSets || []).filter((s) => s.status === "ON" && started(s));
     const ads = [];
     let reviewing = false;
     for (const s of sets) for (const ad of s.ads || []) {
