@@ -2642,6 +2642,34 @@ export default {
       }
     }
 
+    // creative details of chosen ads (any status), to edit them in bulk from Campanhas: [{accountKey, adAccountId, ids:[...]}]
+    if (url.pathname === "/nb/ads-detail" && request.method === "POST") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      let body;
+      try { body = await request.json(); } catch { return json({ error: "invalid_json" }, 400, origin); }
+      const groups = Array.isArray(body.items) ? body.items.slice(0, 20) : [];
+      try {
+        const out = {};
+        for (const g of groups) {
+          const token = await tokenForAccountKey(env, g.accountKey);
+          const want = new Set((g.ids || []).map(String));
+          let list;
+          for (let attempt = 0; ; attempt++) {
+            try { list = await nbGetList("ad", token, g.adAccountId); break; } catch (e) { if (attempt >= 2) throw e; await new Promise((r) => setTimeout(r, 1200 * (attempt + 1))); }
+          }
+          for (const ad of list) {
+            if (!want.has(String(ad.id))) continue;
+            const c = (ad.creative && ad.creative.content) || {};
+            out[ad.id] = { id: ad.id, name: ad.name, creativeType: ad.creative && ad.creative.type, assetUrl: c.assetUrl, headline: c.headline, description: c.description, brandName: c.brandName, callToAction: c.callToAction, clickThroughUrl: c.clickThroughUrl, logoUrl: c.logoUrl };
+          }
+        }
+        return json({ ads: out }, 200, origin);
+      } catch (e) {
+        return json({ error: "nb_ads_detail_failed", detail: String((e && e.message) || e) }, 502, origin);
+      }
+    }
+
     // rename an ad, ad set or campaign (used when a creative is swapped: the number in the names must follow the new creative)
     if (url.pathname === "/nb/rename" && request.method === "POST") {
       const key = request.headers.get("X-Access-Key");

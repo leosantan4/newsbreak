@@ -1046,6 +1046,7 @@
           <b id="ctBulkCount"></b>
           <button type="button" class="select-all-btn" id="ctBulkOn">Ativar</button>
           <button type="button" class="select-all-btn" id="ctBulkOff">Pausar</button>
+          <button type="button" class="select-all-btn" id="ctBulkEdit" hidden>Editar anúncios</button>
           <button type="button" class="select-all-btn danger" id="ctBulkDel">Excluir</button>
           <button type="button" class="select-all-btn" id="ctBulkClear">Limpar seleção</button>
           <span class="cell-muted" id="ctBulkMsg"></span>
@@ -3369,6 +3370,7 @@
   }
 
   // ---------- Campanhas: 3 abas (Campanhas / Conjuntos / Anúncios) no estilo do gerenciador da NewsBreak ----------
+  const NB_ADS_DETAIL_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/nb/ads-detail';
   const METRICS_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/metrics';
   const NB_ENTITY_DELETE_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/nb/entity-delete';
   let campTab = loadPref('campTab', 'campaigns');
@@ -3640,6 +3642,7 @@
     const n = ctSel[campTab].size;
     const bulk = document.getElementById('ctBulk');
     bulk.hidden = !n;
+    document.getElementById('ctBulkEdit').hidden = campTab !== 'ads';
     const fem = campTab === 'campaigns';
     document.getElementById('ctBulkCount').textContent = n + ' ' + { campaigns: 'campanha', adsets: 'conjunto', ads: 'anúncio' }[campTab] + (n === 1 ? '' : 's') + ' selecionad' + (fem ? 'a' : 'o') + (n === 1 ? '' : 's');
   }
@@ -3703,6 +3706,32 @@
     document.getElementById('ctDelInput').value = ''; document.getElementById('ctDelGo').disabled = true; document.getElementById('ctDelLog').innerHTML = '';
     document.getElementById('ctDelSheet').hidden = false;
   }
+  // Edit ads in bulk from Campanhas (any status, e.g. the ones NewsBreak flags with the red triangle but still shows as approved):
+  // same sheet as Rejeições (swap creative, title, description, with the number following in the names).
+  async function ctOpenAdEdit(){
+    const rows = ctSelectedRows(); if (!rows.length) return;
+    const msg = document.getElementById('ctBulkMsg'), btn = document.getElementById('ctBulkEdit');
+    btn.disabled = true; msg.textContent = 'Carregando os anúncios…';
+    try {
+      const where = {};
+      rows.forEach(r => { const k = r.accountKey + '|' + r.adAccountId; (where[k] = where[k] || { accountKey: r.accountKey, adAccountId: r.adAccountId, ids: [] }).ids.push(r.id); });
+      const res = await fetch(NB_ADS_DETAIL_API, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY }, body: JSON.stringify({ items: Object.values(where) }) }).then(r => r.json());
+      if (res.error || !res.ads) throw new Error(res.detail || res.error || 'falhou');
+      const list = [];
+      rows.forEach(r => {
+        const c = campaigns.find(x => x.id === r.campId), sx = c && (c.adSets || []).find(x => x.id === r.adsetId), ad = sx && (sx.ads || []).find(x => x.id === r.id), d = res.ads[r.id];
+        if (!c || !sx || !ad || !d) return;
+        list.push({ ...ad, ...d, name: ad.name, accountKey: c.accountKey, adAccountId: c.adAccountId, adAccountName: c.adAccountName, campaignId: c.id, campaignName: c.name, adSetId: sx.id, adSetName: sx.name });
+      });
+      if (!list.length) throw new Error('não encontrei os anúncios');
+      rejEditOverride = list;
+      msg.textContent = '';
+      openRejSheet(true);
+    } catch (e) {
+      msg.textContent = 'Não consegui abrir a edição: ' + friendlyError(e.message);
+      setTimeout(() => { msg.textContent = ''; }, 6000);
+    } finally { btn.disabled = false; }
+  }
   async function ctRunDelete(){
     const rows = ctSelectedRows(); if (!rows.length) return;
     const log = document.getElementById('ctDelLog'), go = document.getElementById('ctDelGo');
@@ -3738,6 +3767,7 @@
     document.getElementById('ctBulkOn').addEventListener('click', () => ctBulkStatus('ON'));
     document.getElementById('ctBulkOff').addEventListener('click', () => ctBulkStatus('OFF'));
     document.getElementById('ctBulkDel').addEventListener('click', ctOpenDelete);
+    document.getElementById('ctBulkEdit').addEventListener('click', ctOpenAdEdit);
     document.getElementById('ctBulkClear').addEventListener('click', () => { ctSel[campTab] = new Set(); renderCampanhas(); });
     document.getElementById('ctDelInput').addEventListener('input', (e) => { document.getElementById('ctDelGo').disabled = e.target.value.trim() !== 'EXCLUIR'; });
     document.getElementById('ctDelGo').addEventListener('click', ctRunDelete);
@@ -4621,7 +4651,8 @@
     renderRejeicoes();
   });
 
-  function rejSelectedAds(){ return rejVisible().filter(a => rejSelected.has(a.id)); }
+  let rejEditOverride = null; // ads chosen in Campanhas (not necessarily rejected); null = the ones ticked in Rejeições
+  function rejSelectedAds(){ return rejEditOverride || rejVisible().filter(a => rejSelected.has(a.id)); }
 
   function renderRejPick(){
     try { renderRejPickInner(); } catch (e) { const n = document.getElementById('rejPickNote'); if (n) n.textContent = 'Erro ao listar a galeria: ' + e.message; }
@@ -4701,12 +4732,13 @@
     return fetch(LIBRARY_API, { cache: 'no-store' }).then(r => r.json()).then(j => { libraryItems = j.items || []; }).catch(() => {});
   }
 
-  function openRejSheet(){
+  function openRejSheet(useOverride){
+    if (useOverride !== true) rejEditOverride = null;
     if (!rejSelectedAds().length) return;
     ['rejHeadline', 'rejDescription', 'rejPickSearch'].forEach(id => { document.getElementById(id).value = ''; });
     rejPickIds = []; rejPickFull = false;
     document.getElementById('rejLog').innerHTML = '';
-    document.getElementById('rejSheetTitle').textContent = 'Editar ' + rejSelectedAds().length + ' anúncio' + (rejSelectedAds().length === 1 ? '' : 's') + ' recusado' + (rejSelectedAds().length === 1 ? '' : 's');
+    document.getElementById('rejSheetTitle').textContent = 'Editar ' + rejSelectedAds().length + ' anúncio' + (rejSelectedAds().length === 1 ? '' : 's') + (rejEditOverride ? '' : ' recusado' + (rejSelectedAds().length === 1 ? '' : 's'));
     document.getElementById('rejEditing').innerHTML = rejSelectedAds().map(a => {
       const media = a.creativeType === 'VIDEO' ? '<video src="' + ccEsc(a.assetUrl) + '" muted preload="metadata"></video>' : '<img src="' + ccEsc(a.assetUrl) + '">';
       return '<div class="rej-editing-item">' + media + '<span>' + ccEsc(a.name) + '<small>' + ccEsc(a.adAccountName) + '</small></span></div>';
@@ -4714,9 +4746,10 @@
     document.getElementById('rejSheet').hidden = false;
     ensureLibrary().then(() => { renderRejPick(); renderRejSummary(); });
   }
-  document.getElementById('rejEditBtn').addEventListener('click', openRejSheet);
-  document.getElementById('rejCancel').addEventListener('click', () => { if (!rejBusy) document.getElementById('rejSheet').hidden = true; });
-  document.getElementById('rejSheet').addEventListener('click', (e) => { if (e.target.id === 'rejSheet' && !rejBusy) document.getElementById('rejSheet').hidden = true; });
+  document.getElementById('rejEditBtn').addEventListener('click', () => openRejSheet(false));
+  const rejCloseSheet = () => { document.getElementById('rejSheet').hidden = true; rejEditOverride = null; };
+  document.getElementById('rejCancel').addEventListener('click', () => { if (!rejBusy) rejCloseSheet(); });
+  document.getElementById('rejSheet').addEventListener('click', (e) => { if (e.target.id === 'rejSheet' && !rejBusy) rejCloseSheet(); });
   ['rejHeadline', 'rejDescription'].forEach(id => document.getElementById(id).addEventListener('input', renderRejSummary));
   document.getElementById('rejPickSearch').addEventListener('input', renderRejPick);
 
@@ -4830,7 +4863,7 @@
       for (let k = 0; k < 3; k++) {
         await new Promise(r => setTimeout(r, 2500));
         await loadLiveCampanhas();
-        if (![...done].some(id => rejAds.some(a => a.id === id))) break;
+        if (rejEditOverride || ![...done].some(id => rejAds.some(a => a.id === id))) break;
       }
       renames.forEach(r => {
         const hit = r.type === 'ad' ? campaigns.flatMap(c => (c.adSets || []).flatMap(sx => sx.ads || [])).find(x => x.id === r.id)
@@ -4838,8 +4871,8 @@
         rejLog(r.tag + (r.type === 'ad' ? 'Anúncio' : r.type === 'adset' ? 'Conjunto' : 'Campanha') + ' → ' + r.name + (hit && hit.name === r.name ? ' ✓' : ' — a NewsBreak ainda não mostra o novo nome; confira em alguns segundos.'), hit && hit.name === r.name ? 'ok' : '');
       });
       ads.filter(a => done.has(a.id)).forEach(a => {
-        const still = rejAds.some(x => x.id === a.id);
-        rejLog('[' + a.name + '] ' + (still ? 'ainda aparece como recusado — a NewsBreak pode levar alguns segundos; se continuar, me avise.' : 'em análise na NewsBreak ✓'), still ? '' : 'ok');
+        const still = !rejEditOverride && rejAds.some(x => x.id === a.id);
+        rejLog('[' + a.name + '] ' + (rejEditOverride ? 'atualizado na NewsBreak ✓ (volta pra análise)' : still ? 'ainda aparece como recusado — a NewsBreak pode levar alguns segundos; se continuar, me avise.' : 'em análise na NewsBreak ✓'), still ? '' : 'ok');
       });
     }
     rejBusy = false;
