@@ -1461,6 +1461,13 @@
   .ct-chip button{border:none; background:none; color:var(--muted); cursor:pointer; padding:0 4px; font-size:13px;}
   .ctable input[type=checkbox]{accent-color:var(--accent);}
   .ct-budget input.adset-budget-input{width:74px;}
+  /* no up/down arrows (a stray click changed the value); the change only counts after "Confirmar", shown under the field so it is never clipped */
+  .adset-budget-input{-moz-appearance:textfield; appearance:textfield;}
+  .adset-budget-input::-webkit-outer-spin-button, .adset-budget-input::-webkit-inner-spin-button, #ctBulkBudget::-webkit-outer-spin-button, #ctBulkBudget::-webkit-inner-spin-button{-webkit-appearance:none; margin:0;}
+  #ctBulkBudget{-moz-appearance:textfield; appearance:textfield;}
+  .ct-budget{flex-wrap:wrap; justify-content:flex-end;}
+  .ct-budget .budget-actions{flex-basis:100%; justify-content:flex-end; margin:4px 0 0;}
+  .adset-budget-input.pending{border-color:var(--accent);}
   .ct-del-confirm{background:var(--bad); color:#fff;}
   .ct-del-confirm:disabled{opacity:.45;}
   .notif-add-label{display:flex; flex-direction:column; gap:4px; font-size:12px; font-weight:500; margin:10px 0; color:var(--muted);}
@@ -3420,6 +3427,7 @@
       const changed = isFinite(val) && val !== orig;
       if (changed) pendingBudgets[id] = val; else delete pendingBudgets[id];
       actions.hidden = !changed;
+      input.classList.toggle('pending', changed);
       actions.querySelector('.budget-delta').textContent = changed ? budgetDeltaText(orig, val) : '';
     };
     const confirmBudget = (id) => {
@@ -3437,6 +3445,7 @@
     document.querySelectorAll('[data-adset-budget]').forEach(el => {
       const id = el.dataset.adsetBudget;
       el.addEventListener('input', () => refreshBudgetActions(id));
+      el.addEventListener('wheel', () => el.blur(), { passive: true }); // scrolling the page must never change a budget
       el.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && pendingBudgets[id] != null) confirmBudget(id);
         if (e.key === 'Escape') { delete pendingBudgets[id]; renderCampanhas(); }
@@ -3782,7 +3791,7 @@
       const budgetCell = campTab === 'adsets'
         ? '<td class="r num"><div class="adset-budget-wrap ct-budget" onclick="event.stopPropagation()">$<input type="number" class="adset-budget-input" data-adset-budget="' + r.id + '" data-account-key="' + r.accountKey + '" data-orig="' + (r.budget != null ? r.budget : '') + '" value="' + (pendingBudgets[r.id] != null ? pendingBudgets[r.id] : (r.budget != null ? r.budget : '')) + '" min="10" step="1">' +
           '<span class="budget-actions" data-budget-actions="' + r.id + '"' + (pendingBudgets[r.id] != null ? '' : ' hidden') + '><span class="budget-delta">' + budgetDeltaText(r.budget, pendingBudgets[r.id]) + '</span>' +
-          '<button type="button" class="budget-confirm" data-budget-confirm="' + r.id + '" data-account-key="' + r.accountKey + '">✓</button><button type="button" class="budget-cancel" data-budget-cancel="' + r.id + '" title="Cancelar">✕</button></span></div></td>'
+          '<button type="button" class="budget-confirm" data-budget-confirm="' + r.id + '" data-account-key="' + r.accountKey + '">✓ Confirmar</button><button type="button" class="budget-cancel" data-budget-cancel="' + r.id + '" title="Cancelar">✕</button></span></div></td>'
         : '<td class="r num">' + (r.budget != null ? fmtUSD(r.budget) : '<span class="cell-muted">–</span>') + '</td>';
       return '<tr class="' + (r.active ? '' : 'is-off') + '">' +
         '<td class="c"><input type="checkbox" data-ct-check="' + r.id + '"' + (ctSel[campTab].has(r.id) ? ' checked' : '') + '></td>' +
