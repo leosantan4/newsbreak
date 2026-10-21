@@ -2763,6 +2763,35 @@ export default {
       }
     }
 
+    // saved column views of the Campanhas table (order + visibility + widths), shared by every device
+    if (url.pathname.startsWith("/col-presets")) {
+      const load = async () => { try { return JSON.parse((await env.COSTS_KV.get("col_presets")) || "[]"); } catch { return []; } };
+      if (request.method === "GET") return json({ presets: await load() }, 200, origin);
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      const presets = await load();
+      if (request.method === "POST") {
+        let body;
+        try { body = await request.json(); } catch { return json({ error: "invalid_json" }, 400, origin); }
+        const name = String((body && body.name) || "").trim().slice(0, 40);
+        const cols = Array.isArray(body && body.cols) ? body.cols.map(String).filter((c) => /^[A-Za-z]{2,20}$/.test(c)).slice(0, 40) : [];
+        if (!name || !cols.length) return json({ error: "invalid_body" }, 400, origin);
+        const widths = {};
+        for (const [k, v] of Object.entries((body && body.widths) || {})) { const n = Number(v); if (/^[A-Za-z]{2,20}$/.test(k) && isFinite(n) && n >= 40 && n <= 1200) widths[k] = Math.round(n); }
+        const i = presets.findIndex((p) => p.name.toLowerCase() === name.toLowerCase());
+        const entry = { id: i >= 0 ? presets[i].id : crypto.randomUUID(), name, cols, widths };
+        if (i >= 0) presets[i] = entry; else if (presets.length >= 30) return json({ error: "too_many" }, 400, origin); else presets.push(entry);
+        await env.COSTS_KV.put("col_presets", JSON.stringify(presets));
+        return json({ presets }, 200, origin);
+      }
+      if (request.method === "DELETE") {
+        const id = decodeURIComponent(url.pathname.split("/")[2] || "");
+        const next = presets.filter((p) => p.id !== id);
+        await env.COSTS_KV.put("col_presets", JSON.stringify(next));
+        return json({ presets: next }, 200, origin);
+      }
+    }
+
     if (url.pathname === "/saldo/costs" && request.method === "GET") {
       const key = request.headers.get("X-Access-Key");
       if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
