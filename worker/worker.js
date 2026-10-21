@@ -2776,10 +2776,11 @@ export default {
         const name = String((body && body.name) || "").trim().slice(0, 40);
         const cols = Array.isArray(body && body.cols) ? body.cols.map(String).filter((c) => /^[A-Za-z]{2,20}$/.test(c)).slice(0, 40) : [];
         if (!name || !cols.length) return json({ error: "invalid_body" }, 400, origin);
+        const order = Array.isArray(body && body.order) ? body.order.map(String).filter((c) => /^[A-Za-z]{2,20}$/.test(c)).slice(0, 40) : [];
         const widths = {};
         for (const [k, v] of Object.entries((body && body.widths) || {})) { const n = Number(v); if (/^[A-Za-z]{2,20}$/.test(k) && isFinite(n) && n >= 40 && n <= 1200) widths[k] = Math.round(n); }
         const i = presets.findIndex((p) => p.name.toLowerCase() === name.toLowerCase());
-        const entry = { id: i >= 0 ? presets[i].id : crypto.randomUUID(), name, cols, widths };
+        const entry = { id: i >= 0 ? presets[i].id : crypto.randomUUID(), name, cols, order, widths };
         if (i >= 0) presets[i] = entry; else if (presets.length >= 30) return json({ error: "too_many" }, 400, origin); else presets.push(entry);
         await env.COSTS_KV.put("col_presets", JSON.stringify(presets));
         return json({ presets }, 200, origin);
