@@ -927,6 +927,55 @@ async function triggerSync(env) {
 }
 
 // ---- Push alerts for rejected ads (Pushcut). Inert unless the secret PUSHCUT_URL is set on the Worker. ----
+// NewsBreak flags ads with "quality issues" (they barely spend) but the API shows nothing on the ad. The only trace is the CAMPAIGN
+// turning WARNING while everything inside looks fine: no ad set in WARNING and no ad under review (those explain a WARNING by themselves).
+function warnedCampaigns(data) {
+  const out = [];
+  for (const c of (data && data.campaigns) || []) {
+    if (c.status !== "ON" || c.onlineStatus !== "WARNING") continue;
+    const sets = (c.adSets || []).filter((s) => s.status === "ON");
+    if (sets.some((s) => s.onlineStatus === "WARNING")) continue;
+    const ads = [];
+    let reviewing = false;
+    for (const s of sets) for (const ad of s.ads || []) {
+      if (ad.status !== "ON") continue;
+      if (["PENDING", "IN_REVIEW", "UNDER_REVIEW"].includes(ad.auditStatus)) reviewing = true;
+      else if (ad.auditStatus === "APPROVED") ads.push({ id: ad.id, name: ad.name, cost: ad.todayCost || 0 });
+    }
+    if (reviewing || !ads.length) continue;
+    out.push({ id: c.id, name: c.name, acc: c.accountKey, account: c.adAccountName || c.accountKey, ads, budget: c.activeBudget, cost: c.todayCost || 0 });
+  }
+  return out;
+}
+
+async function pushQualityWarnings(env, data) {
+  if (!(await pushTargets(env, "rejections")).length) return;
+  const repeatMs = Math.max(5, Number(env.PUSH_REPEAT_MIN) || 30) * 60 * 1000;
+  const now = Date.now();
+  const raw = await env.COSTS_KV.get("push_state_warn");
+  const state = raw ? JSON.parse(raw) : {};
+  const failed = new Set((data && data.failedAccounts) || []);
+  const next = {};
+  for (const [id, st] of Object.entries(state)) { if (st && st.acc && failed.has(st.acc)) next[id] = st; }
+  const fresh = [], reminders = [];
+  for (const c of warnedCampaigns(data)) {
+    const prev = state[c.id];
+    if (!prev) { fresh.push(c); next[c.id] = { first: now, last: now, acc: c.acc }; }
+    else if (now - prev.last >= repeatMs) { reminders.push(c); next[c.id] = { first: prev.first, last: now, acc: c.acc }; }
+    else next[c.id] = { ...prev, acc: c.acc };
+  }
+  const line = (c) => c.account + " · " + c.name + " — " + c.ads.length + " anúncio" + (c.ads.length === 1 ? "" : "s") + " aprovado" + (c.ads.length === 1 ? "" : "s") + ", gasto hoje $" + round2(c.cost) + (c.budget ? " de $" + round2(c.budget) : "");
+  if (fresh.length) {
+    const r = await sendPush(env, "Campanha com aviso da NewsBreak" + (fresh.length > 1 ? " (" + fresh.length + ")" : ""), fresh.slice(0, 5).map(line).join("\n") + "\nPode ser problema de qualidade: o anúncio quase não gasta.", "rejections");
+    if (!r.ok) fresh.forEach((c) => { delete next[c.id]; });
+  }
+  if (reminders.length) {
+    const r = await sendPush(env, "Ainda com aviso" + (reminders.length > 1 ? " (" + reminders.length + ")" : ""), reminders.slice(0, 5).map(line).join("\n"), "rejections");
+    if (!r.ok) reminders.forEach((c) => { next[c.id] = state[c.id]; });
+  }
+  await env.COSTS_KV.put("push_state_warn", JSON.stringify(next));
+}
+
 function pushReason(txt) {
   const raw = String(txt || "").trim();
   const t = raw.toLowerCase();
@@ -1830,6 +1879,7 @@ export default {
         if (data) {
           await env.COSTS_KV.put("live_campanhas", JSON.stringify({ ts: Date.now(), data }));
           try { await pushRejectedAlerts(env, data); } catch (e) { note = "push_error:" + String((e && e.message) || e); }
+          try { await pushQualityWarnings(env, data); } catch (e) { note += "; push_warn_error:" + String((e && e.message) || e).slice(0, 100); }
           try { const rr = await runRulesEngine(env, data); if (rr && rr.ran) note += "; rules_eval:" + rr.evaluated + " rules_acoes:" + rr.actions; } catch (e) { note += "; rules_error:" + String((e && e.message) || e); }
           if ((data.failedAccounts || []).length) note = (note === "ok" ? "ok" : note) + "; failedAccounts:" + data.failedAccounts.join(",");
         }
