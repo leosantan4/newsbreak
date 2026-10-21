@@ -2115,20 +2115,6 @@ export default {
       }
     }
 
-    // TEMPORARY read-only probe (GET only) to find where NewsBreak exposes the "quality issues" flag. Removed after use.
-    if (url.pathname === "/nb/_get" && request.method === "GET") {
-      const key = request.headers.get("X-Access-Key");
-      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
-      const p = url.searchParams.get("path") || "";
-      if (!/^[A-Za-z0-9/_-]{1,80}$/.test(p)) return json({ error: "bad_path" }, 400, origin);
-      try {
-        const token = await tokenForAccountKey(env, url.searchParams.get("accountKey"));
-        const qs = new URLSearchParams(url.searchParams); qs.delete("path"); qs.delete("accountKey");
-        const r = await fetch(`${NB_BASE}/${p}?${qs}`, { headers: { "Access-Token": token } });
-        return json({ status: r.status, body: (await r.text()).slice(0, 2500) }, 200, origin);
-      } catch (e) { return json({ error: String((e && e.message) || e) }, 502, origin); }
-    }
-
     // read-only: the raw NewsBreak object of one ad (to see every flag NewsBreak puts on it, e.g. quality issues)
     if (url.pathname === "/nb/ad-raw" && request.method === "GET") {
       const key = request.headers.get("X-Access-Key");
