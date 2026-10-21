@@ -6932,7 +6932,7 @@ function ccPreviewLines(adsets, nameOf){
   }
 
   function buildDefaultCampaignName(account){
-    const label = subAccountCleanName(account).toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const label = subAccountCleanName(account).toUpperCase().replace(/[^A-Z0-9-]/g, ''); // the account's own hyphen stays: L520-2, not L5202
     const suffix = account.id.slice(-3);
     const dateStr = fmtDateShort(todayKeyBR());
     return withNichePrefix(label + '-' + suffix + ' - ' + dateStr + ' - ' + ccSuffix());

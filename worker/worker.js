@@ -1818,29 +1818,34 @@ function balanceRuleFor(rules, accountId, weekday) {
 
 // Low balance (deposits minus spend since the first deposit; 300, or 500 on Fridays) -> phone, once, then a reminder every 6h while it lasts.
 // ---- Sale alerts: NewsBreak itself counts the conversion (the tracker, if any, reports it to NB), so the live snapshot is the source.
-// Every minute compares each campaign's "today" sales with the last count seen; the increase is a new sale. Several in the same minute go in one message.
+// Every minute compares each AD SET's "today" sales with the highest count already announced today; only a higher count is a new sale.
+// (The realtime report sometimes drops a row for a minute or two and then brings it back: the highest count seen is kept per day, so that
+// is never announced twice.) The message carries the ad set name, which holds the ad number and the campaign structure.
 async function pushSaleAlerts(env, data) {
+  const today = todayKeySaoPaulo();
   let seen = null;
   try { seen = JSON.parse((await env.COSTS_KV.get("sales_seen")) || "null"); } catch {}
-  const next = {}, fresh = [];
+  const firstRun = !seen || typeof seen.day !== "string";
+  const prev = !firstRun && seen.day === today ? seen.s || {} : {};
+  const next = { day: today, s: { ...prev } }, fresh = [];
   for (const c of (data.campaigns || [])) {
-    const n = Number(c.todayVenda) || 0;
-    if (!n) continue;
-    next[c.id] = n;
-    const before = seen && seen[c.id] != null ? (seen[c.id] <= n ? seen[c.id] : 0) : 0; // a lower count = NB's day rolled over
-    if (seen && n > before) fresh.push({ c, add: n - before });
+    for (const st of c.adSets || []) {
+      const n = Number(st.todayVenda) || 0;
+      if (!n) continue;
+      const before = Number(prev[st.id]) || 0;
+      if (n > before) { next.s[st.id] = n; if (!firstRun) fresh.push({ c, st, add: n - before, n }); }
+    }
   }
-  // accounts that failed this minute keep their last counts, so nothing is re-announced when they come back
-  if (seen && (data.failedAccounts || []).length) for (const id of Object.keys(seen)) if (!(id in next) && !(data.campaigns || []).some((c) => c.id === id)) next[id] = seen[id];
   await env.COSTS_KV.put("sales_seen", JSON.stringify(next));
   if (!fresh.length) return { sent: 0 };
   if (!(await pushTargets(env, "sales")).length) return { sent: 0 };
   const total = fresh.reduce((x, f) => x + f.add, 0);
   const line = (f) => {
-    const c = f.c, cpa = Number(c.todayCpa) > 0 ? " · CPA $" + Number(c.todayCpa).toFixed(2) : "";
-    return "+" + f.add + " em " + c.name + " (" + (c.adAccountName || c.accountKey) + ") · hoje " + (Number(c.todayVenda) || 0) + cpa;
+    const acc = String(f.c.adAccountName || f.c.accountKey || "").replace(/^\[[^\]]*\]\s*/, "");
+    const cpa = Number(f.st.todayCpa) > 0 ? " · CPA $" + Number(f.st.todayCpa).toFixed(2) : "";
+    return f.st.name + "\n" + acc + " · hoje " + f.n + (f.add > 1 ? " (+" + f.add + ")" : "") + cpa;
   };
-  const r = await sendPush(env, total > 1 ? "💰 " + total + " vendas" : "💰 Venda", fresh.slice(0, 6).map(line).join("\n") + (fresh.length > 6 ? "\n+" + (fresh.length - 6) + " campanhas" : ""), "sales");
+  const r = await sendPush(env, total > 1 ? "💰 " + total + " vendas" : "💰 Venda", fresh.slice(0, 5).map(line).join("\n\n") + (fresh.length > 5 ? "\n\n+" + (fresh.length - 5) + " conjuntos" : ""), "sales");
   return { sent: r.ok ? total : 0 };
 }
 
