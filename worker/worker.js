@@ -251,25 +251,35 @@ async function getAllTokens(env, opts) {
   return entries;
 }
 
+// "TODAY" uses NewsBreak's REALTIME data source (what RedTrack also shows). The default (HOURLY) is the settlement report and stays empty for
+// hours on a fresh account, which is why spend showed "–" while the money was already being spent. Other ranges only exist as HOURLY.
 async function nbFetchReport(token, dateRange, dimensions, extraMetrics) {
-  const resp = await fetch(`${NB_BASE}/reports/getIntegratedReport`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "Access-Token": token },
-    body: JSON.stringify({
-      name: "live worker",
-      timezone: "America/Sao_Paulo",
-      dateRange,
-      dimensions: dimensions || ["DATE"],
-      metrics: ["COST", "CLICK", "CPC", ...(extraMetrics || [])],
-      eventMetrics: [
-        { eventType: "initiate_checkout", metrics: ["COUNT", "CPA"] },
-        { eventType: "complete_payment", metrics: ["COUNT", "CPA", "VALUE"] },
-      ],
-    }),
-  });
-  if (!resp.ok) throw new Error(`nb report -> ${resp.status}`);
-  const data = await resp.json();
-  return data.data.rows;
+  const body = {
+    name: "live worker",
+    timezone: "America/Sao_Paulo",
+    dateRange,
+    dimensions: dimensions || ["DATE"],
+    metrics: ["COST", "CLICK", "CPC", ...(extraMetrics || [])],
+    eventMetrics: [
+      { eventType: "initiate_checkout", metrics: ["COUNT", "CPA"] },
+      { eventType: "complete_payment", metrics: ["COUNT", "CPA", "VALUE"] },
+    ],
+  };
+  const run = async (extra) => {
+    const resp = await fetch(`${NB_BASE}/reports/getIntegratedReport`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Access-Token": token },
+      body: JSON.stringify({ ...body, ...extra }),
+    });
+    if (!resp.ok) throw new Error(`nb report -> ${resp.status}`);
+    const data = await resp.json();
+    if (data.code !== 0 || !data.data) throw new Error(`nb report -> code ${data.code}`);
+    return data.data.rows;
+  };
+  if (dateRange === "TODAY") {
+    try { return await run({ dataSource: "REALTIME" }); } catch (e) { /* realtime refused: fall back to the settlement report */ }
+  }
+  return run({});
 }
 
 function nbRowToDoc(r) {
