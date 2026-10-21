@@ -1710,9 +1710,40 @@ async function computeSaldoCosts(env) {
   return { subAccounts: subs, days: days.length, generatedAt: new Date().toISOString() };
 }
 
-function isFridaySP() {
+function weekdaySP() {
   const [y, m, d] = todayKeySaoPaulo().split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1, d)).getUTCDay() === 5;
+  return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+}
+
+// Balance alert rules (free to edit in the Saldo tab). Until the first save, the two old fixed rules apply.
+const BAL_DEFAULT_RULES = [
+  { id: "low", name: "Saldo baixo", enabled: true, threshold: 300, accountIds: [], weekdays: [] },
+  { id: "friday", name: "Sexta-feira", enabled: true, threshold: 500, accountIds: [], weekdays: [5] },
+];
+async function loadBalanceRules(env) {
+  const raw = await env.COSTS_KV.get("balance_rules");
+  if (!raw) return BAL_DEFAULT_RULES;
+  try { return JSON.parse(raw); } catch { return BAL_DEFAULT_RULES; }
+}
+function cleanBalanceRule(b, existingId) {
+  const name = String((b && b.name) || "").trim().slice(0, 60);
+  const threshold = Number(b && b.threshold);
+  if (!name) return { error: "name_required" };
+  if (!isFinite(threshold) || threshold < 0 || threshold > 1000000) return { error: "threshold_invalid" };
+  const accountIds = Array.isArray(b.accountIds) ? b.accountIds.map(String).filter(Boolean).slice(0, 200) : [];
+  const weekdays = Array.isArray(b.weekdays) ? [...new Set(b.weekdays.map(Number).filter((x) => Number.isInteger(x) && x >= 0 && x <= 6))] : [];
+  return { rule: { id: existingId || String(b.id || crypto.randomUUID()).slice(0, 60), name, enabled: b.enabled !== false, threshold, accountIds, weekdays } };
+}
+// the strictest applicable rule for one account today: the highest threshold among enabled rules that cover it
+function balanceRuleFor(rules, accountId, weekday) {
+  let best = null;
+  for (const r of rules || []) {
+    if (r.enabled === false) continue;
+    if (r.accountIds && r.accountIds.length && r.accountIds.indexOf(accountId) === -1) continue;
+    if (r.weekdays && r.weekdays.length && r.weekdays.indexOf(weekday) === -1) continue;
+    if (!best || r.threshold > best.threshold) best = r;
+  }
+  return best;
 }
 
 // Low balance (deposits minus spend since the first deposit; 300, or 500 on Fridays) -> phone, once, then a reminder every 6h while it lasts.
@@ -1722,7 +1753,7 @@ async function pushBalanceAlerts(env) {
   if (!topups.length) return { sent: 0 };
   const subs = (await computeSaldoCosts(env)).subAccounts;
   const settings = await loadAccountSettings(env), today = todayKeySaoPaulo();
-  const threshold = isFridaySP() ? 500 : 300;
+  const rules = await loadBalanceRules(env), weekday = weekdaySP();
   const byAcc = {};
   for (const t of topups) (byAcc[t.accountId] = byAcc[t.accountId] || []).push(t);
   const alerts = [];
@@ -1732,7 +1763,8 @@ async function pushBalanceAlerts(env) {
     const earliest = list.map((t) => t.date).sort()[0];
     const spent = Object.entries(sub.costByDate).filter(([d]) => d >= earliest).reduce((a, [, c]) => a + (c || 0), 0);
     const balance = list.reduce((a, t) => a + t.amount, 0) - spent;
-    if (balance <= threshold) alerts.push({ id, name: list[0].accountName || sub.name || id, balance: round2(balance) });
+    const rule = balanceRuleFor(rules, id, weekday);
+    if (rule && balance <= rule.threshold) alerts.push({ id, name: list[0].accountName || sub.name || id, balance: round2(balance), threshold: rule.threshold, rule: rule.name });
   }
   const repeatMs = 6 * 60 * 60 * 1000, now = Date.now();
   const raw = await env.COSTS_KV.get("push_state_bal");
@@ -1744,10 +1776,10 @@ async function pushBalanceAlerts(env) {
     else if (now - prev.last >= repeatMs) { again.push(a); next[a.id] = { last: now }; }
     else next[a.id] = prev;
   }
-  const line = (a) => a.name + " — saldo $" + a.balance;
+  const line = (a) => a.name + " — saldo $" + a.balance + " (abaixo de $" + a.threshold + ")";
   let sent = 0;
   if (fresh.length) {
-    const r = await sendPush(env, "Saldo baixo" + (fresh.length > 1 ? " (" + fresh.length + " contas)" : ""), (isFridaySP() ? "Sexta-feira, abaixo de $500\n" : "Abaixo de $300\n") + fresh.slice(0, 6).map(line).join("\n"), "balance");
+    const r = await sendPush(env, "Saldo baixo" + (fresh.length > 1 ? " (" + fresh.length + " contas)" : ""), fresh.slice(0, 6).map(line).join("\n"), "balance");
     if (r.ok) sent += fresh.length; else fresh.forEach((a) => { delete next[a.id]; });
   }
   if (again.length) {
@@ -2706,6 +2738,29 @@ export default {
         return json({ ad }, 201, origin);
       } catch (e) {
         return json({ error: "nb_create_ad_failed", detail: String(e.message || e) }, 502, origin);
+      }
+    }
+
+    if (url.pathname.startsWith("/balance-rules")) {
+      if (request.method === "GET") return json({ rules: await loadBalanceRules(env) }, 200, origin);
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      const rules = (await loadBalanceRules(env)).slice();
+      if (request.method === "POST") {
+        let body;
+        try { body = await request.json(); } catch { return json({ error: "invalid_json" }, 400, origin); }
+        const idx = body && body.id ? rules.findIndex((r) => r.id === body.id) : -1;
+        const c = cleanBalanceRule(body || {}, idx >= 0 ? rules[idx].id : undefined);
+        if (c.error) return json({ error: c.error }, 400, origin);
+        if (idx >= 0) rules[idx] = c.rule; else if (rules.length >= 30) return json({ error: "too_many_rules" }, 400, origin); else rules.push(c.rule);
+        await env.COSTS_KV.put("balance_rules", JSON.stringify(rules));
+        return json({ rules }, 200, origin);
+      }
+      if (request.method === "DELETE") {
+        const id = decodeURIComponent(url.pathname.split("/")[2] || "");
+        const next = rules.filter((r) => r.id !== id);
+        await env.COSTS_KV.put("balance_rules", JSON.stringify(next));
+        return json({ rules: next }, 200, origin);
       }
     }
 

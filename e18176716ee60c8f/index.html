@@ -866,6 +866,27 @@
   </nav>
   <div class="nav-overlay" id="navOverlay"></div>
 
+  <div class="assign-sheet" id="balRuleSheet" hidden>
+    <div class="assign-sheet-card rej-card" role="dialog" aria-modal="true">
+      <div class="assign-sheet-title" id="balRuleTitle">Nova regra de saldo</div>
+      <div class="rej-form">
+        <label>Nome <input type="text" id="balRuleName" placeholder="Ex: Saldo baixo" maxlength="60"></label>
+        <label>Avisar quando o saldo ficar abaixo de (USD) <input type="number" id="balRuleThr" min="0" step="1" placeholder="300"></label>
+      </div>
+      <div class="rule-block">
+        <div class="rej-pick-head">Contas <span class="cell-muted">(nenhuma marcada = todas)</span></div>
+        <div class="ms-panel" id="balRuleAccs" style="position:static; max-height:180px; box-shadow:none;"></div>
+      </div>
+      <div class="rule-block">
+        <div class="rej-pick-head">Dias da semana <span class="cell-muted">(nenhum marcado = todos os dias)</span></div>
+        <div class="pill-row" id="balRuleDays"></div>
+      </div>
+      <div class="rej-summary" id="balRuleMsg"></div>
+      <button type="button" class="assign-sheet-close" id="balRuleSave">Salvar</button>
+      <button type="button" class="rename-cancel" id="balRuleCancel">Cancelar</button>
+    </div>
+  </div>
+
   <div class="assign-sheet" id="ruleSheet" hidden>
     <div class="assign-sheet-card rej-card" role="dialog" aria-modal="true">
       <div class="assign-sheet-title" id="ruleSheetTitle">Nova regra</div>
@@ -1230,6 +1251,18 @@
   .switch-track::after{content:''; position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.3); transition:transform .15s;}
   .switch input:checked + .switch-track{background:var(--accent);}
   .switch input:checked + .switch-track::after{transform:translateX(16px);}
+  .ms-wrap{position:relative;}
+  .ms-btn{width:100%; text-align:left; border:1px solid var(--line); background:var(--bg); color:var(--ink); font:inherit; font-size:14px; padding:10px 12px; border-radius:var(--radius-sm); cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .ms-panel{position:absolute; left:0; top:calc(100% + 6px); z-index:40; min-width:100%; max-width:min(460px, 90vw); max-height:320px; overflow-y:auto; background:var(--surface-raised); border:1px solid var(--line); border-radius:12px; box-shadow:0 12px 32px -8px rgba(0,0,0,.45); padding:8px 10px;}
+  .ms-panel[hidden]{display:none;}
+  .ms-panel label{display:flex; align-items:center; gap:8px; padding:6px 4px; font-size:13px; font-weight:500; cursor:pointer; color:var(--ink); text-transform:none; letter-spacing:0;}
+  .ms-panel label.all{font-weight:700; border-bottom:1px solid var(--line); margin-bottom:4px;}
+  .ms-panel input{width:auto; accent-color:var(--accent);}
+  .ms-ok{margin-top:6px; width:100%; border:none; background:var(--accent); color:var(--accent-ink); font:inherit; font-weight:700; padding:8px; border-radius:var(--radius-sm); cursor:pointer;}
+  .rules-bulkbar{display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; padding:10px 18px; border-bottom:1px solid var(--line); font-size:13px;}
+  .rules-pickall{display:flex; align-items:center; gap:6px; font-weight:600; cursor:pointer;}
+  .rules-pickall input, .rule-pick{accent-color:var(--accent);}
+  .rule-pick{margin-right:8px; vertical-align:middle;}
   .rule-notify{display:flex; flex-direction:row; align-items:center; gap:8px; margin-top:12px; font-size:13px; font-weight:500; color:var(--ink); text-transform:none; letter-spacing:0; cursor:pointer;}
   .rule-notify input{width:auto; accent-color:var(--accent);}
 
@@ -1741,20 +1774,32 @@
         </div>
         <form class="cost-form-grid" id="topupForm">
           <div>
-            <label for="topupAccount">Conta</label>
-            <select id="topupAccount"></select>
+            <label>Contas</label>
+            <div class="ms-wrap" id="topupMs">
+              <button type="button" class="ms-btn" id="topupAccBtn">Escolher contas</button>
+              <div class="ms-panel" id="topupAccPanel" hidden></div>
+            </div>
           </div>
           <div>
             <label for="topupDate">Data</label>
             <input type="date" id="topupDate">
           </div>
           <div>
-            <label for="topupValue">Valor (USD)</label>
+            <label for="topupValue">Valor (USD) por conta</label>
             <input type="number" id="topupValue" placeholder="0,00" step="0.01" min="0">
           </div>
           <button type="submit">Registrar</button>
         </form>
         <p class="costs-note" id="topupNote">Saldo projetado = depósitos − gasto (gasto já sincroniza sozinho pela API; sem API de saldo real, então isso é uma projeção, não o número exato do painel da NewsBreak).</p>
+      </section>
+
+      <section class="panel" id="balRulesPanel">
+        <div class="panel-head">
+          <h2>Avisos de saldo</h2>
+          <div class="panel-head-right"><button type="button" class="rej-edit-btn" id="balRuleNew">Nova regra</button></div>
+        </div>
+        <p class="costs-note">Você decide quando ser avisado. Vale só pras contas com depósito registrado (as de cartão não entram). O aviso aparece no sino e chega no celular de quem marcou "Saldo baixo" em Notificações.</p>
+        <div id="balRulesList"></div>
       </section>
 
       <section class="panel">
@@ -2152,6 +2197,13 @@
           <div class="rules-filters">
             <label>Conta <select id="rulesFilterAcc"></select></label>
             <label>Nicho <select id="rulesFilterNiche"></select></label>
+          </div>
+          <div class="rules-bulkbar" id="rulesBulkBar">
+            <label class="rules-pickall"><input type="checkbox" id="rulesPickAll"> Marcar todas</label>
+            <span class="cell-muted" id="rulesPickCount"></span>
+            <button type="button" class="select-all-btn" id="rulesBulkOn" disabled>Ativar selecionadas</button>
+            <button type="button" class="select-all-btn" id="rulesBulkOff" disabled>Pausar selecionadas</button>
+            <span class="cell-muted" id="rulesBulkMsg"></span>
           </div>
           <div id="rulesList"></div>
         </section>
@@ -3854,17 +3906,104 @@
       workerSubs = j.subAccounts; mergeWorkerSubs(); renderSaldo(); renderAlertBanner();
     }).catch(() => {});
   }
-  function renderTopupAccountSelect(){
-    const sel = document.getElementById('topupAccount');
-    const ids = Object.keys(subAccounts).filter(id => { const a = subAccounts[id]; return !a.accountKey || isAccountVisible(a.accountKey); })
+  let topupSel = new Set();
+  function topupAccountIds(){
+    return Object.keys(subAccounts).filter(id => { const a = subAccounts[id]; return !a.accountKey || isAccountVisible(a.accountKey); })
       .sort((a,b) => subDisplayName(a).localeCompare(subDisplayName(b)));
-    const sig = ids.map(id => id + ':' + subDisplayName(id)).join('|');
-    if (sel.dataset.sig === sig) return;
-    const keep = sel.value;
-    sel.innerHTML = ids.map(id => '<option value="' + id + '">' + ccEsc(subDisplayName(id)) + '</option>').join('');
-    if (keep && ids.indexOf(keep) !== -1) sel.value = keep;
-    sel.dataset.sig = sig;
   }
+  function renderTopupAccountSelect(){
+    const ids = topupAccountIds();
+    topupSel = new Set([...topupSel].filter(id => ids.indexOf(id) !== -1));
+    const panel = document.getElementById('topupAccPanel');
+    const sig = ids.map(id => id + ':' + subDisplayName(id)).join('|') + '#' + [...topupSel].join(',');
+    const btn = document.getElementById('topupAccBtn');
+    btn.textContent = topupSel.size === 0 ? 'Escolher contas' : topupSel.size === 1 ? subDisplayName([...topupSel][0]) : topupSel.size + ' contas selecionadas';
+    if (panel.dataset.sig === sig) return;
+    panel.dataset.sig = sig;
+    panel.innerHTML = (ids.length ? '<label class="all"><input type="checkbox" id="topupAll"' + (ids.length && topupSel.size === ids.length ? ' checked' : '') + '> Todas as contas</label>' : '<div class="cell-muted" style="padding:6px;">Nenhuma conta ainda.</div>') +
+      ids.map(id => '<label><input type="checkbox" data-topup-acc="' + id + '"' + (topupSel.has(id) ? ' checked' : '') + '> ' + ccEsc(subDisplayName(id)) + '</label>').join('') +
+      '<button type="button" class="ms-ok" id="topupAccOk">OK</button>';
+    const all = panel.querySelector('#topupAll');
+    if (all) all.addEventListener('change', () => { topupSel = all.checked ? new Set(ids) : new Set(); panel.dataset.sig = ''; renderTopupAccountSelect(); });
+    panel.querySelectorAll('[data-topup-acc]').forEach(c => c.addEventListener('change', () => { if (c.checked) topupSel.add(c.dataset.topupAcc); else topupSel.delete(c.dataset.topupAcc); panel.dataset.sig = ''; renderTopupAccountSelect(); }));
+    panel.querySelector('#topupAccOk').addEventListener('click', () => { panel.hidden = true; });
+  }
+  document.getElementById('topupAccBtn').addEventListener('click', (e) => { e.stopPropagation(); const p = document.getElementById('topupAccPanel'); p.hidden = !p.hidden; });
+  document.addEventListener('click', (e) => { const p = document.getElementById('topupAccPanel'); if (p && !p.hidden && !e.target.closest('#topupMs')) p.hidden = true; });
+
+  // ---- balance alert rules ----
+  const BAL_RULES_API = TOPUPS_API.replace(/\/topups$/, '') + '/balance-rules';
+  const BAL_DAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+  let balRules = [], balEditing = null, balEditAccs = new Set(), balEditDays = new Set();
+  function weekdayNow(){ const [y, m, d] = todaySP().split('-').map(Number); return new Date(Date.UTC(y, m - 1, d)).getUTCDay(); }
+  // strictest rule covering this account today (highest threshold among the enabled ones)
+  function balRuleFor(accId){
+    const wd = weekdayNow(); let best = null;
+    balRules.forEach(r => {
+      if (r.enabled === false) return;
+      if (r.accountIds && r.accountIds.length && r.accountIds.indexOf(accId) === -1) return;
+      if (r.weekdays && r.weekdays.length && r.weekdays.indexOf(wd) === -1) return;
+      if (!best || r.threshold > best.threshold) best = r;
+    });
+    return best;
+  }
+  function loadBalRules(){
+    return fetch(BAL_RULES_API, { cache: 'no-store' }).then(r => r.json()).then(j => { balRules = j.rules || []; renderBalRules(); renderAlertBanner(); }).catch(() => {});
+  }
+  function balApi(path, method, body){
+    return fetch(BAL_RULES_API + (path || ''), { method: method || 'GET', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY }, body: body ? JSON.stringify(body) : undefined })
+      .then(r => r.json().then(j => { if (!r.ok) throw new Error(j.error || 'falhou'); return j; }));
+  }
+  function renderBalRules(){
+    const el = document.getElementById('balRulesList'); if (!el) return;
+    el.innerHTML = balRules.length ? balRules.map(r => {
+      const accs = !r.accountIds || !r.accountIds.length ? 'todas as contas' : r.accountIds.slice(0, 3).map(id => subAccounts[id] ? subDisplayName(id) : id).join(', ') + (r.accountIds.length > 3 ? ' +' + (r.accountIds.length - 3) : '');
+      const days = !r.weekdays || !r.weekdays.length || r.weekdays.length === 7 ? 'todos os dias' : r.weekdays.slice().sort().map(d => BAL_DAYS[d]).join(', ');
+      return '<div class="rule-row' + (r.enabled === false ? ' off' : '') + '"><div><div class="rule-name">' + ccEsc(r.name) + '</div>' +
+        '<div class="rule-line"><span class="rule-chip act">Saldo abaixo de ' + fmtUSD(r.threshold) + '</span><span class="rule-chip">' + ccEsc(accs) + '</span><span class="rule-chip">' + ccEsc(days) + '</span></div></div>' +
+        '<div class="rule-actions"><label class="switch" title="' + (r.enabled === false ? 'Desligada' : 'Ligada') + '"><input type="checkbox" data-bal-toggle="' + ccEsc(r.id) + '"' + (r.enabled === false ? '' : ' checked') + '><span class="switch-track"></span></label>' +
+        '<button type="button" data-bal-edit="' + ccEsc(r.id) + '">Editar</button><button type="button" class="danger" data-bal-del="' + ccEsc(r.id) + '">Excluir</button></div></div>';
+    }).join('') : '<div class="empty-state">Nenhuma regra: ninguém é avisado sobre saldo. Clique em "Nova regra".</div>';
+    el.querySelectorAll('[data-bal-toggle]').forEach(c => c.addEventListener('change', () => {
+      const r = balRules.find(x => x.id === c.dataset.balToggle); if (!r) return;
+      balApi('', 'POST', { ...r, enabled: c.checked }).then(j => { balRules = j.rules; renderBalRules(); renderAlertBanner(); }).catch(() => { c.checked = !c.checked; });
+    }));
+    el.querySelectorAll('[data-bal-edit]').forEach(b => b.addEventListener('click', () => openBalRuleSheet(balRules.find(x => x.id === b.dataset.balEdit))));
+    el.querySelectorAll('[data-bal-del]').forEach(b => b.addEventListener('click', () => {
+      const r = balRules.find(x => x.id === b.dataset.balDel);
+      if (r && confirm('Excluir a regra "' + r.name + '"?')) balApi('/' + encodeURIComponent(r.id), 'DELETE').then(j => { balRules = j.rules; renderBalRules(); renderAlertBanner(); });
+    }));
+  }
+  function renderBalSheetBody(){
+    const ids = topupAccountIds();
+    document.getElementById('balRuleAccs').innerHTML = ids.map(id => '<label><input type="checkbox" data-bal-acc="' + id + '"' + (balEditAccs.has(id) ? ' checked' : '') + '> ' + ccEsc(subDisplayName(id)) + '</label>').join('') || '<div class="cell-muted" style="padding:6px;">Nenhuma conta ainda.</div>';
+    document.getElementById('balRuleAccs').querySelectorAll('[data-bal-acc]').forEach(c => c.addEventListener('change', () => { if (c.checked) balEditAccs.add(c.dataset.balAcc); else balEditAccs.delete(c.dataset.balAcc); }));
+    document.getElementById('balRuleDays').innerHTML = BAL_DAYS.map((n, i) => '<button type="button" class="pill' + (balEditDays.has(i) ? ' active' : '') + '" data-bal-day="' + i + '">' + n + '</button>').join('');
+    document.getElementById('balRuleDays').querySelectorAll('[data-bal-day]').forEach(b => b.addEventListener('click', () => { const d = Number(b.dataset.balDay); if (balEditDays.has(d)) balEditDays.delete(d); else balEditDays.add(d); renderBalSheetBody(); }));
+  }
+  function openBalRuleSheet(rule){
+    balEditing = rule || null;
+    document.getElementById('balRuleTitle').textContent = rule ? 'Editar regra de saldo' : 'Nova regra de saldo';
+    document.getElementById('balRuleName').value = rule ? rule.name : '';
+    document.getElementById('balRuleThr').value = rule ? rule.threshold : '';
+    document.getElementById('balRuleMsg').textContent = '';
+    balEditAccs = new Set(rule ? rule.accountIds || [] : []); balEditDays = new Set(rule ? rule.weekdays || [] : []);
+    renderBalSheetBody();
+    document.getElementById('balRuleSheet').hidden = false;
+  }
+  document.getElementById('balRuleNew').addEventListener('click', () => openBalRuleSheet(null));
+  document.getElementById('balRuleCancel').addEventListener('click', () => { document.getElementById('balRuleSheet').hidden = true; });
+  document.getElementById('balRuleSheet').addEventListener('click', (e) => { if (e.target.id === 'balRuleSheet') document.getElementById('balRuleSheet').hidden = true; });
+  document.getElementById('balRuleSave').addEventListener('click', () => {
+    const msg = document.getElementById('balRuleMsg');
+    const name = document.getElementById('balRuleName').value.trim(), thr = Number(document.getElementById('balRuleThr').value);
+    if (!name) { msg.textContent = 'Dê um nome à regra.'; return; }
+    if (!isFinite(thr) || thr < 0 || document.getElementById('balRuleThr').value === '') { msg.textContent = 'Informe o valor (em dólar).'; return; }
+    msg.textContent = 'Salvando…';
+    balApi('', 'POST', { id: balEditing ? balEditing.id : undefined, name, threshold: thr, enabled: balEditing ? balEditing.enabled !== false : true, accountIds: [...balEditAccs], weekdays: [...balEditDays] })
+      .then(j => { balRules = j.rules; document.getElementById('balRuleSheet').hidden = true; renderBalRules(); renderAlertBanner(); })
+      .catch(() => { msg.textContent = 'Não consegui salvar — tenta de novo.'; });
+  });
 
   function renderSaldo(){
     renderTopupAccountSelect();
@@ -3880,7 +4019,7 @@
 
     const rows = results.map(r => {
       if (!r.hasTopup) {
-        return '<tr><td>' + r.name + '</td><td class="cell-muted">Sem depósito registrado</td><td class="num cell-muted">' + fmtUSD(r.totalSpendAllTime) + '</td></tr>';
+        return '<tr><td>' + r.name + '</td><td class="cell-muted">Cartão direto na conta</td><td class="num cell-muted">' + fmtUSD(r.totalSpendAllTime) + '</td></tr>';
       }
       return '<tr>' +
         '<td>' + r.name + '</td>' +
@@ -3924,15 +4063,15 @@
   let balAlerts = [];
   let balLabel = '';
   function renderAlertBanner(){
-    const friday = isFriday();
-    const threshold = friday ? 500 : 300;
     const results = Object.keys(subAccounts)
       .map(id => ({id, ...computeBalance(id)}))
-      .filter(r => r.hasTopup && r.balance <= threshold)
-      .filter(r => { const a = subAccounts[r.id]; return !a || (isAccountActive(a.accountKey) && !(ACCOUNTS.find(x => x.key === a.accountKey) || {}).createOnly); });
+      .filter(r => r.hasTopup)
+      .filter(r => { const a = subAccounts[r.id]; return !a || (isAccountActive(a.accountKey) && !(ACCOUNTS.find(x => x.key === a.accountKey) || {}).createOnly); })
+      .map(r => { const rule = balRuleFor(r.id); return rule && r.balance <= rule.threshold ? { ...r, threshold: rule.threshold, rule: rule.name } : null; })
+      .filter(Boolean);
     results.sort((a,b) => a.balance - b.balance);
     balAlerts = results;
-    balLabel = friday ? 'Sexta-feira — saldo abaixo de $500' : 'Saldo baixo — abaixo de $300';
+    balLabel = 'Saldo baixo';
     document.getElementById('alertBanner').hidden = true;
     renderBell();
   }
@@ -3953,7 +4092,7 @@
     }
     if (balAlerts.length) {
       html += '<div class="bell-pop-title"' + (rej.length ? ' style="margin-top:12px;"' : '') + '>' + balLabel + '</div>' +
-        balAlerts.map(r => '<div class="bell-pop-row"><span>' + r.name + '</span><span class="bal">' + fmtUSD(r.balance) + '</span></div>').join('');
+        balAlerts.map(r => '<div class="bell-pop-row"><span>' + r.name + '<small class="cell-muted" style="display:block;">abaixo de ' + fmtUSD(r.threshold) + '</small></span><span class="bal">' + fmtUSD(r.balance) + '</span></div>').join('');
     }
     if ('Notification' in window && Notification.permission === 'default') html += '<button type="button" class="bell-pop-link" id="enableNotifBtn">Ativar avisos do navegador</button>';
     html += '<button type="button" class="bell-pop-link" id="pushTestBtn" style="display:block;">Enviar aviso de teste pro celular</button><div class="cell-muted" id="pushTestMsg" style="font-size:12px;"></div>';
@@ -4039,30 +4178,26 @@
   }
 
   document.getElementById('topupDate').value = todayKey();
-  document.getElementById('topupForm').addEventListener('submit', (e) => {
+  document.getElementById('topupForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const sel = document.getElementById('topupAccount');
-    const accountId = sel.value;
-    const accountName = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].textContent : accountId;
+    const ids = [...topupSel];
     const dateVal = document.getElementById('topupDate').value;
     const amount = parseFloat(document.getElementById('topupValue').value);
     const note = document.getElementById('topupNote');
-    if (!accountId || !dateVal || !isFinite(amount)) return;
-    note.textContent = 'Salvando…';
-    fetch(TOPUPS_API, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY },
-      body: JSON.stringify({ accountId, accountName, date: dateVal, amount }),
-    }).then(r => { if (!r.ok) throw new Error(); return r.json(); })
-      .then(json => {
-        topups = json.topups || [];
-        document.getElementById('topupValue').value = '';
-        document.getElementById('topupDate').value = todayKey();
-        note.textContent = '';
-        renderSaldo();
-        renderAlertBanner();
-      })
-      .catch(() => { note.textContent = 'Não consegui salvar — tenta de novo.'; });
+    if (!ids.length) { note.textContent = 'Escolha pelo menos uma conta.'; return; }
+    if (!dateVal || !isFinite(amount)) return;
+    let ok = 0;
+    for (let i = 0; i < ids.length; i++) {
+      note.textContent = 'Salvando ' + (i + 1) + '/' + ids.length + '…';
+      try {
+        const r = await fetch(TOPUPS_API, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY }, body: JSON.stringify({ accountId: ids[i], accountName: subDisplayName(ids[i]), date: dateVal, amount }) });
+        if (!r.ok) throw new Error();
+        topups = (await r.json()).topups || topups; ok++;
+      } catch (err) { break; }
+    }
+    renderSaldo(); renderAlertBanner();
+    if (ok === ids.length) { document.getElementById('topupValue').value = ''; document.getElementById('topupDate').value = todayKey(); note.textContent = 'Registrado em ' + ok + ' conta' + (ok === 1 ? '' : 's') + ' (' + fmtUSD(amount) + ' cada).'; topupSel = new Set(); renderTopupAccountSelect(); setTimeout(() => { if (note.textContent.indexOf('Registrado') === 0) note.textContent = ''; }, 6000); }
+    else note.textContent = 'Salvei ' + ok + ' de ' + ids.length + ' — tenta de novo nas que faltam.';
   });
 
 
@@ -4263,6 +4398,7 @@
   let rulesData = [], rulesLog = [], rulesEngineOn = false, rulesHb = null, rulesEditing = null, rulesLoaded = false;
   let ruleSel = { acc: new Set(), niche: new Set(), camp: new Set() };
   let rulesFilter = { acc: '', niche: '' };
+  let rulesSel = new Set();
   const nicheOfCampaignName = (name) => String(name || '').split(' - ')[0].trim().toUpperCase();
 
   function rulesApi(path, method, body){
@@ -4325,15 +4461,16 @@
   function renderRegras(){
     const list = document.getElementById('rulesList');
     if (!list) return;
-    document.getElementById('rulesEngineBtn').textContent = rulesEngineOn ? 'Motor ligado — desligar' : 'Motor desligado — ligar';
+    document.getElementById('rulesEngineBtn').title = 'Interruptor geral: desligado = nenhuma regra roda, mesmo as ligadas. Cada regra também tem o seu próprio liga/desliga.';
+    document.getElementById('rulesEngineBtn').textContent = rulesEngineOn ? 'Regras funcionando — desligar tudo' : 'Regras paradas — ligar';
     const age = rulesHb ? Math.round((Date.now() - rulesHb.at) / 1000) : null;
-    document.getElementById('rulesEngineInfo').textContent = rulesHb ? (rulesEngineOn ? '· conferiu há ' + (age < 90 ? age + 's' : Math.round(age / 60) + ' min') : '· motor parado') : '';
+    document.getElementById('rulesEngineInfo').textContent = rulesHb ? (rulesEngineOn ? '· conferiu há ' + (age < 90 ? age + 's' : Math.round(age / 60) + ' min') : '· paradas: nenhuma regra roda') : '';
     renderRulesFilters();
     const shown = rulesData.filter(ruleMatchesFilter);
     list.innerHTML = shown.length ? shown.map(r => {
       const nLog = rulesLog.filter(e => e.ruleId === r.id).length;
       return '<div class="rule-row' + (r.enabled ? '' : ' off') + '"><div>' +
-      '<div class="rule-name">' + ccEsc(r.name) + '</div>' +
+      '<div class="rule-name"><input type="checkbox" class="rule-pick" data-rule-pick="' + ccEsc(r.id) + '"' + (rulesSel.has(r.id) ? ' checked' : '') + '>' + ccEsc(r.name) + '</div>' +
       '<div class="rule-line">' + r.conditions.map((c, i) => (i ? '<span class="rule-join">' + (c.join === 'or' ? 'OU' : 'E') + '</span>' : '') + '<span class="rule-chip">' + ccEsc(ruleCondText(c)) + '</span>').join('') +
       '<span class="rule-join">→</span><span class="rule-chip ' + (r.action.type === 'notify' ? '' : 'act') + '">' + ccEsc(ruleActionText(r.action)) + '</span>' +
       (r.action.type !== 'notify' && r.notify !== false ? '<span class="rule-chip">avisa no celular</span>' : '') + '</div>' +
@@ -4346,6 +4483,13 @@
       const r = rulesData.find(x => x.id === c.dataset.ruleToggle); if (!r) return;
       rulesApi('', 'POST', { ...r, enabled: c.checked }).then(j => { rulesData = j.rules; renderRegras(); }).catch(() => { c.checked = !c.checked; });
     }));
+    const pickable = shown.map(r => r.id);
+    rulesSel = new Set([...rulesSel].filter(id => rulesData.some(r => r.id === id)));
+    const selN = pickable.filter(id => rulesSel.has(id)).length;
+    document.getElementById('rulesPickCount').textContent = selN ? selN + ' selecionada' + (selN === 1 ? '' : 's') : '';
+    document.getElementById('rulesPickAll').checked = !!pickable.length && selN === pickable.length;
+    document.getElementById('rulesBulkOn').disabled = document.getElementById('rulesBulkOff').disabled = !selN;
+    list.querySelectorAll('[data-rule-pick]').forEach(c => c.addEventListener('change', () => { if (c.checked) rulesSel.add(c.dataset.rulePick); else rulesSel.delete(c.dataset.rulePick); renderRegras(); }));
     list.querySelectorAll('[data-rule-edit]').forEach(b => b.addEventListener('click', () => openRuleSheet(rulesData.find(x => x.id === b.dataset.ruleEdit))));
     list.querySelectorAll('[data-rule-log]').forEach(b => b.addEventListener('click', () => openRulesDrawer(b.dataset.ruleLog)));
     list.querySelectorAll('[data-rule-del]').forEach(b => b.addEventListener('click', () => {
@@ -4380,9 +4524,27 @@
   document.getElementById('rulesFilterAcc').addEventListener('change', (e) => { rulesFilter.acc = e.target.value; renderRegras(); });
   document.getElementById('rulesFilterNiche').addEventListener('change', (e) => { rulesFilter.niche = e.target.value; renderRegras(); });
 
+  document.getElementById('rulesPickAll').addEventListener('change', (e) => { rulesData.filter(ruleMatchesFilter).forEach(r => { if (e.target.checked) rulesSel.add(r.id); else rulesSel.delete(r.id); }); renderRegras(); });
+  async function rulesBulk(enabled){
+    const ids = [...rulesSel], msg = document.getElementById('rulesBulkMsg');
+    if (!ids.length) return;
+    document.getElementById('rulesBulkOn').disabled = document.getElementById('rulesBulkOff').disabled = true;
+    let ok = 0;
+    for (const id of ids) {
+      const r = rulesData.find(x => x.id === id); if (!r || r.enabled === enabled) { ok++; continue; }
+      msg.textContent = (enabled ? 'Ativando ' : 'Pausando ') + (ok + 1) + '/' + ids.length + '…';
+      try { const j = await rulesApi('', 'POST', { ...r, enabled }); rulesData = j.rules; ok++; } catch (e) { break; }
+    }
+    msg.textContent = ok + ' de ' + ids.length + (enabled ? ' ativada' : ' pausada') + (ids.length === 1 ? '' : 's') + '.';
+    setTimeout(() => { msg.textContent = ''; }, 5000);
+    renderRegras();
+  }
+  document.getElementById('rulesBulkOn').addEventListener('click', () => rulesBulk(true));
+  document.getElementById('rulesBulkOff').addEventListener('click', () => rulesBulk(false));
   document.getElementById('rulesEngineBtn').addEventListener('click', () => {
     const next = !rulesEngineOn;
-    if (!next && !confirm('Desligar o motor? Nenhuma regra será aplicada até você ligar de novo.')) return;
+    if (!next && !confirm('Desligar TUDO? Nenhuma regra roda (nem age, nem avisa) até você ligar de novo, mesmo as que estão ligadas.')) return;
+    if (next && !confirm('Ligar? As regras que estão ligadas passam a agir de verdade nas campanhas (pausar conjunto, subir orçamento) e a avisar no celular.')) return;
     rulesApi('/engine', 'POST', { on: next }).then(j => { rulesEngineOn = j.engineOn; renderRegras(); });
   });
   document.getElementById('rulesPreviewBtn').addEventListener('click', () => {
@@ -5172,6 +5334,7 @@
     loadCosts();
     loadTopups();
     loadSaldoCosts();
+    loadBalRules();
   }
   function loadLivePainel(){
     fetch(LIVE_PAINEL_API, {cache:'no-store'}).then(r => r.json()).then(json => {
