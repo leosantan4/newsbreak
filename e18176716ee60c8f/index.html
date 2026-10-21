@@ -3491,6 +3491,7 @@
     budget: { label: 'Orçamento', fmt: fmtUSD },
     cost: { label: 'Gasto', fmt: fmtUSD },
     fat: { label: 'Valor de conversão', fmt: fmtUSD },
+    lucro: { label: 'Lucro', fmt: fmtUSD },
     ic: { label: 'Checkout', fmt: fmtInt },
     custoIc: { label: 'Custo por IC', fmt: fmtUSD },
     venda: { label: 'Conversão', fmt: fmtInt },
@@ -3508,13 +3509,15 @@
   const ctValid = (k) => !!CT_CATALOG[k] || !!CT_NONMETRIC[k];
   const CT_ALL_KEYS = ['origin', 'status'].concat(Object.keys(CT_CATALOG));
   let ctOrderAll = [], ctOn = new Set(), ctCols = [];
+  const CT_AFTER = { lucro: 'fat' }; // where a column added later is slotted into a saved order
   (() => {
     let vis = null;
     try {
       const v3 = JSON.parse(loadPref('ctCols3', 'null'));
       if (v3 && Array.isArray(v3.order) && Array.isArray(v3.on)) {
-        ctOrderAll = v3.order.filter(ctValid); CT_ALL_KEYS.forEach(k => { if (ctOrderAll.indexOf(k) === -1) ctOrderAll.push(k); });
+        ctOrderAll = v3.order.filter(ctValid);
         ctOn = new Set(v3.on.filter(ctValid));
+        CT_ALL_KEYS.forEach(k => { if (ctOrderAll.indexOf(k) === -1) { const i = CT_AFTER[k] ? ctOrderAll.indexOf(CT_AFTER[k]) : -1; if (i >= 0) ctOrderAll.splice(i + 1, 0, k); else ctOrderAll.push(k); ctOn.add(k); } });
       } else {
         const v2 = JSON.parse(loadPref('ctCols2', 'null'));
         if (Array.isArray(v2)) vis = v2.filter(ctValid);
@@ -3566,12 +3569,13 @@
   function ctRowMetrics(type, o){
     if (ctPeriod === 'TODAY') {
       return { cost: o.todayCost, ic: o.todayIc, custoIc: o.todayCustoIc, venda: o.todayVenda, fat: o.todayFat, cpa: o.todayCpa, impr: o.todayImpr, cpm: o.todayCpm, click: o.todayClick, cpc: o.todayCpc, ctr: o.todayCtr,
+        lucro: o.todayCost != null ? (o.todayFat || 0) - o.todayCost : null,
         roas: (o.todayFat != null && o.todayCost) ? o.todayFat / o.todayCost : null };
     }
     const m = ctMetrics[ctPeriod] && ctMetrics[ctPeriod].data;
     if (!m) return {};
     const d = (m[type] || {})[o.id] || { cost: 0, ic: 0, custoIc: null, venda: 0, faturamento: 0, cpa: null, impression: 0, cpm: null, click: 0, cpc: 0, ctr: 0, roas: null };
-    return { cost: d.cost, ic: d.ic, custoIc: d.custoIc, venda: d.venda, fat: d.faturamento, cpa: d.cpa, impr: d.impression, cpm: d.cpm, click: d.click, cpc: d.cpc, ctr: d.ctr, roas: d.roas };
+    return { cost: d.cost, ic: d.ic, custoIc: d.custoIc, venda: d.venda, fat: d.faturamento, lucro: d.cost != null ? (d.faturamento || 0) - d.cost : null, cpa: d.cpa, impr: d.impression, cpm: d.cpm, click: d.click, cpc: d.cpc, ctr: d.ctr, roas: d.roas };
   }
 
   function flattenCampData(){
@@ -3614,13 +3618,14 @@
   function campTotals(list){
     const s = (k) => list.reduce((a, r) => a + (r[k] || 0), 0);
     const cost = s('cost'), ic = s('ic'), venda = s('venda'), click = s('click'), impr = s('impr'), fat = s('fat');
-    return { cost, ic, venda, fat, click, impr, custoIc: ic ? cost / ic : null, cpa: venda ? cost / venda : null, cpm: impr ? cost / impr * 1000 : null,
+    return { cost, ic, venda, fat, lucro: fat - cost, click, impr, custoIc: ic ? cost / ic : null, cpa: venda ? cost / venda : null, cpm: impr ? cost / impr * 1000 : null,
       cpc: click ? cost / click : null, ctr: impr ? click / impr * 100 : null, roas: cost ? fat / cost : null };
   }
 
   function ctCell(r, key){
     if (key === 'budget') return '';
     const v = r[key];
+    if (key === 'lucro' && v != null) return '<td class="r num" style="color:' + (v > 0 ? 'var(--good)' : v < 0 ? 'var(--bad)' : 'inherit') + ';">' + CT_CATALOG[key].fmt(v) + '</td>';
     return '<td class="r num">' + (v == null ? '<span class="cell-muted">–</span>' : CT_CATALOG[key].fmt(v)) + '</td>';
   }
 
