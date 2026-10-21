@@ -884,11 +884,11 @@
       </div>
       <div class="rule-block">
         <div class="rej-pick-head">Contas</div>
-        <div class="ms2" id="balRuleAccBox"><button type="button" class="ms2-btn"></button><div class="ms2-panel" hidden></div></div>
+        <div class="chips" id="balRuleAccBox"></div>
       </div>
       <div class="rule-block">
         <div class="rej-pick-head">Dias da semana</div>
-        <div class="ms2" id="balRuleDayBox"><button type="button" class="ms2-btn"></button><div class="ms2-panel" hidden></div></div>
+        <div class="chips" id="balRuleDayBox"></div>
       </div>
       <div class="rej-summary" id="balRuleMsg"></div>
       <button type="button" class="assign-sheet-close" id="balRuleSave">Salvar</button>
@@ -1260,16 +1260,12 @@
   .switch-track::after{content:''; position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.3); transition:transform .15s;}
   .switch input:checked + .switch-track{background:var(--accent);}
   .switch input:checked + .switch-track::after{transform:translateX(16px);}
-  .ms2{position:relative;}
-  .ms2-btn{width:100%; text-align:left; padding:10px 12px; font:inherit; font-size:14px; font-weight:500; border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--bg); color:var(--ink); cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-  .ms2-btn::after{content:'▾'; float:right; color:var(--muted);}
-  .cost-form-grid .ms2-btn{background:var(--bg); color:var(--ink); border:1px solid var(--line); font-weight:400; text-align:left; padding:10px 12px;}
-  .ms2-panel{position:fixed; z-index:95; background:var(--surface-raised); border:1px solid var(--line); border-radius:12px; box-shadow:0 12px 32px -8px rgba(0,0,0,.45); padding:6px; overflow-y:auto; overscroll-behavior:contain;}
-  .ms2-panel[hidden]{display:none;}
-  .ms2-panel label{display:flex; align-items:center; gap:8px; padding:8px 8px; border-radius:7px; font-size:13.5px; font-weight:500; color:var(--ink); cursor:pointer; text-transform:none; letter-spacing:0; white-space:nowrap;}
-  .ms2-panel label:hover{background:var(--neutral-bg);}
-  .ms2-panel label.all{font-weight:600; border-bottom:1px solid var(--line); border-radius:7px 7px 0 0; margin-bottom:2px;}
-  .ms2-panel input{width:auto; padding:0; margin:0; flex:none; accent-color:var(--accent);}
+  .chips{display:flex; flex-wrap:wrap; gap:6px;}
+  .chip-opt{display:inline-flex; align-items:center; gap:6px; border:1px solid var(--line); background:var(--bg); color:var(--ink); font:inherit; font-size:13px; font-weight:400; padding:6px 11px; border-radius:999px; cursor:pointer; text-transform:none; letter-spacing:0;}
+  .chip-opt:hover{border-color:color-mix(in srgb, var(--ink) 30%, var(--line));}
+  .chip-opt.on{border-color:var(--accent); background:color-mix(in srgb, var(--accent) 11%, var(--surface-raised));}
+  .chip-opt.on::before{content:'✓'; font-size:11px;}
+  .chip-opt.all{font-weight:500;}
   .ms-wrap{position:relative;}
   .ms-btn{width:100%; text-align:left; border:1px solid var(--line); background:var(--bg); color:var(--ink); font:inherit; font-size:14px; padding:10px 12px; border-radius:var(--radius-sm); cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   .ms-panel{position:absolute; left:0; top:calc(100% + 6px); z-index:40; min-width:100%; max-width:min(460px, 90vw); max-height:320px; overflow-y:auto; background:var(--surface-raised); border:1px solid var(--line); border-radius:12px; box-shadow:0 12px 32px -8px rgba(0,0,0,.45); padding:8px 10px;}
@@ -1437,7 +1433,7 @@
   .ct-preset button:first-child:hover{color:var(--accent);}
   .ct-preset-save{border:1px dashed var(--line); background:none; color:var(--accent); font:inherit; font-size:12.5px; font-weight:600; padding:4px 10px; border-radius:999px; cursor:pointer;}
   .ct-grip{text-align:center; cursor:grab; color:var(--muted); font-size:14px; letter-spacing:-2px; padding:2px 8px 2px 0; touch-action:none; user-select:none;}
-  .ct-col-row.dragging{background:color-mix(in srgb, var(--accent) 12%, transparent); border-radius:8px;}
+  .ct-col-row.dragging{background:var(--surface-raised); border-radius:8px; box-shadow:0 6px 18px -6px rgba(0,0,0,.4); position:relative;}
   .ct-col-row label{display:flex; gap:9px; align-items:center; justify-content:flex-start; text-align:left; cursor:pointer; font-weight:400; min-width:0; margin:0; text-transform:none; letter-spacing:0;}
   .ct-col-row.off label{color:var(--muted);}
   .ct-col-row .ct-arrows{display:inline-flex; gap:4px;}
@@ -1805,10 +1801,7 @@
         <form class="cost-form-grid" id="topupForm">
           <div>
             <label>Contas</label>
-            <div class="ms2" id="topupMs">
-              <button type="button" class="ms2-btn" id="topupAccBtn">Escolher contas</button>
-              <div class="ms2-panel" id="topupAccPanel" hidden></div>
-            </div>
+            <div class="chips" id="topupMs"></div>
           </div>
           <div>
             <label for="topupDate">Data</label>
@@ -3481,10 +3474,9 @@
     impr: { label: 'Impressões', fmt: fmtInt },
     roas: { label: 'ROAS', fmt: v => v.toFixed(2) + 'x' },
   };
-  // default = the user's NewsBreak "LS" preset
   // columns: conjunto · campanha · conta is ONE column ("origin"), status is a column too; both can be shown/hidden like any metric
   const CT_NONMETRIC = { origin: 1, status: 1 };
-  const CT_DEFAULT_COLS = ['origin', 'status', 'budget', 'cost', 'fat', 'ic', 'custoIc', 'venda', 'cpa', 'click', 'cpc', 'ctr', 'cpm'];
+  const CT_DEFAULT_COLS = ['origin', 'status'].concat(Object.keys(CT_CATALOG)); // everything shown; each person saves their own view
   const ctValid = (k) => !!CT_CATALOG[k] || !!CT_NONMETRIC[k];
   const CT_ALL_KEYS = ['origin', 'status'].concat(Object.keys(CT_CATALOG));
   let ctOrderAll = [], ctOn = new Set(), ctCols = [];
@@ -3511,9 +3503,19 @@
     ctCols = ctOrderAll.filter(k => ctOn.has(k));
   })();
   function saveCtCols(){ ctCols = ctOrderAll.filter(k => ctOn.has(k)); savePref('ctCols3', JSON.stringify({ order: ctOrderAll, on: [...ctOn] })); }
-  const CT_DEF_W = { name: 340, origin: 300, status: 160, budget: 130, cost: 100, fat: 150, ic: 120, custoIc: 110, venda: 160, cpa: 90, click: 80, cpc: 80, ctr: 80, cpm: 90, impr: 110, roas: 80 };
   let ctWidths = (() => { try { const o = JSON.parse(loadPref('ctWidths', 'null')); return o && typeof o === 'object' ? o : {}; } catch { return {}; } })();
-  function ctW(k){ return Math.max(50, Math.round(ctWidths[k] || CT_DEF_W[k] || 100)); }
+  let ctMeasure = null;
+  // width of a column title (uppercase header font) + the cell padding and the sort arrow
+  function ctTitleW(k){
+    const label = (k === 'name' ? { campaigns: 'Campanha', adsets: 'Conjunto', ads: 'Anúncio' }[campTab] : ctColLabel(k)).toUpperCase();
+    const th = document.querySelector('.ctable thead th[data-ct-col]'), cs = th ? getComputedStyle(th) : null;
+    if (!ctMeasure) ctMeasure = document.createElement('canvas').getContext('2d');
+    ctMeasure.font = cs ? cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily : '500 10.5px Inter, sans-serif';
+    return Math.ceil(ctMeasure.measureText(label).width + label.length * 0.55 + 24 + 16);
+  }
+  function ctFitW(k){ return Math.max(k === 'name' ? 200 : k === 'origin' ? 240 : 64, ctTitleW(k)); }
+  function ctDefaultW(k){ return k === 'name' ? 300 : k === 'origin' ? 280 : Math.max(k === 'status' ? 110 : 84, ctTitleW(k)); }
+  function ctW(k){ return Math.max(50, Math.round(ctWidths[k] || ctDefaultW(k))); }
   function ctFullOrder(){ return ctCols.slice(); }
   function ctVisibleOrder(){ return ctCols.filter(k => !(k === 'budget' && campTab === 'ads')); }
   // the table header was dragged: `full` is the new order of the SHOWN columns; hidden ones stay where they are in the list
@@ -3638,7 +3640,7 @@
       '<div class="ct-cols-title">Colunas · marque pra mostrar, arraste o ⋮⋮ pra ordenar</div><div id="ctColsList">' +
       ctOrderAll.map((k, i) => '<div class="ct-col-row' + (ctOn.has(k) ? '' : ' off') + '" data-col-row="' + k + '"><span class="ct-grip" data-grip="' + k + '" title="Arraste pra mudar a ordem">⋮⋮</span><label><input type="checkbox" data-col-toggle="' + k + '"' + (ctOn.has(k) ? ' checked' : '') + '><span>' + ctPanelName(k) + '</span></label>' +
         '<span class="ct-arrows"><button type="button" data-col-up="' + k + '"' + (i === 0 ? ' disabled' : '') + '>↑</button><button type="button" data-col-down="' + k + '"' + (i === ctOrderAll.length - 1 ? ' disabled' : '') + '>↓</button></span></div>').join('') + '</div>' +
-      '<button type="button" class="bell-pop-link" id="ctColsReset">Restaurar colunas e larguras (padrão LS)</button>';
+      '<button type="button" class="bell-pop-link" id="ctColsReset">Mostrar todas as colunas e restaurar as larguras</button>';
     panel.querySelectorAll('[data-col-toggle]').forEach(c => c.addEventListener('change', () => {
       const k = c.dataset.colToggle;
       if (c.checked) ctOn.add(k); else if (ctOn.size > 1) ctOn.delete(k);
@@ -3647,22 +3649,43 @@
     const move = (k, d) => { const i = ctOrderAll.indexOf(k), j = i + d; if (j < 0 || j >= ctOrderAll.length) return; [ctOrderAll[i], ctOrderAll[j]] = [ctOrderAll[j], ctOrderAll[i]]; saveCtCols(); renderCtColsPanel(); renderCampanhas(); };
     panel.querySelectorAll('[data-col-up]').forEach(b => b.addEventListener('click', () => move(b.dataset.colUp, -1)));
     panel.querySelectorAll('[data-col-down]').forEach(b => b.addEventListener('click', () => move(b.dataset.colDown, 1)));
-    // drag by the grip: pointer events on the window (mouse and finger), cleaned up on release or cancel
+    // drag by the grip (mouse and finger): the row follows the pointer, the others slide aside; the table is redone once, on release
     panel.querySelectorAll('[data-grip]').forEach(g => g.addEventListener('pointerdown', (e) => {
       e.preventDefault();
-      const list = document.getElementById('ctColsList'), row = g.closest('.ct-col-row');
-      row.classList.add('dragging');
-      const onMove = (ev) => {
-        ev.preventDefault();
-        const under = document.elementFromPoint(ev.clientX, ev.clientY), tr = under && under.closest && under.closest('#ctColsList .ct-col-row');
-        if (!tr || tr === row) return;
-        const r = tr.getBoundingClientRect();
-        if (ev.clientY < r.top + r.height / 2) list.insertBefore(row, tr); else list.insertBefore(row, tr.nextSibling);
+      const list = document.getElementById('ctColsList'), rows = [...list.querySelectorAll('.ct-col-row')], row = g.closest('.ct-col-row');
+      const from = rows.indexOf(row), tops = rows.map(r => r.offsetTop), h = row.offsetHeight, startY = e.clientY, startScroll = panel.scrollTop;
+      let to = from;
+      row.classList.add('dragging'); row.style.transition = 'none'; row.style.zIndex = 5;
+      rows.forEach(r => { if (r !== row) r.style.transition = 'transform .14s ease'; });
+      const apply = (clientY) => {
+        const dy = (clientY - startY) + (panel.scrollTop - startScroll);
+        const minDy = tops[0] - tops[from], maxDy = tops[rows.length - 1] - tops[from];
+        const d = Math.max(minDy, Math.min(maxDy, dy));
+        row.style.transform = 'translateY(' + d + 'px)';
+        const center = tops[from] + d + h / 2;
+        to = 0; rows.forEach((r, i) => { if (i !== from && tops[i] + r.offsetHeight / 2 < center) to++; });
+        // `to` counts rows above the center, but the dragged row itself is not in the count
+        rows.forEach((r, i) => {
+          if (i === from) return;
+          let shift = 0;
+          if (from < to && i > from && i <= to) shift = -h;
+          else if (from > to && i >= to && i < from) shift = h;
+          r.style.transform = shift ? 'translateY(' + shift + 'px)' : '';
+        });
       };
+      let lastY = e.clientY;
+      const scroller = setInterval(() => { // near the edge of the panel: scroll it
+        const pr = panel.getBoundingClientRect();
+        if (lastY < pr.top + 28) panel.scrollTop -= 8; else if (lastY > pr.bottom - 28) panel.scrollTop += 8; else return;
+        apply(lastY);
+      }, 16);
+      const onMove = (ev) => { ev.preventDefault(); lastY = ev.clientY; apply(ev.clientY); };
       const onUp = () => {
+        clearInterval(scroller);
         window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp); window.removeEventListener('pointercancel', onUp);
-        row.classList.remove('dragging');
-        ctOrderAll = [...list.querySelectorAll('.ct-col-row')].map(r => r.dataset.colRow).filter(ctValid); saveCtCols(); renderCtColsPanel(); renderCampanhas();
+        const order = rows.map(r => r.dataset.colRow); order.splice(from, 1); order.splice(to, 0, row.dataset.colRow);
+        rows.forEach(r => { r.style.transform = ''; r.style.transition = ''; r.style.zIndex = ''; r.classList.remove('dragging'); });
+        if (to !== from) { ctOrderAll = order.filter(ctValid); saveCtCols(); renderCtColsPanel(); renderCampanhas(); }
       };
       window.addEventListener('pointermove', onMove, { passive: false }); window.addEventListener('pointerup', onUp); window.addEventListener('pointercancel', onUp);
     }));
@@ -3825,6 +3848,7 @@
     });
     table.querySelectorAll('.col-rs').forEach(h => {
       h.addEventListener('click', (e) => e.stopPropagation());
+      h.addEventListener('dblclick', (e) => { e.stopPropagation(); e.preventDefault(); ctWidths[h.dataset.rs] = ctFitW(h.dataset.rs); savePref('ctWidths', JSON.stringify(ctWidths)); ctLastDrag = Date.now(); renderCampanhas(); });
       h.addEventListener('mousedown', (e) => {
         e.preventDefault(); e.stopPropagation();
         const key = h.dataset.rs, th = h.parentElement; th.draggable = false;
@@ -4020,34 +4044,18 @@
       workerSubs = j.subAccounts; mergeWorkerSubs(); renderSaldo(); renderAlertBanner();
     }).catch(() => {});
   }
-  // button + floating panel; the first box ("all") ticks/unticks everything, then you only change what differs
-  function msPlace(btn, panel){
-    const r = btn.getBoundingClientRect(), w = Math.min(Math.max(r.width, 260), window.innerWidth - 16);
-    panel.style.width = w + 'px';
-    panel.style.left = Math.max(8, Math.min(r.left, window.innerWidth - w - 8)) + 'px';
-    panel.style.top = Math.round(r.bottom + 4) + 'px';
-    panel.style.maxHeight = Math.max(160, window.innerHeight - r.bottom - 16) + 'px';
-  }
-  function msRender(box, o){
-    const btn = box.querySelector('.ms2-btn'), panel = box.querySelector('.ms2-panel'), sel = o.selected;
-    const allOn = o.options.length > 0 && o.options.every(x => sel.has(x.id));
-    const picked = o.options.filter(x => sel.has(x.id));
-    btn.textContent = !o.options.length ? 'Nada disponível' : allOn ? o.allLabel : !picked.length ? (o.noneLabel || 'Nenhum marcado') : picked.length <= 2 ? picked.map(x => x.short || x.name).join(', ') : picked.length + ' selecionados';
-    panel.innerHTML = '<label class="all"><input type="checkbox" data-ms-all' + (allOn ? ' checked' : '') + '> ' + o.allLabel + '</label>' +
-      o.options.map(x => '<label><input type="checkbox" data-ms-opt="' + ccEsc(x.id) + '"' + (sel.has(x.id) ? ' checked' : '') + '> ' + ccEsc(x.name) + '</label>').join('');
-    panel.querySelector('[data-ms-all]').addEventListener('change', (e) => { sel.clear(); if (e.target.checked) o.options.forEach(x => sel.add(x.id)); msRender(box, o); if (o.onChange) o.onChange(); });
-    panel.querySelectorAll('[data-ms-opt]').forEach(c => c.addEventListener('change', () => {
-      const x = o.options.find(z => String(z.id) === c.dataset.msOpt); if (!x) return;
-      if (c.checked) sel.add(x.id); else sel.delete(x.id);
-      msRender(box, o); if (o.onChange) o.onChange();
+  // always-visible multi-select: a first chip ("all") ticks/unticks everything, then one click per account/day
+  function chipsRender(box, o){
+    const sel = o.selected, allOn = o.options.length > 0 && o.options.every(x => sel.has(x.id));
+    box.innerHTML = '<button type="button" class="chip-opt all' + (allOn ? ' on' : '') + '" data-chip-all>' + o.allLabel + '</button>' +
+      o.options.map(x => '<button type="button" class="chip-opt' + (sel.has(x.id) ? ' on' : '') + '" data-chip="' + ccEsc(x.id) + '">' + ccEsc(x.name) + '</button>').join('');
+    box.querySelector('[data-chip-all]').addEventListener('click', () => { const on = !allOn; sel.clear(); if (on) o.options.forEach(x => sel.add(x.id)); chipsRender(box, o); if (o.onChange) o.onChange(); });
+    box.querySelectorAll('[data-chip]').forEach(c => c.addEventListener('click', () => {
+      const x = o.options.find(z => String(z.id) === c.dataset.chip); if (!x) return;
+      if (sel.has(x.id)) sel.delete(x.id); else sel.add(x.id);
+      chipsRender(box, o); if (o.onChange) o.onChange();
     }));
   }
-  function msWire(box){
-    const btn = box.querySelector('.ms2-btn'), panel = box.querySelector('.ms2-panel');
-    btn.addEventListener('click', (e) => { e.stopPropagation(); document.querySelectorAll('.ms2-panel').forEach(p => { if (p !== panel) p.hidden = true; }); panel.hidden = !panel.hidden; if (!panel.hidden) msPlace(btn, panel); });
-  }
-  document.addEventListener('click', (e) => { if (!e.target.closest('.ms2')) document.querySelectorAll('.ms2-panel').forEach(p => { p.hidden = true; }); });
-  window.addEventListener('resize', () => document.querySelectorAll('.ms2').forEach(b => { const p = b.querySelector('.ms2-panel'); if (p && !p.hidden) msPlace(b.querySelector('.ms2-btn'), p); }));
   let topupSel = new Set();
   function topupAccountIds(){
     return Object.keys(subAccounts).filter(id => { const a = subAccounts[id]; return !a.accountKey || isAccountVisible(a.accountKey); })
@@ -4060,10 +4068,8 @@
     const sig = ids.map(id => id + ':' + subDisplayName(id)).join('|') + '#' + [...topupSel].join(',');
     if (box.dataset.sig === sig) return;
     box.dataset.sig = sig;
-    msRender(box, { options: ids.map(id => ({ id, name: subDisplayName(id) })), selected: topupSel, allLabel: 'Todas as contas', noneLabel: 'Escolher contas', onChange: () => { box.dataset.sig = ''; } });
-    if (!topupSel.size) box.querySelector('.ms2-btn').textContent = 'Escolher contas';
+    chipsRender(box, { options: ids.map(id => ({ id, name: subDisplayName(id) })), selected: topupSel, allLabel: 'Todas as contas', onChange: () => { box.dataset.sig = ''; } });
   }
-  msWire(document.getElementById('topupMs'));
 
   // ---- balance alert rules ----
   const BAL_RULES_API = TOPUPS_API.replace(/\/topups$/, '') + '/balance-rules';
@@ -4111,10 +4117,9 @@
   const BAL_DAY_NAMES = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
   function renderBalSheetBody(){
     const ids = topupAccountIds();
-    msRender(document.getElementById('balRuleAccBox'), { options: ids.map(id => ({ id, name: subDisplayName(id) })), selected: balEditAccs, allLabel: 'Todas as contas' });
-    msRender(document.getElementById('balRuleDayBox'), { options: BAL_DAY_NAMES.map((n, i) => ({ id: i, name: n, short: BAL_DAYS[i] })), selected: balEditDays, allLabel: 'Todos os dias' });
+    chipsRender(document.getElementById('balRuleAccBox'), { options: ids.map(id => ({ id, name: subDisplayName(id) })), selected: balEditAccs, allLabel: 'Todas as contas' });
+    chipsRender(document.getElementById('balRuleDayBox'), { options: BAL_DAY_NAMES.map((n, i) => ({ id: i, name: n })), selected: balEditDays, allLabel: 'Todos os dias' });
   }
-  msWire(document.getElementById('balRuleAccBox')); msWire(document.getElementById('balRuleDayBox'));
   function openBalRuleSheet(rule){
     balEditing = rule || null;
     document.getElementById('balRuleTitle').textContent = rule ? 'Editar regra de saldo' : 'Nova regra de saldo';
