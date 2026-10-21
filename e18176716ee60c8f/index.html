@@ -3373,8 +3373,9 @@
   const NB_ENTITY_DELETE_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/nb/entity-delete';
   let campTab = loadPref('campTab', 'campaigns');
   if (['campaigns', 'adsets', 'ads'].indexOf(campTab) === -1) campTab = 'campaigns';
-  let ctPeriod = 'TODAY';              // always starts on "Hoje"
-  let ctStatusF = 'all', campAccF = 'all', ctNicheF = 'all';
+  let ctPeriod = 'TODAY';              // always starts on "Hoje" and on the active ones, every time the tab is opened
+  let ctStatusF = 'active', campAccF = 'all', ctNicheF = 'all';
+  function ctResetDefaults(){ ctPeriod = 'TODAY'; ctStatusF = 'active'; if (campV2Ready) ctFillSelects(); }
   let campSort = { key: 'cost', dir: -1 };
   let ctSel = { campaigns: new Set(), adsets: new Set(), ads: new Set() };
   let ctMetrics = {};                  // range -> { data, ts }
@@ -3973,7 +3974,7 @@
     renderSourcePanels();
   }
 
-  document.querySelectorAll('.nav-item').forEach(btn => btn.addEventListener('click', () => { view = btn.dataset.view; savePref('view', view); renderAll(); if (view === 'rejeicoes') loadRejeicoes(); if (view === 'regras') loadRegras(); if (view === 'ranking') loadRanking(); if (view === 'notificacoes') loadNotifs(); if (view === 'integracoes') { integOpen = null; loadIntegrations(); } }));
+  document.querySelectorAll('.nav-item').forEach(btn => btn.addEventListener('click', () => { view = btn.dataset.view; savePref('view', view); renderAll(); if (view === 'rejeicoes') loadRejeicoes(); if (view === 'regras') loadRegras(); if (view === 'ranking') loadRanking(); if (view === 'campanhas') { ctResetDefaults(); renderCampanhas(); } if (view === 'notificacoes') loadNotifs(); if (view === 'integracoes') { integOpen = null; loadIntegrations(); } }));
 
   document.getElementById('costDate').value = todayKey();
   document.getElementById('costForm').addEventListener('submit', (e) => {
