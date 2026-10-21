@@ -2189,10 +2189,9 @@
             <div class="rules-head-actions">
               <button type="button" class="select-all-btn" id="rulesPreviewBtn">Testar agora</button>
               <button type="button" class="select-all-btn" id="rulesLogAllBtn">Histórico</button>
-              <button type="button" class="select-all-btn" id="rulesEngineBtn"></button>
               <button type="button" class="rej-edit-btn" id="rulesNewBtn">Nova regra</button>
             </div>
-            <span class="step-desc">Cada regra olha o <b>conjunto</b> (nunca a campanha), a cada minuto, com os números acumulados dos últimos 30 dias. A NewsBreak pode atrasar os números, por isso as regras de pausa podem usar uma margem pra agir um pouco antes.</span>
+            <span class="step-desc">Cada regra olha o <b>conjunto</b> (nunca a campanha), a cada minuto, com os números acumulados dos últimos 30 dias. A NewsBreak pode atrasar os números, por isso as regras de pausa podem usar uma margem pra agir um pouco antes. Cada regra tem o seu liga/desliga; marque várias pra ativar ou pausar de uma vez.</span>
           </div>
           <div class="rules-filters">
             <label>Conta <select id="rulesFilterAcc"></select></label>
@@ -4019,7 +4018,7 @@
 
     const rows = results.map(r => {
       if (!r.hasTopup) {
-        return '<tr><td>' + r.name + '</td><td class="cell-muted">Cartão direto na conta</td><td class="num cell-muted">' + fmtUSD(r.totalSpendAllTime) + '</td></tr>';
+        return '<tr><td>' + r.name + '</td><td class="cell-muted">Sem depósito registrado</td><td class="num cell-muted">' + fmtUSD(r.totalSpendAllTime) + '</td></tr>';
       }
       return '<tr>' +
         '<td>' + r.name + '</td>' +
@@ -4461,10 +4460,8 @@
   function renderRegras(){
     const list = document.getElementById('rulesList');
     if (!list) return;
-    document.getElementById('rulesEngineBtn').title = 'Interruptor geral: desligado = nenhuma regra roda, mesmo as ligadas. Cada regra também tem o seu próprio liga/desliga.';
-    document.getElementById('rulesEngineBtn').textContent = rulesEngineOn ? 'Regras funcionando — desligar tudo' : 'Regras paradas — ligar';
-    const age = rulesHb ? Math.round((Date.now() - rulesHb.at) / 1000) : null;
-    document.getElementById('rulesEngineInfo').textContent = rulesHb ? (rulesEngineOn ? '· conferiu há ' + (age < 90 ? age + 's' : Math.round(age / 60) + ' min') : '· paradas: nenhuma regra roda') : '';
+    const nOn = rulesData.filter(r => r.enabled).length;
+    document.getElementById('rulesEngineInfo').textContent = rulesData.length ? '· ' + nOn + ' ligada' + (nOn === 1 ? '' : 's') + ' de ' + rulesData.length : '';
     renderRulesFilters();
     const shown = rulesData.filter(ruleMatchesFilter);
     list.innerHTML = shown.length ? shown.map(r => {
@@ -4541,12 +4538,6 @@
   }
   document.getElementById('rulesBulkOn').addEventListener('click', () => rulesBulk(true));
   document.getElementById('rulesBulkOff').addEventListener('click', () => rulesBulk(false));
-  document.getElementById('rulesEngineBtn').addEventListener('click', () => {
-    const next = !rulesEngineOn;
-    if (!next && !confirm('Desligar TUDO? Nenhuma regra roda (nem age, nem avisa) até você ligar de novo, mesmo as que estão ligadas.')) return;
-    if (next && !confirm('Ligar? As regras que estão ligadas passam a agir de verdade nas campanhas (pausar conjunto, subir orçamento) e a avisar no celular.')) return;
-    rulesApi('/engine', 'POST', { on: next }).then(j => { rulesEngineOn = j.engineOn; renderRegras(); });
-  });
   document.getElementById('rulesPreviewBtn').addEventListener('click', () => {
     const panel = document.getElementById('rulesPreviewPanel'), body = document.getElementById('rulesPreviewBody');
     panel.hidden = false; body.textContent = 'Calculando…';

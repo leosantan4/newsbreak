@@ -1191,8 +1191,7 @@ function planRules(data, life, rules, state) {
 }
 
 async function runRulesEngine(env, data) {
-  const on = (await env.COSTS_KV.get("rules_engine_on")) === "1";
-  if (!on) return { ran: false };
+  // no master switch any more: each rule has its own on/off (enabled); paused rules never act
   const rules = await loadRules(env);
   const life = await fetchLifetimeAdsetMetrics(env);
   const stateRaw = await env.COSTS_KV.get("rules_state");
@@ -2870,7 +2869,7 @@ export default {
       const rules = await loadRules(env);
       const logRaw = await env.COSTS_KV.get("rules_log");
       const hb = await env.COSTS_KV.get("cron_heartbeat");
-      return json({ rules, log: (logRaw ? JSON.parse(logRaw) : []).slice(0, 100), engineOn: (await env.COSTS_KV.get("rules_engine_on")) === "1", heartbeat: hb ? JSON.parse(hb) : null }, 200, origin);
+      return json({ rules, log: (logRaw ? JSON.parse(logRaw) : []).slice(0, 100), heartbeat: hb ? JSON.parse(hb) : null }, 200, origin);
     }
 
     if (url.pathname === "/rules" && request.method === "POST") {
@@ -2895,15 +2894,6 @@ export default {
       const rules = (await loadRules(env)).filter((r) => r.id !== id);
       await saveRules(env, rules);
       return json({ rules }, 200, origin);
-    }
-
-    if (url.pathname === "/rules/engine" && request.method === "POST") {
-      const key = request.headers.get("X-Access-Key");
-      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
-      let body;
-      try { body = await request.json(); } catch { return json({ error: "invalid_json" }, 400, origin); }
-      await env.COSTS_KV.put("rules_engine_on", body && body.on ? "1" : "0");
-      return json({ engineOn: !!(body && body.on) }, 200, origin);
     }
 
     if (url.pathname === "/rules/preview" && request.method === "POST") {
