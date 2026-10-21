@@ -1211,6 +1211,50 @@ function planRules(data, life, rules, state) {
   return { plan, evaluated };
 }
 
+// Pausing an ad set by a rule goes down and up the tree: its ads are paused too, and the campaign is paused when no ad set is left running
+// (1-1-1: everything stops; 1-2-1 / 1-3-1: the campaign keeps running while another ad set is still on).
+async function cascadePause(token, data, campaignId, adsetId, pausedNow) {
+  const c = ((data && data.campaigns) || []).find((x) => x.id === campaignId);
+  if (!c) return "";
+  const s = (c.adSets || []).find((x) => x.id === adsetId);
+  let nAds = 0, campOff = false;
+  const notes = [];
+  for (const ad of (s && s.ads) || []) {
+    if (ad.status !== "ON") continue;
+    try { await nbSetAdStatus(token, ad.id, "OFF"); nAds++; ad.status = "OFF"; } catch (e) { notes.push("anúncio não pausou"); }
+  }
+  if (c.status === "ON" && !(c.adSets || []).some((x) => x.status === "ON" && !pausedNow.has(x.id))) {
+    try { await nbSetCampaignStatus(token, c.id, "OFF"); campOff = true; c.status = "OFF"; } catch (e) { notes.push("campanha não pausou"); }
+  }
+  return " + " + nAds + " anúncio" + (nAds === 1 ? "" : "s") + (campOff ? " + campanha" : "") + (notes.length ? " (" + notes.join(", ") + ")" : "");
+}
+
+// Ad sets a pause rule already stopped before this existed (their ads / campaign were left running): tidy them once.
+async function tidyRulePaused(env, data, rules, state, log) {
+  const pauseIds = new Set(rules.filter((r) => r.action && r.action.type === "pause_adset").map((r) => r.id));
+  const ruled = new Set();
+  for (const k of Object.keys(state)) { const i = k.lastIndexOf(":"); if (i > 0 && pauseIds.has(k.slice(0, i))) ruled.add(k.slice(i + 1)); }
+  let changed = 0;
+  for (const c of (data && data.campaigns) || []) {
+    const sets = c.adSets || [];
+    const mine = sets.filter((x) => ruled.has(x.id) && x.status === "OFF" && !state["tidy:" + x.id]);
+    const needCamp = c.status === "ON" && sets.length && sets.every((x) => x.status === "OFF") && sets.some((x) => ruled.has(x.id));
+    if (!mine.length && !needCamp) continue;
+    let token; try { token = await tokenForAccountKey(env, c.accountKey); } catch { continue; }
+    for (const x of mine) {
+      const pausedNow = new Set(sets.filter((y) => y.status === "OFF").map((y) => y.id));
+      const d = await cascadePause(token, data, c.id, x.id, pausedNow);
+      state["tidy:" + x.id] = { at: Date.now() };
+      changed++;
+      log.unshift({ at: Date.now(), ruleId: "tidy", ruleName: "Arrumação (regra que já tinha pausado)", accountKey: c.accountKey, account: c.adAccountName || c.accountKey, campaign: c.name, adset: x.name, adsetId: x.id, metrics: {}, action: "pause_adset", result: "ok", detail: "conjunto já pausado" + d });
+    }
+    if (needCamp && c.status === "ON") {
+      try { await nbSetCampaignStatus(token, c.id, "OFF"); c.status = "OFF"; changed++; log.unshift({ at: Date.now(), ruleId: "tidy", ruleName: "Arrumação (regra que já tinha pausado)", accountKey: c.accountKey, account: c.adAccountName || c.accountKey, campaign: c.name, adset: "", adsetId: "", metrics: {}, action: "pause_adset", result: "ok", detail: "campanha pausada: nenhum conjunto ligado" }); } catch {}
+    }
+  }
+  return changed;
+}
+
 async function runRulesEngine(env, data) {
   // no master switch any more: each rule has its own on/off (enabled); paused rules never act
   const rules = await loadRules(env);
@@ -1221,12 +1265,15 @@ async function runRulesEngine(env, data) {
   const logRaw = await env.COSTS_KV.get("rules_log");
   const log = logRaw ? JSON.parse(logRaw) : [];
   const lines = [];
+  const pausedNow = new Set();
   for (const p of plan) {
     const entry = { at: Date.now(), ruleId: p.rule.id, ruleName: p.rule.name, accountKey: p.accountKey, account: p.accountLabel, campaign: p.campaign, adset: p.adset, adsetId: p.adsetId, metrics: p.metrics, action: p.kind, result: "ok", detail: "" };
     try {
       if (p.kind === "pause_adset") {
-        await nbSetAdSetStatus(await tokenForAccountKey(env, p.accountKey), p.adsetId, "OFF");
-        entry.detail = "conjunto pausado";
+        const token = await tokenForAccountKey(env, p.accountKey);
+        await nbSetAdSetStatus(token, p.adsetId, "OFF");
+        pausedNow.add(p.adsetId);
+        entry.detail = "conjunto pausado" + (await cascadePause(token, data, p.campaignId, p.adsetId, pausedNow));
       } else if (p.kind === "set_budget") {
         await nbSetAdSetBudget(await tokenForAccountKey(env, p.accountKey), p.adsetId, Math.round(p.rule.action.budget * 100), p.budgetType || "DAILY");
         entry.detail = "orçamento $" + (p.budget != null ? p.budget : "?") + " → $" + p.rule.action.budget;
@@ -1241,6 +1288,9 @@ async function runRulesEngine(env, data) {
     }
     log.unshift(entry);
   }
+  let tidied = 0;
+  try { tidied = await tidyRulePaused(env, data, rules, state, log); } catch (e) { /* tidy is best effort */ }
+  if (tidied) { await env.COSTS_KV.put("rules_state", JSON.stringify(state)); await env.COSTS_KV.put("rules_log", JSON.stringify(log.slice(0, 200))); await env.COSTS_KV.delete("live_campanhas"); }
   if (plan.length) {
     await env.COSTS_KV.put("rules_state", JSON.stringify(state));
     await env.COSTS_KV.put("rules_log", JSON.stringify(log.slice(0, 200)));

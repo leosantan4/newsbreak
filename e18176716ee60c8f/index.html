@@ -919,7 +919,7 @@
       <div class="rule-block">
         <div class="rule-block-title">Então</div>
         <div class="rule-grid">
-          <label>Ação <select id="ruleAction"><option value="pause_adset">Pausar o conjunto</option><option value="set_budget">Mudar o orçamento do conjunto (uma vez)</option><option value="notify">Só avisar (sem fazer nada)</option></select></label>
+          <label>Ação <select id="ruleAction"><option value="pause_adset">Pausar o conjunto (e seus anúncios; a campanha só se não sobrar conjunto ligado)</option><option value="set_budget">Mudar o orçamento do conjunto (uma vez)</option><option value="notify">Só avisar (sem fazer nada)</option></select></label>
           <label id="ruleBudgetWrap">Novo orçamento diário $ <input type="number" id="ruleBudget" min="1" step="1" value="1000"></label>
         </div>
         <label class="rule-notify"><input type="checkbox" id="ruleNotify" checked> Receber notificação no celular quando a regra agir</label>
@@ -4595,7 +4595,7 @@
     return parts.length ? parts.join(' · ') : 'Todas as contas';
   }
   function ruleActionText(a){
-    return a.type === 'pause_adset' ? 'Pausa o conjunto' : a.type === 'set_budget' ? 'Orçamento do conjunto → $' + a.budget + ' (uma vez)' : 'Só avisa';
+    return a.type === 'pause_adset' ? 'Pausa o conjunto e seus anúncios (a campanha, se não sobrar conjunto)' : a.type === 'set_budget' ? 'Orçamento do conjunto → $' + a.budget + ' (uma vez)' : 'Só avisa';
   }
   function ruleMatchesFilter(r){
     if (!rulesFilter.acc && !rulesFilter.niche) return true;
