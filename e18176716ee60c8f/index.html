@@ -475,6 +475,10 @@
   .col-rs:hover, .col-rs.on{background:color-mix(in srgb, var(--accent) 45%, transparent);}
   body.col-resizing{cursor:col-resize; user-select:none;}
   .ctable-name-link{background:none; border:none; padding:0; font:inherit; font-weight:600; color:var(--ink); cursor:pointer; text-align:left; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:block;}
+  .ct-ad-line{display:inline-flex; align-items:center; gap:8px; max-width:100%;}
+  .ct-pencil{border:1px solid var(--line); background:var(--surface-raised); color:var(--muted); border-radius:8px; width:28px; height:28px; display:inline-grid; place-items:center; cursor:pointer; flex:none; padding:0;}
+  .ct-pencil svg{width:15px; height:15px; fill:none; stroke:currentColor; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round;}
+  .ct-pencil:hover{color:var(--accent); border-color:var(--accent);}
   .ctable-name-link:hover{color:var(--accent); text-decoration:underline;}
   .ctable th, .ctable td{padding:8px 10px;}
   .ctable thead th{cursor:pointer; user-select:none;}
@@ -1406,7 +1410,7 @@
   .ct-toolbar select.camp-search{width:auto; max-width:200px;}
   .ct-search{flex:1 1 220px; min-width:160px;}
   .ct-cols-wrap{position:relative;}
-  .ct-cols-panel{position:absolute; right:0; top:calc(100% + 6px); z-index:30; width:min(300px, 90vw); max-height:60vh; overflow-y:auto; background:var(--surface-raised); border:1px solid var(--line); border-radius:12px; box-shadow:0 12px 32px -8px rgba(0,0,0,.45); padding:10px 12px;}
+  .ct-cols-panel{position:fixed; z-index:60; width:min(300px, 90vw); max-height:60vh; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; background:var(--surface-raised); border:1px solid var(--line); border-radius:12px; box-shadow:0 12px 32px -8px rgba(0,0,0,.45); padding:10px 12px;}
   .ct-cols-panel[hidden]{display:none;}
   .ct-cols-title{font-size:11px; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); font-weight:700; margin:6px 0;}
   .ct-col-row{display:flex; justify-content:space-between; align-items:center; gap:8px; padding:3px 0; font-size:13px;}
@@ -3643,7 +3647,7 @@
       return '<tr class="' + (r.active ? '' : 'is-off') + '">' +
         '<td class="c"><input type="checkbox" data-ct-check="' + r.id + '"' + (ctSel[campTab].has(r.id) ? ' checked' : '') + '></td>' +
         '<td class="c"><label class="toggle-switch small"><input type="checkbox" data-t-status="' + r.id + '" data-t-type="' + r.type + '" data-account-key="' + r.accountKey + '"' + (r.on ? ' checked' : '') + '><span class="toggle-track"></span></label></td>' +
-        '<td class="l"><div class="ctable-ident">' + thumb + '<div><div class="ctable-name">' + (campTab === 'ads' ? ccEsc(r.name) : '<button type="button" class="ctable-name-link" data-ct-open="' + r.id + '" title="' + (campTab === 'campaigns' ? 'Ver os conjuntos desta campanha' : 'Ver os anúncios deste conjunto') + '">' + ccEsc(r.name) + '</button>') + '</div><div class="ctable-sub">ID ' + r.id + '</div></div></div></td>' +
+        '<td class="l"><div class="ctable-ident">' + thumb + '<div><div class="ctable-name">' + (campTab === 'ads' ? '<span class="ct-ad-line">' + ccEsc(r.name) + '<button type="button" class="ct-pencil" data-ct-edit="' + r.id + '" title="Editar este anúncio (trocar criativo, título, descrição)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button></span>' : '<button type="button" class="ctable-name-link" data-ct-open="' + r.id + '" title="' + (campTab === 'campaigns' ? 'Ver os conjuntos desta campanha' : 'Ver os anúncios deste conjunto') + '">' + ccEsc(r.name) + '</button>') + '</div><div class="ctable-sub">ID ' + r.id + '</div></div></div></td>' +
         vis.map(k => {
           if (k === 'ctx') return campTab === 'ads' ? '<td class="l"><div class="ctable-sub" style="color:var(--ink);">' + ccEsc(r.setName) + '</div><div class="ctable-sub">' + ccEsc(r.campName) + '</div></td>'
             : '<td class="l"><div class="ctable-sub" style="color:var(--ink);">' + ccEsc(r.campName) + '</div></td>';
@@ -3666,6 +3670,11 @@
 
     wrap.querySelectorAll('[data-ct-tab]').forEach(b => b.addEventListener('click', () => { campTab = b.dataset.ctTab; savePref('campTab', campTab); renderCampanhas(); }));
     wrap.querySelectorAll('[data-ct-clear]').forEach(b => b.addEventListener('click', () => { ctSel[b.dataset.ctClear] = new Set(); renderCampanhas(); }));
+    wrap.querySelectorAll('[data-ct-edit]').forEach(b => b.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const row = shown.find(x => x.id === b.dataset.ctEdit);
+      if (row) ctOpenAdEdit([row]);
+    }));
     wrap.querySelectorAll('[data-ct-open]').forEach(b => b.addEventListener('click', () => {
       const id = b.dataset.ctOpen;
       if (campTab === 'campaigns') { ctSel.campaigns = new Set([id]); ctSel.adsets = new Set(); campTab = 'adsets'; }
@@ -3760,8 +3769,8 @@
   }
   // Edit ads in bulk from Campanhas (any status, e.g. the ones NewsBreak flags with the red triangle but still shows as approved):
   // same sheet as Rejeições (swap creative, title, description, with the number following in the names).
-  async function ctOpenAdEdit(){
-    const rows = ctSelectedRows(); if (!rows.length) return;
+  async function ctOpenAdEdit(rowsArg){
+    const rows = Array.isArray(rowsArg) ? rowsArg : ctSelectedRows(); if (!rows.length) return;
     const msg = document.getElementById('ctBulkMsg'), btn = document.getElementById('ctBulkEdit');
     btn.disabled = true; msg.textContent = 'Carregando os anúncios…';
     try {
@@ -3814,12 +3823,20 @@
     document.getElementById('ctStatus').addEventListener('change', (e) => { ctStatusF = e.target.value; renderCampanhas(); });
     document.getElementById('campAccSel').addEventListener('change', (e) => { campAccF = e.target.value; ctSel = { campaigns: new Set(), adsets: new Set(), ads: new Set() }; renderCampanhas(); });
     document.getElementById('ctNiche').addEventListener('change', (e) => { ctNicheF = e.target.value; renderCampanhas(); });
-    document.getElementById('ctColsBtn').addEventListener('click', (e) => { e.stopPropagation(); const p = document.getElementById('ctColsPanel'); p.hidden = !p.hidden; });
+    const placeColsPanel = () => {
+      const p = document.getElementById('ctColsPanel'), r = document.getElementById('ctColsBtn').getBoundingClientRect();
+      const w = Math.min(300, window.innerWidth * 0.9);
+      p.style.top = Math.round(r.bottom + 6) + 'px';
+      p.style.left = Math.max(8, Math.min(window.innerWidth - w - 8, r.right - w)) + 'px';
+      p.style.maxHeight = Math.max(160, window.innerHeight - r.bottom - 20) + 'px';
+    };
+    document.getElementById('ctColsBtn').addEventListener('click', (e) => { e.stopPropagation(); const p = document.getElementById('ctColsPanel'); p.hidden = !p.hidden; if (!p.hidden) placeColsPanel(); });
+    window.addEventListener('resize', () => { const p = document.getElementById('ctColsPanel'); if (p && !p.hidden) placeColsPanel(); });
     document.addEventListener('click', (e) => { const p = document.getElementById('ctColsPanel'); if (p && !p.hidden && !e.target.closest('.ct-cols-wrap')) p.hidden = true; });
     document.getElementById('ctBulkOn').addEventListener('click', () => ctBulkStatus('ON'));
     document.getElementById('ctBulkOff').addEventListener('click', () => ctBulkStatus('OFF'));
     document.getElementById('ctBulkDel').addEventListener('click', ctOpenDelete);
-    document.getElementById('ctBulkEdit').addEventListener('click', ctOpenAdEdit);
+    document.getElementById('ctBulkEdit').addEventListener('click', () => ctOpenAdEdit());
     document.getElementById('ctBulkClear').addEventListener('click', () => { ctSel[campTab] = new Set(); renderCampanhas(); });
     document.getElementById('ctDelInput').addEventListener('input', (e) => { document.getElementById('ctDelGo').disabled = e.target.value.trim() !== 'EXCLUIR'; });
     document.getElementById('ctDelGo').addEventListener('click', ctRunDelete);
