@@ -3812,6 +3812,10 @@
       subAccounts[id] = { name: v.name || id, accountKey: v.accountKey, costByDate: v.costByDate || {}, _fromWorker: true,
         displayName: nb ? subAccountNbName(nb) + ' ···' + id.slice(-3) : (v.name ? v.name + ' ···' + id.slice(-3) : undefined) };
     });
+    // new ad accounts that have not spent yet are not in the cost history: they still need to accept deposits
+    allSubAccounts.forEach(a => {
+      if (!subAccounts[a.id]) subAccounts[a.id] = { name: a.name || a.id, accountKey: a.accountKey, costByDate: {}, _fromWorker: true, displayName: subAccountNbName(a) + ' ···' + a.id.slice(-3) };
+    });
   }
   function loadSaldoCosts(){
     return fetch(SALDO_COSTS_API, { headers: { 'X-Access-Key': COSTS_API_KEY }, cache: 'no-store' }).then(r => r.json()).then(j => {
