@@ -2604,6 +2604,30 @@ export default {
       }
     }
 
+    // rename an ad, ad set or campaign (used when a creative is swapped: the number in the names must follow the new creative)
+    if (url.pathname === "/nb/rename" && request.method === "POST") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      let body;
+      try { body = await request.json(); } catch { return json({ error: "invalid_json" }, 400, origin); }
+      const { accountKey, entityType, id } = body;
+      const name = String(body.name || "").trim();
+      const path = { ad: "ad", adset: "ad-set", campaign: "campaign" }[entityType];
+      if (!path || !id || name.length < 3 || name.length > 200) return json({ error: "invalid_body" }, 400, origin);
+      try {
+        const token = await tokenForAccountKey(env, accountKey);
+        let out;
+        for (let attempt = 0; ; attempt++) {
+          try { out = await nbApi(token, `${path}/update/${id}`, { method: "PUT", body: JSON.stringify({ name }) }); break; }
+          catch (err) { if (err.nbRaw || attempt >= 2) throw err; await new Promise((r) => setTimeout(r, 1200 * (attempt + 1))); }
+        }
+        await env.COSTS_KV.delete("live_campanhas");
+        return json({ ok: true }, 200, origin);
+      } catch (e) {
+        return json({ error: "nb_rename_failed", detail: String((e && e.message) || e), nb: e.nbRaw || null }, 502, origin);
+      }
+    }
+
     if (url.pathname === "/nb/ad" && request.method === "POST") {
       const key = request.headers.get("X-Access-Key");
       if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);

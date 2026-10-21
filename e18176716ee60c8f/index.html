@@ -4720,6 +4720,26 @@
     el.appendChild(div); el.scrollTop = el.scrollHeight;
   }
 
+  // After swapping the creative for gallery item `newNum` (e.g. 0089 -> 0002) the ad, its ad set and (1-1-1 structure) its campaign take the new number.
+  async function rejRenameFollow(ad, newNum, tag, post, base, renames){
+    const oldNum = String(ad.name || '').trim();
+    if (!newNum || newNum === oldNum) return;
+    const camp = campaigns.find(c => c.id === ad.campaignId);
+    const set = camp && (camp.adSets || []).find(x => x.id === ad.adSetId);
+    const swap = (name) => name.endsWith(' - ' + oldNum) ? name.slice(0, name.length - oldNum.length) + newNum : null;
+    const jobs = [{ type: 'ad', id: ad.id, name: newNum }];
+    const setName = set && (set.ads || []).length === 1 ? swap(set.name || '') : null;
+    if (setName) jobs.push({ type: 'adset', id: set.id, name: setName });
+    else if (set) rejLog(tag + 'Conjunto mantido: o nome dele não termina com o número do anúncio (ou tem mais de um anúncio).');
+    const campName = camp && (camp.adSets || []).length === 1 && (camp.adSets[0].ads || []).length === 1 ? swap(camp.name || '') : null;
+    if (campName) jobs.push({ type: 'campaign', id: camp.id, name: campName });
+    for (const j of jobs) {
+      const res = await post(base + '/nb/rename', { accountKey: ad.accountKey, entityType: j.type, id: j.id, name: j.name });
+      if (res.error) { rejLog(tag + (j.type === 'ad' ? 'Anúncio' : j.type === 'adset' ? 'Conjunto' : 'Campanha') + ': a NewsBreak não aceitou o novo nome (' + rejFriendly(res.detail || res.error, 'update') + '). Renomeie lá.', 'err', res.detail || res.error); continue; }
+      renames.push({ ...j, tag });
+    }
+  }
+
   async function rejApplyAll(){
     const { ads, h, d, b, err } = rejPlan();
     if (err || !ads.length || rejBusy) return;
@@ -4728,7 +4748,7 @@
     const turnOn = false;
     const post = (url, body) => fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY }, body: JSON.stringify(body) }).then(r => r.json());
     const base = 'https://newbreak-costs-api.prof-leosantana.workers.dev';
-    let okCount = 0; const done = new Set(); const upCache = {};
+    let okCount = 0; const done = new Set(); const upCache = {}; const renames = []; // renames: names the swap must change, checked at the end
     for (let i = 0; i < ads.length; i++) {
       const ad = ads[i];
       const tag = '[' + ad.name + ' · ' + ad.adAccountName + '] ';
@@ -4761,6 +4781,11 @@
         if (turnOn) { await setEntityStatus(ad.accountKey, 'ad', ad.id, 'ON'); }
         rejLog(tag + 'Enviado pra NewsBreak.', 'ok');
         okCount++; done.add(ad.id);
+        // the number in the names follows the creative: ad, ad set (and the campaign when it only holds this ad)
+        if (rejPickIds.length) {
+          const lib = libraryItems.find(x => x.id === (rejPickIds.length === 1 ? rejPickIds[0] : rejPickIds[i]));
+          try { await rejRenameFollow(ad, lib && lib.name, tag, post, base, renames); } catch (e) { rejLog(tag + 'Não consegui renomear: ' + rejFriendly(e.message, 'update'), 'err', e.message); }
+        }
       } catch (e) {
         rejLog(tag + rejFriendly(e.message, e.stage), 'err', e.message);
       }
@@ -4772,6 +4797,11 @@
         await loadLiveCampanhas();
         if (![...done].some(id => rejAds.some(a => a.id === id))) break;
       }
+      renames.forEach(r => {
+        const hit = r.type === 'ad' ? campaigns.flatMap(c => (c.adSets || []).flatMap(sx => sx.ads || [])).find(x => x.id === r.id)
+          : r.type === 'adset' ? campaigns.flatMap(c => c.adSets || []).find(x => x.id === r.id) : campaigns.find(x => x.id === r.id);
+        rejLog(r.tag + (r.type === 'ad' ? 'Anúncio' : r.type === 'adset' ? 'Conjunto' : 'Campanha') + ' → ' + r.name + (hit && hit.name === r.name ? ' ✓' : ' — a NewsBreak ainda não mostra o novo nome; confira em alguns segundos.'), hit && hit.name === r.name ? 'ok' : '');
+      });
       ads.filter(a => done.has(a.id)).forEach(a => {
         const still = rejAds.some(x => x.id === a.id);
         rejLog('[' + a.name + '] ' + (still ? 'ainda aparece como recusado — a NewsBreak pode levar alguns segundos; se continuar, me avise.' : 'em análise na NewsBreak ✓'), still ? '' : 'ok');
