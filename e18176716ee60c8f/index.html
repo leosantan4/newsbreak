@@ -312,6 +312,7 @@
   .rule-chip.act{background:color-mix(in srgb, var(--accent) 16%, transparent);}
   .rule-chip.warn{background:var(--bad-bg); color:var(--bad);}
   .rule-actions{display:flex; gap:6px; align-items:center;}
+  @media (max-width:720px){ .rule-row{grid-template-columns:minmax(0,1fr); padding:14px;} .rule-actions{flex-wrap:wrap;} }
   .rule-actions button{border:1px solid var(--line); background:var(--surface-raised); color:var(--ink); font:inherit; font-weight:600; font-size:12px; padding:5px 10px; border-radius:var(--radius-sm); cursor:pointer;}
   .rule-actions button.danger:hover{border-color:var(--bad); color:var(--bad);}
   .multi-sel{position:relative; text-transform:none; letter-spacing:0;}
@@ -531,6 +532,7 @@
   .step-desc.cc-note, .cc-note{display:block; max-width:none; width:100%; text-align:justify; text-justify:inter-word; font-size:12.5px; line-height:1.55; color:var(--muted);}
 
   .gallery-toolbar{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:0 18px 14px; flex-wrap:wrap;}
+  .gallery-breadcrumb:empty{display:none;}
   .gallery-breadcrumb{font-size:13.5px; color:var(--muted); display:flex; align-items:center; gap:6px; font-weight:600;}
   .gallery-breadcrumb .crumb-link{color:var(--muted); cursor:pointer;}
   .gallery-breadcrumb .crumb-link:hover{color:var(--accent);}
@@ -808,7 +810,7 @@
   @media (prefers-reduced-motion: reduce){ .bell-btn, .bell-badge, .nav-badge{animation:none;} }
   .bell-pop{position:absolute; right:0; top:calc(100% + 8px); z-index:70; width:min(340px, 86vw); background:var(--surface-raised); border:1px solid var(--line); border-radius:12px; box-shadow:0 12px 32px -8px rgba(0,0,0,.45); padding:12px 14px; font-size:13px;}
   .bell-pop[hidden]{display:none;}
-  @media (max-width:720px){ .bell-pop{left:0; right:auto;} }
+  @media (max-width:720px){ .bell-pop{right:0; left:auto; width:min(340px, calc(100vw - 32px)); max-height:70vh; overflow-y:auto;} }
   .nav-badge{margin-left:auto; min-width:19px; height:19px; padding:0 6px; border-radius:999px; background:var(--bad); color:#fff; font-size:11px; font-weight:700; display:inline-flex; align-items:center; justify-content:center; animation:nbpulse 1.6s ease-out infinite;}
   .nav-badge[hidden]{display:none;}
   .bell-pop-link{margin-top:8px; border:none; background:none; color:var(--accent); font:inherit; font-weight:700; font-size:12.5px; padding:4px 0; cursor:pointer;}
@@ -5578,7 +5580,7 @@
   function renderGalleryBreadcrumb(){
     const el = document.getElementById('galleryBreadcrumb');
     if (!galleryOpenFolder) {
-      el.innerHTML = '<span class="crumb-current">Galeria de anúncios</span>';
+      el.innerHTML = '';
       return;
     }
     const parts = galleryOpenFolder === 'logo' ? ['logo'] : galleryOpenFolder.split('/');
@@ -5630,8 +5632,8 @@
     const gridWrap = document.getElementById('galleryGrid');
     const note = document.getElementById('galleryGridNote');
     const subs = childFolders(galleryOpenFolder);
-    if (!galleryOpenFolder) { gridWrap.innerHTML = ''; note.textContent = 'Escolha uma pasta na lateral ou abra uma abaixo.'; }
-    wrap.innerHTML = subs.map(code =>
+    if (!galleryOpenFolder) { gridWrap.innerHTML = ''; note.textContent = 'Escolha uma pasta pra ver os anúncios.'; }
+    wrap.innerHTML = !galleryOpenFolder ? '' : subs.map(code =>
       '<div class="subfolder-chip" data-folder="' + code + '">' + FOLDER_SVG + folderLabel(code) + ' <small>' + folderItemCount(code) + '</small></div>'
     ).join('');
     wrap.querySelectorAll('.subfolder-chip').forEach(el => {
