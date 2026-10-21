@@ -4766,7 +4766,7 @@
             upCache[ck] = up.asset.assetUrl;
           }
           assetUrl = upCache[ck];
-          type = (lib.contentType || '').indexOf('video') === 0 ? 'VIDEO' : 'IMAGE';
+          type = (lib.contentType || '').indexOf('video') === 0 ? 'VIDEO' : (lib.contentType === 'image/gif' ? 'GIF' : 'IMAGE'); // same types Criar Campanha uses
         }
         const creative = {
           type, assetUrl,
