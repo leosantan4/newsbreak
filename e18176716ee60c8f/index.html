@@ -91,10 +91,6 @@
   .live-dot.live{animation:pulse 2s ease-in-out infinite;}
 
   .tabs{display:flex; gap:6px; margin-bottom:16px; flex-wrap:wrap;}
-  .rej-warn-card{margin:12px 20px 0; padding:14px 16px; border:1px solid color-mix(in srgb, var(--bad) 45%, var(--line)); background:color-mix(in srgb, var(--bad) 7%, var(--surface-raised)); border-radius:var(--radius-md);}
-  .rej-warn-text{font-size:12.5px; margin:8px 0; line-height:1.45;}
-  .rej-warn-ads{display:flex; flex-wrap:wrap; gap:6px 14px; font-size:13px; font-weight:600; margin-bottom:6px;}
-  .rej-chip.warn{background:var(--bad-bg); color:var(--bad);}
   .rk-top{display:flex; justify-content:space-between; align-items:flex-start; gap:12px 20px; flex-wrap:wrap; padding:18px 20px 6px;}
   .rk-master{display:flex; flex-direction:column; gap:8px; min-width:0;}
   .rk-lab{font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:var(--muted);}
@@ -2114,7 +2110,6 @@
               <button type="button" class="rej-edit-btn" id="rejEditBtn">Editar selecionados</button>
             </div>
           </div>
-          <div id="rejWarn"></div>
           <div id="rejList"></div>
         </section>
     </div>
@@ -3869,8 +3864,7 @@
     const bell = document.getElementById('balanceBell');
     const pop = document.getElementById('balancePop');
     const rej = (typeof rejAds !== 'undefined') ? rejAds : [];
-    const warnL = (typeof rejWarn !== 'undefined') ? rejWarn : [];
-    const total = balAlerts.length + rej.length + warnL.length;
+    const total = balAlerts.length + rej.length;
     bell.classList.toggle('idle', !total);
     document.getElementById('balanceBellCount').textContent = total;
     bell.title = total ? total + ' alerta' + (total === 1 ? '' : 's') : 'Sem alertas';
@@ -3881,13 +3875,8 @@
         (rej.length > 6 ? '<div class="bell-pop-row cell-muted">+' + (rej.length - 6) + ' …</div>' : '') +
         '<button type="button" class="bell-pop-link" data-goto-view="rejeicoes">Ver em Rejeições →</button>';
     }
-    if (warnL.length) {
-      html += '<div class="bell-pop-title"' + (rej.length ? ' style="margin-top:12px;"' : '') + '>Campanhas com aviso da NewsBreak (' + warnL.length + ')</div>' +
-        warnL.slice(0, 6).map(w => '<div class="bell-pop-row"><span>' + ccEsc(w.name) + '</span><span class="cell-muted">' + w.ads.length + ' anúncio' + (w.ads.length === 1 ? '' : 's') + '</span></div>').join('') +
-        '<button type="button" class="bell-pop-link" data-goto-view="rejeicoes">Ver em Rejeições →</button>';
-    }
     if (balAlerts.length) {
-      html += '<div class="bell-pop-title"' + (rej.length || warnL.length ? ' style="margin-top:12px;"' : '') + '>' + balLabel + '</div>' +
+      html += '<div class="bell-pop-title"' + (rej.length ? ' style="margin-top:12px;"' : '') + '>' + balLabel + '</div>' +
         balAlerts.map(r => '<div class="bell-pop-row"><span>' + r.name + '</span><span class="bal">' + fmtUSD(r.balance) + '</span></div>').join('');
     }
     if ('Notification' in window && Notification.permission === 'default') html += '<button type="button" class="bell-pop-link" id="enableNotifBtn">Ativar avisos do navegador</button>';
@@ -3905,7 +3894,7 @@
     if (nb) nb.addEventListener('click', () => Notification.requestPermission().then(() => renderBell()));
     pop.querySelectorAll('[data-goto-view]').forEach(b => b.addEventListener('click', () => { view = b.dataset.gotoView; savePref('view', view); pop.hidden = true; renderAll(); }));
     const badge = document.getElementById('rejNavBadge');
-    if (badge) { badge.hidden = !(rej.length + warnL.length); badge.textContent = rej.length + warnL.length; }
+    if (badge) { badge.hidden = !rej.length; badge.textContent = rej.length; }
     document.title = (total ? '(' + total + ') ' : '') + document.title.replace(/^\(\d+\) /, '');
   }
   document.getElementById('balanceBell').addEventListener('click', (e) => { e.stopPropagation(); const pop = document.getElementById('balancePop'); pop.hidden = !pop.hidden; });
@@ -4458,7 +4447,6 @@
 
   // ---------- Rejeições ----------
   let rejAds = [];
-  let rejWarn = []; // campaigns NewsBreak marks WARNING without a visible reason (quality issues: the ads barely spend)
   let rejFailed = [];
   let rejLoading = false;
   let rejLoaded = false;
@@ -4511,27 +4499,6 @@
       });
     });
     out.sort((x, y) => String(y.id).localeCompare(String(x.id)));
-    // campaign WARNING with nothing inside explaining it (no ad set in WARNING, no ad under review) = quality issue flagged by NewsBreak
-    const warn = [];
-    (campaigns || []).forEach(c => {
-      if (c.status !== 'ON' || c.onlineStatus !== 'WARNING') return;
-      const sets = (c.adSets || []).filter(sx => sx.status === 'ON');
-      if (sets.some(sx => sx.onlineStatus === 'WARNING')) return;
-      const ads = []; let reviewing = false;
-      sets.forEach(sx => (sx.ads || []).forEach(ad => {
-        if (ad.status !== 'ON') return;
-        if (['PENDING', 'IN_REVIEW', 'UNDER_REVIEW'].indexOf(ad.auditStatus) !== -1) reviewing = true;
-        else if (ad.auditStatus === 'APPROVED') ads.push({ ...ad, adSetName: sx.name });
-      }));
-      if (reviewing || !ads.length) return;
-      warn.push({ id: c.id, name: c.name, accountKey: c.accountKey, adAccountName: c.adAccountName, cost: c.todayCost || 0, budget: c.activeBudget, ads });
-    });
-    const prevWarn = new Set(rejWarn.map(w => w.id));
-    const freshWarn = rejLiveLoaded ? warn.filter(w => !prevWarn.has(w.id)) : [];
-    rejWarn = warn;
-    if (freshWarn.length && rejKnown) {
-      try { if ('Notification' in window && Notification.permission === 'granted') new Notification('Campanha com aviso da NewsBreak', { body: freshWarn.slice(0, 4).map(w => w.name).join('\n'), tag: 'pc-warn' }); } catch (e) {}
-    }
     const prevIds = rejKnown;
     rejAds = out;
     if (prevIds && rejLiveLoaded) {
@@ -4565,12 +4532,7 @@
       (n === 'all' ? 'Todas' : ccEsc(n)) + (n === 'all' ? ' (' + rejAds.length + ')' : ' (' + rejAds.filter(a => a.adAccountName === n).length + ')') + '</button>').join('');
     document.querySelectorAll('[data-rej-acc]').forEach(b => b.addEventListener('click', () => { rejAccFilter = b.dataset.rejAcc; renderRejeicoes(); }));
     const vis = rejVisible();
-    document.getElementById('rejCount').textContent = rejLoaded ? vis.length + ' recusado' + (vis.length === 1 ? '' : 's') + (rejWarn.length ? ' · ' + rejWarn.length + ' com aviso' : '') : '';
-    const wbox = document.getElementById('rejWarn');
-    if (wbox) wbox.innerHTML = rejWarn.map(w => '<div class="rej-warn-card"><div class="rej-title">' + ccEsc(w.name) + ' <span class="rej-chip">' + ccEsc(w.adAccountName) + '</span> <span class="rej-chip warn">Aviso da NewsBreak</span></div>' +
-      '<div class="rej-warn-text">A NewsBreak marcou esta campanha com <b>aviso (WARNING)</b> e nada dentro explica: anúncios aprovados e conjuntos prontos. Costuma ser <b>problema de qualidade</b> num anúncio, que fica ativo mas quase não gasta. A API não diz qual é o anúncio nem o motivo: abra os anúncios na NewsBreak e procure o sinal vermelho (Fix Issues).</div>' +
-      '<div class="rej-warn-ads">' + w.ads.map(a => '<span>' + ccEsc(a.name) + ' <span class="cell-muted">· hoje ' + (a.todayCost != null ? fmtUSD(a.todayCost) : '$0,00') + '</span></span>').join('') + '</div>' +
-      '<div class="cell-muted" style="font-size:12px;">Campanha: gasto hoje ' + fmtUSD(w.cost) + (w.budget ? ' de ' + fmtUSD(w.budget) + '/dia' : '') + '</div></div>').join('');
+    document.getElementById('rejCount').textContent = rejLoaded ? vis.length + ' recusado' + (vis.length === 1 ? '' : 's') : '';
     const failNote = rejFailed.length ? '<div class="empty-state" style="color:var(--bad);">Não consegui ler: ' + ccEsc(rejFailed.join(' · ')) + '</div>' : '';
     if (!rejLoaded) { list.innerHTML = '<div class="empty-state">Carregando…</div>'; }
     else if (!vis.length) { list.innerHTML = failNote + '<div class="empty-state">Nenhum anúncio recusado em campanha, conjunto e anúncio ativos. 🎉</div>'; }
