@@ -1072,14 +1072,18 @@
           <select id="ctNiche" class="camp-search" title="Nicho"></select>
           <div class="ct-cols-wrap"><button type="button" class="select-all-btn" id="ctColsBtn">Colunas</button><div class="ct-cols-panel" id="ctColsPanel" hidden></div></div>
         </div>
+        <div id="ctBulkHolder">
         <div class="ct-bulk" id="ctBulk" hidden>
           <b id="ctBulkCount"></b>
           <button type="button" class="select-all-btn" id="ctBulkOn">Ativar</button>
           <button type="button" class="select-all-btn" id="ctBulkOff">Pausar</button>
+          <label class="ct-bulk-budget" id="ctBulkBudgetWrap" hidden>Orçamento/dia $<input type="number" id="ctBulkBudget" min="10" step="1" placeholder="—"></label>
+          <button type="button" class="select-all-btn ct-apply" id="ctBulkApply" disabled>Aplicar</button>
           <button type="button" class="select-all-btn" id="ctBulkEdit" hidden>Editar anúncios</button>
           <button type="button" class="select-all-btn danger" id="ctBulkDel">Excluir</button>
           <button type="button" class="select-all-btn" id="ctBulkClear">Limpar seleção</button>
           <span class="cell-muted" id="ctBulkMsg"></span>
+        </div>
         </div>
         <div class="camp-wrap" id="campWrap"></div>
       </section>
@@ -1443,7 +1447,11 @@
   .ct-col-row input{accent-color:var(--accent);}
   .ct-col-row button{border:1px solid var(--line); background:var(--surface-raised); color:var(--ink); border-radius:6px; padding:1px 7px; cursor:pointer; font-size:12px;}
   .ct-col-row button:disabled{opacity:.35; cursor:default;}
-  .ct-bulk{display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:8px 18px; margin:0 18px 8px; background:color-mix(in srgb, var(--accent) 10%, var(--neutral-bg)); border-radius:10px; font-size:13px;}
+  .ct-bulk{display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:5px 10px; margin:0 0 0 auto; background:color-mix(in srgb, var(--accent) 10%, var(--neutral-bg)); border-radius:10px; font-size:13px;}
+  .ct-bulk .select-all-btn.pending{border-color:var(--accent); background:color-mix(in srgb, var(--accent) 16%, var(--surface-raised)); color:var(--ink);}
+  .ct-bulk .ct-apply:not(:disabled){background:var(--accent); color:var(--accent-ink); border-color:var(--accent);}
+  .ct-bulk-budget{display:inline-flex; align-items:center; gap:4px; font-size:13px; font-weight:400; text-transform:none; letter-spacing:0; margin:0;}
+  .ct-bulk-budget input{width:74px; padding:4px 6px; font-size:13px;}
   .ct-bulk[hidden]{display:none;}
   .select-all-btn.danger{color:var(--bad);}
   .select-all-btn.danger:hover{border-color:var(--bad);}
@@ -3749,7 +3757,10 @@
     const TABS = [{ key: 'campaigns', label: 'Campanhas' }, { key: 'adsets', label: 'Conjuntos' }, { key: 'ads', label: 'Anúncios' }];
     const chip = (t, label) => ctSel[t].size && campTab !== t && ((t === 'campaigns' && campTab !== 'campaigns') || (t === 'adsets' && campTab === 'ads'))
       ? '<span class="ct-chip">' + ctSel[t].size + ' ' + label + (ctSel[t].size > 1 ? 's' : '') + ' selecionad' + (t === 'campaigns' ? 'a' : 'o') + (ctSel[t].size > 1 ? 's' : '') + ' <button type="button" data-ct-clear="' + t + '" title="Tirar o filtro">✕</button></span>' : '';
-    const bar = '<div class="ct-tabbar"><div class="tabs">' + TABS.map(t => '<button class="tab' + (campTab === t.key ? ' active' : '') + '" data-ct-tab="' + t.key + '">' + t.label + ' <span class="cell-muted">' + scopedAll[t.key].length + '</span></button>').join('') + '</div>' +
+    // the number on each tab is what you see: rows that pass the filters (status included); a tab you selected in shows how many you selected
+    const stOk = (r) => ctStatusF === 'all' || ctStatusKey(r) === ctStatusF;
+    const tabCount = (t) => (t !== campTab && ctSel[t].size) ? ctSel[t].size : scopedAll[t].filter(stOk).length;
+    const bar = '<div class="ct-tabbar"><div class="tabs">' + TABS.map(t => '<button class="tab' + (campTab === t.key ? ' active' : '') + '" data-ct-tab="' + t.key + '">' + t.label + ' <span class="cell-muted">' + tabCount(t.key) + '</span></button>').join('') + '</div>' +
       chip('campaigns', 'campanha') + chip('adsets', 'conjunto') + '</div>';
 
     const vis = ctVisibleOrder();
@@ -3791,6 +3802,8 @@
     const foot = '<tr><td class="l" colspan="' + fixedCols + '">Total (' + shown.length + ')</td>' + vis.map(k => !CT_CATALOG[k] ? '<td></td>' : k === 'budget' ? '<td></td>' : ctCell(tot, k)).join('') + '<td class="spacer"></td></tr>';
     const loading = ctPeriod !== 'TODAY' && !(ctMetrics[ctPeriod] && ctMetrics[ctPeriod].data);
 
+    const bulkEl = document.getElementById('ctBulk');
+    document.getElementById('ctBulkHolder').appendChild(bulkEl); // keep it alive while the table is redrawn
     wrap.innerHTML = bar + '<div class="table-scroll"><table class="ctable" style="min-width:' + tableW + 'px">' + colgroup + '<thead>' + head + '</thead><tbody>' +
       (body || '<tr><td class="l" colspan="' + (fixedCols + vis.length + 1) + '"><div class="empty-state">' + (loading ? 'Carregando…' : 'Nada encontrado com esses filtros.') + '</div></td></tr>') +
       '</tbody><tfoot>' + foot + '</tfoot></table></div>' +
@@ -3827,11 +3840,15 @@
         .catch(() => { el.checked = prev; alert('Não consegui atualizar o status.'); })
         .finally(() => { const t = el.closest('.toggle-switch'); if (t) t.removeAttribute('data-busy'); });
     }));
-    // bulk bar
+    // bulk bar (lives in the tab row, right side)
     const n = ctSel[campTab].size;
     const bulk = document.getElementById('ctBulk');
+    const tb = wrap.querySelector('.ct-tabbar'); if (tb) tb.appendChild(bulk);
     bulk.hidden = !n;
     document.getElementById('ctBulkEdit').hidden = campTab !== 'ads';
+    document.getElementById('ctBulkBudgetWrap').hidden = campTab !== 'adsets';
+    if (!n) { ctBulkPending = null; document.getElementById('ctBulkBudget').value = ''; }
+    ctBulkSync();
     const fem = campTab === 'campaigns';
     document.getElementById('ctBulkCount').textContent = n + ' ' + { campaigns: 'campanha', adsets: 'conjunto', ads: 'anúncio' }[campTab] + (n === 1 ? '' : 's') + ' selecionad' + (fem ? 'a' : 'o') + (n === 1 ? '' : 's');
   }
@@ -3875,16 +3892,33 @@
 
   // --- bulk actions ---
   function ctSelectedRows(){ return flattenCampData()[campTab].filter(r => ctSel[campTab].has(r.id)); }
-  async function ctBulkStatus(status){
+  // Ativar / Pausar only mark what will happen; "Aplicar" does it (status and, for ad sets, the daily budget) on everything selected
+  let ctBulkPending = null;
+  function ctBulkSync(){
+    document.getElementById('ctBulkOn').classList.toggle('pending', ctBulkPending === 'ON');
+    document.getElementById('ctBulkOff').classList.toggle('pending', ctBulkPending === 'OFF');
+    const bv = parseFloat(document.getElementById('ctBulkBudget').value);
+    document.getElementById('ctBulkApply').disabled = !(ctBulkPending || (campTab === 'adsets' && isFinite(bv)));
+  }
+  async function ctBulkApply(){
     const rows = ctSelectedRows(); if (!rows.length) return;
+    const bv = parseFloat(document.getElementById('ctBulkBudget').value), withBudget = campTab === 'adsets' && isFinite(bv);
+    if (withBudget && bv < 10) { alert('Orçamento mínimo é $10/dia.'); return; }
+    const status = ctBulkPending;
     const msg = document.getElementById('ctBulkMsg'); let ok = 0, fail = 0;
-    ['ctBulkOn', 'ctBulkOff', 'ctBulkDel', 'ctBulkClear'].forEach(id => { document.getElementById(id).disabled = true; });
+    ['ctBulkOn', 'ctBulkOff', 'ctBulkApply', 'ctBulkDel', 'ctBulkClear'].forEach(id => { document.getElementById(id).disabled = true; });
     for (let i = 0; i < rows.length; i++) {
-      msg.textContent = (status === 'ON' ? 'Ativando ' : 'Pausando ') + (i + 1) + '/' + rows.length + '…';
-      try { await setEntityStatus(rows[i].accountKey, rows[i].type, rows[i].id, status); ok++; } catch (e) { fail++; }
+      msg.textContent = 'Aplicando ' + (i + 1) + '/' + rows.length + '…';
+      try {
+        if (status) await setEntityStatus(rows[i].accountKey, rows[i].type, rows[i].id, status);
+        if (withBudget) await setAdsetBudget(rows[i].accountKey, rows[i].id, bv);
+        ok++;
+      } catch (e) { fail++; }
     }
+    ctBulkPending = null; document.getElementById('ctBulkBudget').value = '';
     ['ctBulkOn', 'ctBulkOff', 'ctBulkDel', 'ctBulkClear'].forEach(id => { document.getElementById(id).disabled = false; });
-    msg.textContent = ok + ' ' + (status === 'ON' ? 'ativado(s)' : 'pausado(s)') + (fail ? ' · ' + fail + ' falhou/falharam' : '') + '.';
+    ctBulkSync();
+    msg.textContent = ok + ' aplicado(s)' + (fail ? ' · ' + fail + ' falhou/falharam' : '') + '.';
     setTimeout(() => { msg.textContent = ''; }, 6000);
     await loadLiveCampanhas();
   }
@@ -3962,8 +3996,11 @@
     document.getElementById('ctColsBtn').addEventListener('click', (e) => { e.stopPropagation(); const p = document.getElementById('ctColsPanel'); p.hidden = !p.hidden; if (!p.hidden) placeColsPanel(); });
     window.addEventListener('resize', () => { const p = document.getElementById('ctColsPanel'); if (p && !p.hidden) placeColsPanel(); });
     document.addEventListener('click', (e) => { const p = document.getElementById('ctColsPanel'); if (p && !p.hidden && !e.target.closest('.ct-cols-wrap')) p.hidden = true; });
-    document.getElementById('ctBulkOn').addEventListener('click', () => ctBulkStatus('ON'));
-    document.getElementById('ctBulkOff').addEventListener('click', () => ctBulkStatus('OFF'));
+    document.getElementById('ctBulkOn').addEventListener('click', () => { ctBulkPending = ctBulkPending === 'ON' ? null : 'ON'; ctBulkSync(); });
+    document.getElementById('ctBulkOff').addEventListener('click', () => { ctBulkPending = ctBulkPending === 'OFF' ? null : 'OFF'; ctBulkSync(); });
+    document.getElementById('ctBulkBudget').addEventListener('input', ctBulkSync);
+    document.getElementById('ctBulkBudget').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !document.getElementById('ctBulkApply').disabled) ctBulkApply(); });
+    document.getElementById('ctBulkApply').addEventListener('click', ctBulkApply);
     document.getElementById('ctBulkDel').addEventListener('click', ctOpenDelete);
     document.getElementById('ctBulkEdit').addEventListener('click', () => ctOpenAdEdit());
     document.getElementById('ctBulkClear').addEventListener('click', () => { ctSel[campTab] = new Set(); renderCampanhas(); });
