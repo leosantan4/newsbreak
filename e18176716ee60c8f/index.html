@@ -471,7 +471,7 @@
   .ctable thead th.drag-over{box-shadow:inset 3px 0 0 var(--accent);}
   .ctable thead th.dragging{opacity:.4;}
   .ctable thead th.spacer, .ctable tbody td.spacer, .ctable tfoot td.spacer{padding:0; border:none;}
-  .col-rs{position:absolute; top:0; right:0; width:7px; height:100%; cursor:col-resize; z-index:2;}
+  .col-rs{position:absolute; top:0; right:-3px; width:11px; height:100%; cursor:col-resize; z-index:2;}
   .col-rs:hover, .col-rs.on{background:color-mix(in srgb, var(--accent) 45%, transparent);}
   body.col-resizing{cursor:col-resize; user-select:none;}
   .ctable-name-link{background:none; border:none; padding:0; font:inherit; font-weight:500; color:var(--ink); cursor:pointer; text-align:left; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:block;}
@@ -1433,7 +1433,10 @@
   .ct-preset button:first-child:hover{color:var(--accent);}
   .ct-preset-save{border:1px dashed var(--line); background:none; color:var(--accent); font:inherit; font-size:12.5px; font-weight:600; padding:4px 10px; border-radius:999px; cursor:pointer;}
   .ct-grip{text-align:center; cursor:grab; color:var(--muted); font-size:14px; letter-spacing:-2px; padding:2px 8px 2px 0; touch-action:none; user-select:none;}
-  .ct-col-row.dragging{background:var(--surface-raised); border-radius:8px; box-shadow:0 6px 18px -6px rgba(0,0,0,.4); position:relative;}
+  #ctColsList{user-select:none; -webkit-user-select:none;}
+  .ct-col-row{will-change:transform;}
+  .ct-col-row.lifting{position:relative; background:var(--surface-raised); outline:2px solid var(--accent); border-radius:10px; box-shadow:0 14px 28px -8px rgba(0,0,0,.55); cursor:grabbing; opacity:.97;}
+  .ct-col-row.lifting .ct-grip{cursor:grabbing; color:var(--accent);}
   .ct-col-row label{display:flex; gap:9px; align-items:center; justify-content:flex-start; text-align:left; cursor:pointer; font-weight:400; min-width:0; margin:0; text-transform:none; letter-spacing:0;}
   .ct-col-row.off label{color:var(--muted);}
   .ct-col-row .ct-arrows{display:inline-flex; gap:4px;}
@@ -3513,8 +3516,8 @@
     ctMeasure.font = cs ? cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily : '500 10.5px Inter, sans-serif';
     return Math.ceil(ctMeasure.measureText(label).width + label.length * 0.55 + 24 + 16);
   }
-  function ctFitW(k){ return Math.max(k === 'name' ? 200 : k === 'origin' ? 240 : 64, ctTitleW(k)); }
-  function ctDefaultW(k){ return k === 'name' ? 300 : k === 'origin' ? 280 : Math.max(k === 'status' ? 110 : 84, ctTitleW(k)); }
+  function ctFitW(k){ return Math.max(k === 'name' ? 160 : 56, ctTitleW(k)); }
+  function ctDefaultW(k){ return k === 'name' ? 260 : k === 'origin' ? 230 : k === 'status' ? 96 : Math.max(72, ctTitleW(k)); }
   function ctW(k){ return Math.max(50, Math.round(ctWidths[k] || ctDefaultW(k))); }
   function ctFullOrder(){ return ctCols.slice(); }
   function ctVisibleOrder(){ return ctCols.filter(k => !(k === 'budget' && campTab === 'ads')); }
@@ -3649,43 +3652,46 @@
     const move = (k, d) => { const i = ctOrderAll.indexOf(k), j = i + d; if (j < 0 || j >= ctOrderAll.length) return; [ctOrderAll[i], ctOrderAll[j]] = [ctOrderAll[j], ctOrderAll[i]]; saveCtCols(); renderCtColsPanel(); renderCampanhas(); };
     panel.querySelectorAll('[data-col-up]').forEach(b => b.addEventListener('click', () => move(b.dataset.colUp, -1)));
     panel.querySelectorAll('[data-col-down]').forEach(b => b.addEventListener('click', () => move(b.dataset.colDown, 1)));
-    // drag by the grip (mouse and finger): the row follows the pointer, the others slide aside; the table is redone once, on release
+    // drag by the grip (mouse and finger): the row lifts out of place and follows the pointer, the others slide aside, it settles into the gap on release
     panel.querySelectorAll('[data-grip]').forEach(g => g.addEventListener('pointerdown', (e) => {
       e.preventDefault();
       const list = document.getElementById('ctColsList'), rows = [...list.querySelectorAll('.ct-col-row')], row = g.closest('.ct-col-row');
-      const from = rows.indexOf(row), tops = rows.map(r => r.offsetTop), h = row.offsetHeight, startY = e.clientY, startScroll = panel.scrollTop;
-      let to = from;
-      row.classList.add('dragging'); row.style.transition = 'none'; row.style.zIndex = 5;
-      rows.forEach(r => { if (r !== row) r.style.transition = 'transform .14s ease'; });
-      const apply = (clientY) => {
-        const dy = (clientY - startY) + (panel.scrollTop - startScroll);
-        const minDy = tops[0] - tops[from], maxDy = tops[rows.length - 1] - tops[from];
-        const d = Math.max(minDy, Math.min(maxDy, dy));
-        row.style.transform = 'translateY(' + d + 'px)';
+      const from = rows.indexOf(row), tops = rows.map(r => r.offsetTop), hs = rows.map(r => r.offsetHeight), h = hs[from];
+      const startY = e.clientY, startScroll = panel.scrollTop;
+      let to = from, d = 0, lastY = startY, raf = 0, ending = false;
+      row.classList.add('lifting'); row.style.zIndex = 5;
+      row.style.transition = 'transform .16s cubic-bezier(.2,.8,.2,1), box-shadow .16s';
+      rows.forEach(r => { if (r !== row) r.style.transition = 'transform .2s cubic-bezier(.2,.8,.2,1)'; });
+      const place = () => {
+        raf = 0;
+        d = Math.max(tops[0] - tops[from], Math.min(tops[rows.length - 1] + hs[rows.length - 1] - h - tops[from], (lastY - startY) + (panel.scrollTop - startScroll)));
+        row.style.transition = 'box-shadow .16s'; // follow the pointer with no lag once lifted
+        row.style.transform = 'translateY(' + d + 'px) scale(1.03)';
         const center = tops[from] + d + h / 2;
-        to = 0; rows.forEach((r, i) => { if (i !== from && tops[i] + r.offsetHeight / 2 < center) to++; });
-        // `to` counts rows above the center, but the dragged row itself is not in the count
+        to = 0; rows.forEach((r, i) => { if (i !== from && tops[i] + hs[i] / 2 < center) to++; });
         rows.forEach((r, i) => {
           if (i === from) return;
-          let shift = 0;
-          if (from < to && i > from && i <= to) shift = -h;
-          else if (from > to && i >= to && i < from) shift = h;
+          const shift = (from < to && i > from && i <= to) ? -h : (from > to && i >= to && i < from) ? h : 0;
           r.style.transform = shift ? 'translateY(' + shift + 'px)' : '';
         });
       };
-      let lastY = e.clientY;
+      const schedule = () => { if (!raf) raf = requestAnimationFrame(place); };
+      row.style.transform = 'scale(1.03)'; // the "pick up" moment
       const scroller = setInterval(() => { // near the edge of the panel: scroll it
         const pr = panel.getBoundingClientRect();
-        if (lastY < pr.top + 28) panel.scrollTop -= 8; else if (lastY > pr.bottom - 28) panel.scrollTop += 8; else return;
-        apply(lastY);
+        if (lastY < pr.top + 28 && lastY < startY - 6) panel.scrollTop -= 8; else if (lastY > pr.bottom - 28 && lastY > startY + 6) panel.scrollTop += 8; else return; // only toward the side you are dragging to
+        schedule();
       }, 16);
-      const onMove = (ev) => { ev.preventDefault(); lastY = ev.clientY; apply(ev.clientY); };
+      const onMove = (ev) => { ev.preventDefault(); lastY = ev.clientY; schedule(); };
       const onUp = () => {
-        clearInterval(scroller);
+        if (ending) return; ending = true;
+        clearInterval(scroller); if (raf) cancelAnimationFrame(raf); place();
         window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp); window.removeEventListener('pointercancel', onUp);
         const order = rows.map(r => r.dataset.colRow); order.splice(from, 1); order.splice(to, 0, row.dataset.colRow);
-        rows.forEach(r => { r.style.transform = ''; r.style.transition = ''; r.style.zIndex = ''; r.classList.remove('dragging'); });
-        if (to !== from) { ctOrderAll = order.filter(ctValid); saveCtCols(); renderCtColsPanel(); renderCampanhas(); }
+        const finalTop = to > from ? tops[to] + hs[to] - h : tops[to];
+        row.style.transition = 'transform .18s cubic-bezier(.2,.8,.2,1), box-shadow .18s'; // settle into the gap
+        row.style.transform = 'translateY(' + (finalTop - tops[from]) + 'px)';
+        setTimeout(() => { if (to !== from) { ctOrderAll = order.filter(ctValid); saveCtCols(); renderCtColsPanel(); renderCampanhas(); } else { rows.forEach(r => { r.style.transform = ''; r.style.transition = ''; r.style.zIndex = ''; r.classList.remove('lifting'); }); } }, 190);
       };
       window.addEventListener('pointermove', onMove, { passive: false }); window.addEventListener('pointerup', onUp); window.addEventListener('pointercancel', onUp);
     }));
