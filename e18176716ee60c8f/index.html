@@ -493,9 +493,6 @@
   .ctable-name{font-weight:500; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   .ctable-sub{font-size:11px; color:var(--muted); font-weight:400; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   .ctable-thumb{width:44px; height:58px; object-fit:cover; border-radius:6px; background:var(--neutral-bg); display:block; flex:none;}
-  .budget-actions{display:inline-flex; align-items:center; gap:6px; margin-left:6px;}
-  .budget-actions[hidden]{display:none;}
-  .budget-delta{font-size:11px; color:var(--muted); white-space:nowrap;}
   .budget-confirm{border:none; background:var(--accent); color:var(--accent-ink); font:inherit; font-size:11.5px; font-weight:600; padding:5px 10px; border-radius:var(--radius-xs); cursor:pointer;}
   .budget-confirm:disabled{opacity:.6; cursor:wait;}
   .budget-cancel{border:1px solid var(--line); background:none; color:var(--muted); font:inherit; font-size:11.5px; padding:4px 8px; border-radius:var(--radius-xs); cursor:pointer;}
@@ -1461,12 +1458,18 @@
   .ct-chip button{border:none; background:none; color:var(--muted); cursor:pointer; padding:0 4px; font-size:13px;}
   .ctable input[type=checkbox]{accent-color:var(--accent);}
   .ct-budget input.adset-budget-input{width:74px;}
-  /* no up/down arrows (a stray click changed the value); the change only counts after "Confirmar", shown under the field so it is never clipped */
-  .adset-budget-input{-moz-appearance:textfield; appearance:textfield;}
-  .adset-budget-input::-webkit-outer-spin-button, .adset-budget-input::-webkit-inner-spin-button, #ctBulkBudget::-webkit-outer-spin-button, #ctBulkBudget::-webkit-inner-spin-button{-webkit-appearance:none; margin:0;}
+  /* budget: reads as plain text with a pencil; click it to edit, then a tick confirms and a cross cancels (nothing is sent before the tick) */
+  .bud{display:inline-flex; align-items:center; justify-content:flex-end; gap:4px;}
+  .bud-view{display:inline-flex; align-items:center; gap:6px; border:none; background:none; font:inherit; color:inherit; cursor:pointer; padding:3px 0;}
+  .bud-view[hidden], .bud-form[hidden]{display:none;}
+  .bud-pen{width:13px; height:13px; fill:none; stroke:var(--muted); stroke-width:2; stroke-linecap:round; stroke-linejoin:round; opacity:.75; flex:none;}
+  .bud-view:hover .bud-pen{stroke:var(--ink); opacity:1;}
+  .bud-form{display:inline-flex; align-items:center; gap:4px; font-size:12px; color:var(--muted);}
+  .bud-form .adset-budget-input{width:66px; -moz-appearance:textfield; appearance:textfield;}
+  .bud-form .adset-budget-input::-webkit-outer-spin-button, .bud-form .adset-budget-input::-webkit-inner-spin-button, #ctBulkBudget::-webkit-outer-spin-button, #ctBulkBudget::-webkit-inner-spin-button{-webkit-appearance:none; margin:0;}
   #ctBulkBudget{-moz-appearance:textfield; appearance:textfield;}
-  .ct-budget{flex-wrap:wrap; justify-content:flex-end;}
-  .ct-budget .budget-actions{flex-basis:100%; justify-content:flex-end; margin:4px 0 0;}
+  .bud-form .budget-confirm, .bud-form .budget-cancel{width:24px; height:24px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; font-size:13px; line-height:1; flex:none;}
+  .bud-form .budget-confirm:disabled{opacity:.35; cursor:default;}
   .adset-budget-input.pending{border-color:var(--accent);}
   .ct-del-confirm{background:var(--bad); color:#fff;}
   .ct-del-confirm:disabled{opacity:.45;}
@@ -3305,13 +3308,16 @@
   }
 
   let pendingBudgets = {};
-
-  function budgetDeltaText(orig, next){
-    if (next == null || !isFinite(next)) return '';
-    if (orig == null) return '$' + next;
-    const diff = next - orig;
-    const sign = diff > 0 ? '↑ +' : '↓ −';
-    return '$' + orig + ' → $' + next + ' (' + sign + '$' + Math.abs(diff).toLocaleString('pt-BR', {maximumFractionDigits: 2}) + ')';
+  const openBudgets = new Set();
+  const BUD_PEN = '<svg class="bud-pen" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>';
+  function budgetEditHtml(id, accountKey, budget){
+    const pend = pendingBudgets[id] != null, open = pend || openBudgets.has(id);
+    const val = pend ? pendingBudgets[id] : (budget != null ? budget : '');
+    return '<span class="bud" onclick="event.stopPropagation()">' +
+      '<button type="button" class="bud-view" data-bud-open="' + id + '" title="Editar o orçamento"' + (open ? ' hidden' : '') + '>' + (budget != null ? fmtUSD(budget) : '–') + BUD_PEN + '</button>' +
+      '<span class="bud-form" data-bud-form="' + id + '"' + (open ? '' : ' hidden') + '>$<input type="number" class="adset-budget-input' + (pend ? ' pending' : '') + '" data-adset-budget="' + id + '" data-account-key="' + accountKey + '" data-orig="' + (budget != null ? budget : '') + '" value="' + val + '" min="10" step="1">' +
+      '<button type="button" class="budget-confirm" data-budget-confirm="' + id + '" data-account-key="' + accountKey + '" title="Confirmar"' + (pend ? '' : ' disabled') + '>✓</button>' +
+      '<button type="button" class="budget-cancel" data-budget-cancel="' + id + '" title="Cancelar">✕</button></span></span>';
   }
 
   function setAdsetBudget(accountKey, id, budget){
@@ -3343,12 +3349,7 @@
         '<span class="camp-chevron" style="font-size:9px;">▶</span>' +
         '<div class="adset-head-main">' + a.name + '<div class="adset-head-sub">' + a.adsOn + '/' + a.adsTotal + ' anúncios ativos' + (a.todayCost!=null ? ' · ' + fmtUSD(a.todayCost) + ' hoje' : '') + '</div></div>' +
         '<span class="roas-pill ' + st.cls + '" style="font-size:10.5px;">' + st.label + '</span>' +
-        '<div class="adset-budget-wrap" onclick="event.stopPropagation()">$<input type="number" class="adset-budget-input" data-adset-budget="' + a.id + '" data-account-key="' + c.accountKey + '" data-orig="' + (a.budget!=null?a.budget:'') + '" value="' + (pendingBudgets[a.id]!=null?pendingBudgets[a.id]:(a.budget!=null?a.budget:'')) + '" min="10" step="1" placeholder="orç."> /dia' +
-          '<span class="budget-actions" data-budget-actions="' + a.id + '"' + (pendingBudgets[a.id]!=null?'':' hidden') + '>' +
-            '<span class="budget-delta">' + budgetDeltaText(a.budget, pendingBudgets[a.id]) + '</span>' +
-            '<button type="button" class="budget-confirm" data-budget-confirm="' + a.id + '" data-account-key="' + c.accountKey + '">✓ Confirmar</button>' +
-            '<button type="button" class="budget-cancel" data-budget-cancel="' + a.id + '" title="Cancelar">✕</button>' +
-          '</span></div>' +
+        '<div class="adset-budget-wrap" onclick="event.stopPropagation()">' + budgetEditHtml(a.id, c.accountKey, a.budget) + ' /dia</div>' +
         '<label class="toggle-switch small" onclick="event.stopPropagation()"><input type="checkbox" data-adset-status="' + a.id + '" data-account-key="' + c.accountKey + '"' + (a.status==='ON'?' checked':'') + '><span class="toggle-track"></span></label>' +
       '</div>' +
       '<div class="adset-body">' + (expanded ? (ads.map(ad => renderAdRow(c, ad)).join('') || '<div class="cell-muted" style="font-size:11.5px;">Nenhum anúncio.</div>') : '') + '</div>' +
@@ -3418,44 +3419,46 @@
         .catch(() => { el.checked = prev; alert('Não consegui atualizar o status do anúncio.'); })
         .finally(() => { const t = el.closest('.toggle-switch'); if (t) t.removeAttribute('data-busy'); });
     }));
+    const budgetInput = (id) => document.querySelector('[data-adset-budget="' + id + '"]');
     const refreshBudgetActions = (id) => {
-      const input = document.querySelector('[data-adset-budget="' + id + '"]');
-      const actions = document.querySelector('[data-budget-actions="' + id + '"]');
-      if (!input || !actions) return;
+      const input = budgetInput(id), btn = document.querySelector('[data-budget-confirm="' + id + '"]');
+      if (!input || !btn) return;
       const orig = input.dataset.orig === '' ? null : parseFloat(input.dataset.orig);
       const val = parseFloat(input.value);
       const changed = isFinite(val) && val !== orig;
       if (changed) pendingBudgets[id] = val; else delete pendingBudgets[id];
-      actions.hidden = !changed;
+      btn.disabled = !changed;
       input.classList.toggle('pending', changed);
-      actions.querySelector('.budget-delta').textContent = changed ? budgetDeltaText(orig, val) : '';
     };
+    const closeBudget = (id) => { delete pendingBudgets[id]; openBudgets.delete(id); renderCampanhas(); };
     const confirmBudget = (id) => {
-      const input = document.querySelector('[data-adset-budget="' + id + '"]');
+      const input = budgetInput(id);
       const btn = document.querySelector('[data-budget-confirm="' + id + '"]');
       const val = parseFloat(input.value);
+      if (pendingBudgets[id] == null) { closeBudget(id); return; }
       if (!isFinite(val) || val < 10) { alert('Orçamento mínimo é $10/dia.'); return; }
       input.disabled = true;
       btn.disabled = true;
-      btn.textContent = 'Salvando…';
       setAdsetBudget(btn.dataset.accountKey, id, val)
-        .then(() => { delete pendingBudgets[id]; return loadLiveCampanhas(); }).then(() => renderCampanhas())
-        .catch(() => { alert('Não consegui atualizar o orçamento (mínimo $10/dia).'); input.disabled = false; btn.disabled = false; btn.textContent = '✓ Confirmar'; });
+        .then(() => { delete pendingBudgets[id]; openBudgets.delete(id); return loadLiveCampanhas(); }).then(() => renderCampanhas())
+        .catch(() => { alert('Não consegui atualizar o orçamento (mínimo $10/dia).'); input.disabled = false; btn.disabled = false; });
     };
+    document.querySelectorAll('[data-bud-open]').forEach(el => el.addEventListener('click', () => {
+      const id = el.dataset.budOpen; openBudgets.add(id);
+      el.hidden = true; const form = document.querySelector('[data-bud-form="' + id + '"]'); if (form) form.hidden = false;
+      const input = budgetInput(id); if (input) { input.focus(); input.select(); }
+    }));
     document.querySelectorAll('[data-adset-budget]').forEach(el => {
       const id = el.dataset.adsetBudget;
       el.addEventListener('input', () => refreshBudgetActions(id));
       el.addEventListener('wheel', () => el.blur(), { passive: true }); // scrolling the page must never change a budget
       el.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && pendingBudgets[id] != null) confirmBudget(id);
-        if (e.key === 'Escape') { delete pendingBudgets[id]; renderCampanhas(); }
+        if (e.key === 'Enter') confirmBudget(id);
+        if (e.key === 'Escape') closeBudget(id);
       });
     });
     document.querySelectorAll('[data-budget-confirm]').forEach(el => el.addEventListener('click', () => confirmBudget(el.dataset.budgetConfirm)));
-    document.querySelectorAll('[data-budget-cancel]').forEach(el => el.addEventListener('click', () => {
-      delete pendingBudgets[el.dataset.budgetCancel];
-      renderCampanhas();
-    }));
+    document.querySelectorAll('[data-budget-cancel]').forEach(el => el.addEventListener('click', () => closeBudget(el.dataset.budgetCancel)));
     const search = document.getElementById('campSearchInput');
     if (search && !search.dataset.wired) {
       search.dataset.wired = '1';
@@ -3789,9 +3792,7 @@
         : '';
       const sk = ctStatusKey(r), badge = CT_STATUS_BADGE[sk];
       const budgetCell = campTab === 'adsets'
-        ? '<td class="r num"><div class="adset-budget-wrap ct-budget" onclick="event.stopPropagation()">$<input type="number" class="adset-budget-input" data-adset-budget="' + r.id + '" data-account-key="' + r.accountKey + '" data-orig="' + (r.budget != null ? r.budget : '') + '" value="' + (pendingBudgets[r.id] != null ? pendingBudgets[r.id] : (r.budget != null ? r.budget : '')) + '" min="10" step="1">' +
-          '<span class="budget-actions" data-budget-actions="' + r.id + '"' + (pendingBudgets[r.id] != null ? '' : ' hidden') + '><span class="budget-delta">' + budgetDeltaText(r.budget, pendingBudgets[r.id]) + '</span>' +
-          '<button type="button" class="budget-confirm" data-budget-confirm="' + r.id + '" data-account-key="' + r.accountKey + '">✓ Confirmar</button><button type="button" class="budget-cancel" data-budget-cancel="' + r.id + '" title="Cancelar">✕</button></span></div></td>'
+        ? '<td class="r num">' + budgetEditHtml(r.id, r.accountKey, r.budget) + '</td>'
         : '<td class="r num">' + (r.budget != null ? fmtUSD(r.budget) : '<span class="cell-muted">–</span>') + '</td>';
       return '<tr class="' + (r.active ? '' : 'is-off') + '">' +
         '<td class="c"><input type="checkbox" data-ct-check="' + r.id + '"' + (ctSel[campTab].has(r.id) ? ' checked' : '') + '></td>' +
