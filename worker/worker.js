@@ -1157,14 +1157,25 @@ function ruleMatches(rule, mt) {
 }
 
 // Lifetime (last 30 days) metrics per ad set, per account key.
+// Past days come from the settlement (HOURLY) report, which lags and is EMPTY for ad sets created today; so today is never taken from it:
+// lifetime = previous days (settlement) + today (REALTIME). Without this an ad set spending today looked like $0 and no rule ever fired.
 async function fetchLifetimeAdsetMetrics(env, errs) {
   const out = {};
   const tokens = await getAllTokens(env, { visibleOnly: true });
+  const today = todayKeySaoPaulo();
   await Promise.all(tokens.map(async ([key, token]) => {
     try {
-      const rows = await nbFetchReport(token, "LAST_30_DAYS", ["AD_SET"], ["IMPRESSION"]);
+      const [past, now] = await Promise.all([
+        nbFetchReport(token, "LAST_30_DAYS", ["DATE", "AD_SET"], ["IMPRESSION"]),
+        nbFetchReport(token, "TODAY", ["AD_SET"], ["IMPRESSION"]),
+      ]);
       const map = {};
-      for (const r of rows) map[r.adSetId] = nbRowToDoc(r);
+      const add = (r) => {
+        const d = nbRowToDoc(r), m = map[r.adSetId] || (map[r.adSetId] = { cost: 0, click: 0, ic: 0, venda: 0, faturamento: 0, impression: 0 });
+        m.cost = round2(m.cost + d.cost); m.click += d.click || 0; m.ic += d.ic || 0; m.venda += d.venda || 0; m.faturamento = round2(m.faturamento + d.faturamento); m.impression += d.impression || 0;
+      };
+      for (const r of past) if (rkDayOf(r.date) !== today) add(r);
+      for (const r of now) add(r);
       out[key] = map;
     } catch (e) { /* account unreadable this minute: its ad sets are skipped */ if (errs) errs.push(key + ': ' + String((e && e.message) || e)); }
   }));
