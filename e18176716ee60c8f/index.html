@@ -2169,6 +2169,7 @@
               <label class="rule-notify"><input type="checkbox" id="notifTypeRej" checked> Anúncios recusados</label>
               <label class="rule-notify"><input type="checkbox" id="notifTypeRules" checked> Ações das regras</label>
               <label class="rule-notify"><input type="checkbox" id="notifTypeBal" checked> Saldo baixo</label>
+              <label class="rule-notify"><input type="checkbox" id="notifTypeSales" checked> Vendas</label>
             </div>
             <div class="rej-summary" id="notifMsg"></div>
             <button type="button" class="rej-edit-btn" id="notifAddBtn">Adicionar</button>
@@ -4508,7 +4509,7 @@
       '<div class="notif-row' + (r.enabled ? '' : ' off') + '"><div>' +
       '<div class="rule-name">' + ccEsc(r.name) + '</div>' +
       '<div class="rule-line notif-url">' + ccEsc(r.urlMasked) + '</div>' +
-      '<div class="rule-line"><label class="notif-type"><input type="checkbox" data-notif-type="rejections" data-id="' + ccEsc(r.id) + '"' + (r.types.rejections ? ' checked' : '') + '> Anúncios recusados</label><label class="notif-type"><input type="checkbox" data-notif-type="rules" data-id="' + ccEsc(r.id) + '"' + (r.types.rules ? ' checked' : '') + '> Ações das regras</label><label class="notif-type"><input type="checkbox" data-notif-type="balance" data-id="' + ccEsc(r.id) + '"' + (r.types.balance !== false ? ' checked' : '') + '> Saldo baixo</label></div></div>' +
+      '<div class="rule-line"><label class="notif-type"><input type="checkbox" data-notif-type="rejections" data-id="' + ccEsc(r.id) + '"' + (r.types.rejections ? ' checked' : '') + '> Anúncios recusados</label><label class="notif-type"><input type="checkbox" data-notif-type="rules" data-id="' + ccEsc(r.id) + '"' + (r.types.rules ? ' checked' : '') + '> Ações das regras</label><label class="notif-type"><input type="checkbox" data-notif-type="balance" data-id="' + ccEsc(r.id) + '"' + (r.types.balance !== false ? ' checked' : '') + '> Saldo baixo</label><label class="notif-type"><input type="checkbox" data-notif-type="sales" data-id="' + ccEsc(r.id) + '"' + (r.types.sales !== false ? ' checked' : '') + '> Vendas</label></div></div>' +
       '<div class="rule-actions"><span class="cell-muted notif-res" data-res="' + ccEsc(r.id) + '"></span><label class="switch" title="' + (r.enabled ? 'Recebendo' : 'Pausado') + '"><input type="checkbox" data-notif-on="' + ccEsc(r.id) + '"' + (r.enabled ? ' checked' : '') + '><span class="switch-track"></span></label>' +
       '<button type="button" data-notif-test="' + ccEsc(r.id) + '">Teste</button><button type="button" class="danger" data-notif-del="' + ccEsc(r.id) + '">Excluir</button></div></div>'));
     el.innerHTML = rows.length ? rows.join('') : '<div class="empty-state">Ninguém cadastrado ainda. Adicione abaixo.</div>';
@@ -4535,7 +4536,7 @@
     if (!name) { msg.textContent = 'Escreva o nome da pessoa.'; return; }
     if (!url) { msg.textContent = 'Cole o endereço do Pushcut.'; return; }
     msg.textContent = 'Salvando…';
-    notifApi('/recipients', 'POST', { name, url, types: { rejections: document.getElementById('notifTypeRej').checked, rules: document.getElementById('notifTypeRules').checked, balance: document.getElementById('notifTypeBal').checked } })
+    notifApi('/recipients', 'POST', { name, url, types: { rejections: document.getElementById('notifTypeRej').checked, rules: document.getElementById('notifTypeRules').checked, balance: document.getElementById('notifTypeBal').checked, sales: document.getElementById('notifTypeSales').checked } })
       .then(() => { document.getElementById('notifName').value = ''; document.getElementById('notifUrl').value = ''; msg.textContent = 'Adicionado. Use "Teste" pra confirmar que chega no celular.'; return loadNotifs(); })
       .catch(e => { msg.textContent = notifErrorText(e.message); });
   });

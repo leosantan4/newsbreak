@@ -960,7 +960,7 @@ function rejectedActiveAds(data) {
 }
 
 // ---- Push recipients: the server default (secret PUSHCUT_URL) + people who paste their own Pushcut URL in the app. ----
-const PUSH_TYPES = ["rejections", "rules", "balance"];
+const PUSH_TYPES = ["rejections", "rules", "balance", "sales"];
 async function loadRecipients(env) {
   const raw = await env.COSTS_KV.get("push_recipients");
   if (!raw) return [];
@@ -1746,6 +1746,33 @@ function balanceRuleFor(rules, accountId, weekday) {
 }
 
 // Low balance (deposits minus spend since the first deposit; 300, or 500 on Fridays) -> phone, once, then a reminder every 6h while it lasts.
+// ---- Sale alerts: NewsBreak itself counts the conversion (the tracker, if any, reports it to NB), so the live snapshot is the source.
+// Every minute compares each campaign's "today" sales with the last count seen; the increase is a new sale. Several in the same minute go in one message.
+async function pushSaleAlerts(env, data) {
+  let seen = null;
+  try { seen = JSON.parse((await env.COSTS_KV.get("sales_seen")) || "null"); } catch {}
+  const next = {}, fresh = [];
+  for (const c of (data.campaigns || [])) {
+    const n = Number(c.todayVenda) || 0;
+    if (!n) continue;
+    next[c.id] = n;
+    const before = seen && seen[c.id] != null ? (seen[c.id] <= n ? seen[c.id] : 0) : 0; // a lower count = NB's day rolled over
+    if (seen && n > before) fresh.push({ c, add: n - before });
+  }
+  // accounts that failed this minute keep their last counts, so nothing is re-announced when they come back
+  if (seen && (data.failedAccounts || []).length) for (const id of Object.keys(seen)) if (!(id in next) && !(data.campaigns || []).some((c) => c.id === id)) next[id] = seen[id];
+  await env.COSTS_KV.put("sales_seen", JSON.stringify(next));
+  if (!fresh.length) return { sent: 0 };
+  if (!(await pushTargets(env, "sales")).length) return { sent: 0 };
+  const total = fresh.reduce((x, f) => x + f.add, 0);
+  const line = (f) => {
+    const c = f.c, cpa = Number(c.todayCpa) > 0 ? " · CPA $" + Number(c.todayCpa).toFixed(2) : "";
+    return "+" + f.add + " em " + c.name + " (" + (c.adAccountName || c.accountKey) + ") · hoje " + (Number(c.todayVenda) || 0) + cpa;
+  };
+  const r = await sendPush(env, total > 1 ? "💰 " + total + " vendas" : "💰 Venda", fresh.slice(0, 6).map(line).join("\n") + (fresh.length > 6 ? "\n+" + (fresh.length - 6) + " campanhas" : ""), "sales");
+  return { sent: r.ok ? total : 0 };
+}
+
 async function pushBalanceAlerts(env) {
   if (!(await pushTargets(env, "balance")).length) return { sent: 0 };
   const topups = await loadTopups(env);
@@ -1956,6 +1983,7 @@ export default {
         if (data) {
           await env.COSTS_KV.put("live_campanhas", JSON.stringify({ ts: Date.now(), data }));
           try { await pushRejectedAlerts(env, data); } catch (e) { note = "push_error:" + String((e && e.message) || e); }
+          try { const sa = await pushSaleAlerts(env, data); if (sa && sa.sent) note += "; vendas_avisadas:" + sa.sent; } catch (e) { note += "; vendas_erro:" + String((e && e.message) || e).slice(0, 100); }
           try { const rr = await runRulesEngine(env, data); if (rr && rr.ran) note += "; rules_eval:" + rr.evaluated + " rules_acoes:" + rr.actions; } catch (e) { note += "; rules_error:" + String((e && e.message) || e); }
           if ((data.failedAccounts || []).length) note = (note === "ok" ? "ok" : note) + "; failedAccounts:" + data.failedAccounts.join(",");
         }
@@ -3172,7 +3200,7 @@ export default {
       const key = request.headers.get("X-Access-Key");
       if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
       const recs = await loadRecipients(env);
-      return json({ serverDefault: !!env.PUSHCUT_URL, recipients: recs.map((r) => ({ id: r.id, name: r.name, urlMasked: maskPushUrl(r.url), enabled: r.enabled !== false, types: { rejections: (r.types || {}).rejections !== false, rules: (r.types || {}).rules !== false, balance: (r.types || {}).balance !== false }, createdAt: r.createdAt })) }, 200, origin);
+      return json({ serverDefault: !!env.PUSHCUT_URL, recipients: recs.map((r) => ({ id: r.id, name: r.name, urlMasked: maskPushUrl(r.url), enabled: r.enabled !== false, types: { rejections: (r.types || {}).rejections !== false, rules: (r.types || {}).rules !== false, balance: (r.types || {}).balance !== false, sales: (r.types || {}).sales !== false }, createdAt: r.createdAt })) }, 200, origin);
     }
 
     if (url.pathname === "/push/recipients" && request.method === "POST") {
