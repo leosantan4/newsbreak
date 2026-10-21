@@ -878,12 +878,12 @@
         <label>Avisar quando o saldo ficar abaixo de (USD) <input type="number" id="balRuleThr" min="0" step="1" placeholder="300"></label>
       </div>
       <div class="rule-block">
-        <div class="rej-pick-head">Contas <span class="cell-muted">(nenhuma marcada = todas)</span></div>
-        <div class="ms-panel" id="balRuleAccs" style="position:static; max-height:180px; box-shadow:none;"></div>
+        <div class="rej-pick-head">Contas</div>
+        <div class="ms2" id="balRuleAccBox"><button type="button" class="ms2-btn"></button><div class="ms2-panel" hidden></div></div>
       </div>
       <div class="rule-block">
-        <div class="rej-pick-head">Dias da semana <span class="cell-muted">(nenhum marcado = todos os dias)</span></div>
-        <div class="pill-row" id="balRuleDays"></div>
+        <div class="rej-pick-head">Dias da semana</div>
+        <div class="ms2" id="balRuleDayBox"><button type="button" class="ms2-btn"></button><div class="ms2-panel" hidden></div></div>
       </div>
       <div class="rej-summary" id="balRuleMsg"></div>
       <button type="button" class="assign-sheet-close" id="balRuleSave">Salvar</button>
@@ -1255,6 +1255,15 @@
   .switch-track::after{content:''; position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.3); transition:transform .15s;}
   .switch input:checked + .switch-track{background:var(--accent);}
   .switch input:checked + .switch-track::after{transform:translateX(16px);}
+  .ms2{position:relative;}
+  .ms2-btn{width:100%; text-align:left; padding:10px 12px; font:inherit; font-size:14px; font-weight:500; border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--bg); color:var(--ink); cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .ms2-btn::after{content:'▾'; float:right; color:var(--muted);}
+  .ms2-panel{position:fixed; z-index:95; background:var(--surface-raised); border:1px solid var(--line); border-radius:12px; box-shadow:0 12px 32px -8px rgba(0,0,0,.45); padding:6px; overflow-y:auto; overscroll-behavior:contain;}
+  .ms2-panel[hidden]{display:none;}
+  .ms2-panel label{display:flex; align-items:center; gap:8px; padding:8px 8px; border-radius:7px; font-size:13.5px; font-weight:500; color:var(--ink); cursor:pointer; text-transform:none; letter-spacing:0; white-space:nowrap;}
+  .ms2-panel label:hover{background:var(--neutral-bg);}
+  .ms2-panel label.all{font-weight:700; border-bottom:1px solid var(--line); border-radius:7px 7px 0 0; margin-bottom:2px;}
+  .ms2-panel input{width:auto; padding:0; margin:0; flex:none; accent-color:var(--accent);}
   .ms-wrap{position:relative;}
   .ms-btn{width:100%; text-align:left; border:1px solid var(--line); background:var(--bg); color:var(--ink); font:inherit; font-size:14px; padding:10px 12px; border-radius:var(--radius-sm); cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   .ms-panel{position:absolute; left:0; top:calc(100% + 6px); z-index:40; min-width:100%; max-width:min(460px, 90vw); max-height:320px; overflow-y:auto; background:var(--surface-raised); border:1px solid var(--line); border-radius:12px; box-shadow:0 12px 32px -8px rgba(0,0,0,.45); padding:8px 10px;}
@@ -1788,9 +1797,9 @@
         <form class="cost-form-grid" id="topupForm">
           <div>
             <label>Contas</label>
-            <div class="ms-wrap" id="topupMs">
-              <button type="button" class="ms-btn" id="topupAccBtn">Escolher contas</button>
-              <div class="ms-panel" id="topupAccPanel" hidden></div>
+            <div class="ms2" id="topupMs">
+              <button type="button" class="ms2-btn" id="topupAccBtn">Escolher contas</button>
+              <div class="ms2-panel" id="topupAccPanel" hidden></div>
             </div>
           </div>
           <div>
@@ -3984,6 +3993,34 @@
       workerSubs = j.subAccounts; mergeWorkerSubs(); renderSaldo(); renderAlertBanner();
     }).catch(() => {});
   }
+  // button + floating panel; the first box ("all") ticks/unticks everything, then you only change what differs
+  function msPlace(btn, panel){
+    const r = btn.getBoundingClientRect(), w = Math.min(Math.max(r.width, 260), window.innerWidth - 16);
+    panel.style.width = w + 'px';
+    panel.style.left = Math.max(8, Math.min(r.left, window.innerWidth - w - 8)) + 'px';
+    panel.style.top = Math.round(r.bottom + 4) + 'px';
+    panel.style.maxHeight = Math.max(160, window.innerHeight - r.bottom - 16) + 'px';
+  }
+  function msRender(box, o){
+    const btn = box.querySelector('.ms2-btn'), panel = box.querySelector('.ms2-panel'), sel = o.selected;
+    const allOn = o.options.length > 0 && o.options.every(x => sel.has(x.id));
+    const picked = o.options.filter(x => sel.has(x.id));
+    btn.textContent = !o.options.length ? 'Nada disponível' : allOn ? o.allLabel : !picked.length ? (o.noneLabel || 'Nenhum marcado') : picked.length <= 2 ? picked.map(x => x.short || x.name).join(', ') : picked.length + ' selecionados';
+    panel.innerHTML = '<label class="all"><input type="checkbox" data-ms-all' + (allOn ? ' checked' : '') + '> ' + o.allLabel + '</label>' +
+      o.options.map(x => '<label><input type="checkbox" data-ms-opt="' + ccEsc(x.id) + '"' + (sel.has(x.id) ? ' checked' : '') + '> ' + ccEsc(x.name) + '</label>').join('');
+    panel.querySelector('[data-ms-all]').addEventListener('change', (e) => { sel.clear(); if (e.target.checked) o.options.forEach(x => sel.add(x.id)); msRender(box, o); if (o.onChange) o.onChange(); });
+    panel.querySelectorAll('[data-ms-opt]').forEach(c => c.addEventListener('change', () => {
+      const x = o.options.find(z => String(z.id) === c.dataset.msOpt); if (!x) return;
+      if (c.checked) sel.add(x.id); else sel.delete(x.id);
+      msRender(box, o); if (o.onChange) o.onChange();
+    }));
+  }
+  function msWire(box){
+    const btn = box.querySelector('.ms2-btn'), panel = box.querySelector('.ms2-panel');
+    btn.addEventListener('click', (e) => { e.stopPropagation(); document.querySelectorAll('.ms2-panel').forEach(p => { if (p !== panel) p.hidden = true; }); panel.hidden = !panel.hidden; if (!panel.hidden) msPlace(btn, panel); });
+  }
+  document.addEventListener('click', (e) => { if (!e.target.closest('.ms2')) document.querySelectorAll('.ms2-panel').forEach(p => { p.hidden = true; }); });
+  window.addEventListener('resize', () => document.querySelectorAll('.ms2').forEach(b => { const p = b.querySelector('.ms2-panel'); if (p && !p.hidden) msPlace(b.querySelector('.ms2-btn'), p); }));
   let topupSel = new Set();
   function topupAccountIds(){
     return Object.keys(subAccounts).filter(id => { const a = subAccounts[id]; return !a.accountKey || isAccountVisible(a.accountKey); })
@@ -3992,22 +4029,14 @@
   function renderTopupAccountSelect(){
     const ids = topupAccountIds();
     topupSel = new Set([...topupSel].filter(id => ids.indexOf(id) !== -1));
-    const panel = document.getElementById('topupAccPanel');
+    const box = document.getElementById('topupMs');
     const sig = ids.map(id => id + ':' + subDisplayName(id)).join('|') + '#' + [...topupSel].join(',');
-    const btn = document.getElementById('topupAccBtn');
-    btn.textContent = topupSel.size === 0 ? 'Escolher contas' : topupSel.size === 1 ? subDisplayName([...topupSel][0]) : topupSel.size + ' contas selecionadas';
-    if (panel.dataset.sig === sig) return;
-    panel.dataset.sig = sig;
-    panel.innerHTML = (ids.length ? '<label class="all"><input type="checkbox" id="topupAll"' + (ids.length && topupSel.size === ids.length ? ' checked' : '') + '> Todas as contas</label>' : '<div class="cell-muted" style="padding:6px;">Nenhuma conta ainda.</div>') +
-      ids.map(id => '<label><input type="checkbox" data-topup-acc="' + id + '"' + (topupSel.has(id) ? ' checked' : '') + '> ' + ccEsc(subDisplayName(id)) + '</label>').join('') +
-      '<button type="button" class="ms-ok" id="topupAccOk">OK</button>';
-    const all = panel.querySelector('#topupAll');
-    if (all) all.addEventListener('change', () => { topupSel = all.checked ? new Set(ids) : new Set(); panel.dataset.sig = ''; renderTopupAccountSelect(); });
-    panel.querySelectorAll('[data-topup-acc]').forEach(c => c.addEventListener('change', () => { if (c.checked) topupSel.add(c.dataset.topupAcc); else topupSel.delete(c.dataset.topupAcc); panel.dataset.sig = ''; renderTopupAccountSelect(); }));
-    panel.querySelector('#topupAccOk').addEventListener('click', () => { panel.hidden = true; });
+    if (box.dataset.sig === sig) return;
+    box.dataset.sig = sig;
+    msRender(box, { options: ids.map(id => ({ id, name: subDisplayName(id) })), selected: topupSel, allLabel: 'Todas as contas', noneLabel: 'Escolher contas', onChange: () => { box.dataset.sig = ''; } });
+    if (!topupSel.size) box.querySelector('.ms2-btn').textContent = 'Escolher contas';
   }
-  document.getElementById('topupAccBtn').addEventListener('click', (e) => { e.stopPropagation(); const p = document.getElementById('topupAccPanel'); p.hidden = !p.hidden; });
-  document.addEventListener('click', (e) => { const p = document.getElementById('topupAccPanel'); if (p && !p.hidden && !e.target.closest('#topupMs')) p.hidden = true; });
+  msWire(document.getElementById('topupMs'));
 
   // ---- balance alert rules ----
   const BAL_RULES_API = TOPUPS_API.replace(/\/topups$/, '') + '/balance-rules';
@@ -4052,20 +4081,23 @@
       if (r && confirm('Excluir a regra "' + r.name + '"?')) balApi('/' + encodeURIComponent(r.id), 'DELETE').then(j => { balRules = j.rules; renderBalRules(); renderAlertBanner(); });
     }));
   }
+  const BAL_DAY_NAMES = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
   function renderBalSheetBody(){
     const ids = topupAccountIds();
-    document.getElementById('balRuleAccs').innerHTML = ids.map(id => '<label><input type="checkbox" data-bal-acc="' + id + '"' + (balEditAccs.has(id) ? ' checked' : '') + '> ' + ccEsc(subDisplayName(id)) + '</label>').join('') || '<div class="cell-muted" style="padding:6px;">Nenhuma conta ainda.</div>';
-    document.getElementById('balRuleAccs').querySelectorAll('[data-bal-acc]').forEach(c => c.addEventListener('change', () => { if (c.checked) balEditAccs.add(c.dataset.balAcc); else balEditAccs.delete(c.dataset.balAcc); }));
-    document.getElementById('balRuleDays').innerHTML = BAL_DAYS.map((n, i) => '<button type="button" class="pill' + (balEditDays.has(i) ? ' active' : '') + '" data-bal-day="' + i + '">' + n + '</button>').join('');
-    document.getElementById('balRuleDays').querySelectorAll('[data-bal-day]').forEach(b => b.addEventListener('click', () => { const d = Number(b.dataset.balDay); if (balEditDays.has(d)) balEditDays.delete(d); else balEditDays.add(d); renderBalSheetBody(); }));
+    msRender(document.getElementById('balRuleAccBox'), { options: ids.map(id => ({ id, name: subDisplayName(id) })), selected: balEditAccs, allLabel: 'Todas as contas' });
+    msRender(document.getElementById('balRuleDayBox'), { options: BAL_DAY_NAMES.map((n, i) => ({ id: i, name: n, short: BAL_DAYS[i] })), selected: balEditDays, allLabel: 'Todos os dias' });
   }
+  msWire(document.getElementById('balRuleAccBox')); msWire(document.getElementById('balRuleDayBox'));
   function openBalRuleSheet(rule){
     balEditing = rule || null;
     document.getElementById('balRuleTitle').textContent = rule ? 'Editar regra de saldo' : 'Nova regra de saldo';
     document.getElementById('balRuleName').value = rule ? rule.name : '';
     document.getElementById('balRuleThr').value = rule ? rule.threshold : '';
     document.getElementById('balRuleMsg').textContent = '';
-    balEditAccs = new Set(rule ? rule.accountIds || [] : []); balEditDays = new Set(rule ? rule.weekdays || [] : []);
+    // new rule (or "all" saved as empty): everything ticked; untick what you don't want
+    const allIds = topupAccountIds();
+    balEditAccs = new Set(rule && rule.accountIds && rule.accountIds.length ? rule.accountIds : allIds);
+    balEditDays = new Set(rule && rule.weekdays && rule.weekdays.length ? rule.weekdays : [0, 1, 2, 3, 4, 5, 6]);
     renderBalSheetBody();
     document.getElementById('balRuleSheet').hidden = false;
   }
@@ -4078,7 +4110,12 @@
     if (!name) { msg.textContent = 'Dê um nome à regra.'; return; }
     if (!isFinite(thr) || thr < 0 || document.getElementById('balRuleThr').value === '') { msg.textContent = 'Informe o valor (em dólar).'; return; }
     msg.textContent = 'Salvando…';
-    balApi('', 'POST', { id: balEditing ? balEditing.id : undefined, name, threshold: thr, enabled: balEditing ? balEditing.enabled !== false : true, accountIds: [...balEditAccs], weekdays: [...balEditDays] })
+    const allIds = topupAccountIds();
+    if (!balEditAccs.size) { msg.textContent = 'Marque pelo menos uma conta.'; return; }
+    if (!balEditDays.size) { msg.textContent = 'Marque pelo menos um dia.'; return; }
+    // everything ticked is saved as "all" (so accounts added later are covered too)
+    const accIds = allIds.every(id => balEditAccs.has(id)) ? [] : [...balEditAccs], days = balEditDays.size === 7 ? [] : [...balEditDays];
+    balApi('', 'POST', { id: balEditing ? balEditing.id : undefined, name, threshold: thr, enabled: balEditing ? balEditing.enabled !== false : true, accountIds: accIds, weekdays: days })
       .then(j => { balRules = j.rules; document.getElementById('balRuleSheet').hidden = true; renderBalRules(); renderAlertBanner(); })
       .catch(() => { msg.textContent = 'Não consegui salvar — tenta de novo.'; });
   });
