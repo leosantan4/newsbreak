@@ -1043,7 +1043,9 @@ async function pushRejectedAlerts(env, data) {
   const now = Date.now();
   const raw = await env.COSTS_KV.get("push_state");
   const state = raw ? JSON.parse(raw) : {};
-  const active = rejectedActiveAds(data);
+  let ignored = {};
+  try { ignored = JSON.parse((await env.COSTS_KV.get("rej_ignored")) || "{}"); } catch {}
+  const active = rejectedActiveAds(data).filter((a) => !ignored[a.id]); // ads the user chose to ignore never notify
   const failed = new Set((data && data.failedAccounts) || []);
   const next = {};
   for (const [id, st] of Object.entries(state)) { if (st && st.acc && failed.has(st.acc)) next[id] = st; } // account unreadable now: keep what we knew
@@ -2885,6 +2887,26 @@ export default {
         const next = rules.filter((r) => r.id !== id);
         await env.COSTS_KV.put("balance_rules", JSON.stringify(next));
         return json({ rules: next }, 200, origin);
+      }
+    }
+
+    // rejected ads the user no longer cares about: they stay listed (dimmed) but never notify
+    if (url.pathname === "/rej-ignored") {
+      const load = async () => { try { return JSON.parse((await env.COSTS_KV.get("rej_ignored")) || "{}"); } catch { return {}; } };
+      if (request.method === "GET") return json({ ids: Object.keys(await load()) }, 200, origin);
+      if (request.method === "POST") {
+        const key = request.headers.get("X-Access-Key");
+        if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+        let body;
+        try { body = await request.json(); } catch { return json({ error: "invalid_json" }, 400, origin); }
+        const ids = (Array.isArray(body && body.ids) ? body.ids : []).map(String).filter((x) => /^\d{5,30}$/.test(x)).slice(0, 200);
+        if (!ids.length) return json({ error: "invalid_body" }, 400, origin);
+        const map = await load();
+        for (const id of ids) { if (body.ignored === false) delete map[id]; else map[id] = Date.now(); }
+        const keep = Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 2000);
+        const out = Object.fromEntries(keep);
+        await env.COSTS_KV.put("rej_ignored", JSON.stringify(out));
+        return json({ ids: Object.keys(out) }, 200, origin);
       }
     }
 

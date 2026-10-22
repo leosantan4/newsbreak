@@ -287,6 +287,11 @@
   .rej-bulk{display:flex; align-items:center; gap:10px; font-size:13px; font-weight:500;}
   .rej-edit-btn{border:none; background:var(--accent); color:var(--accent-ink); font:inherit; font-weight:600; font-size:12.5px; padding:8px 14px; border-radius:var(--radius-sm); cursor:pointer;}
   .rej-row{display:grid; grid-template-columns:24px 64px minmax(0,1fr); gap:14px; align-items:start; padding:14px 18px; border-top:1px solid var(--line);}
+  .rej-row.ign{opacity:.5;}
+  .rej-row.ign:hover{opacity:.85;}
+  .rej-row-ign{margin-left:8px; border:1px solid var(--line); background:none; color:var(--muted); font:inherit; font-size:12.5px; padding:6px 12px; border-radius:var(--radius-xs); cursor:pointer;}
+  .rej-row-ign:hover{color:var(--ink); border-color:var(--ink);}
+  .rej-ign-head{display:flex; align-items:center; gap:10px; padding:12px 18px; border-top:1px solid var(--line); background:var(--neutral-bg); font-size:13px; color:var(--muted); cursor:pointer; user-select:none;}
   .rej-row.sel{background:color-mix(in srgb, var(--accent) 12%, transparent); box-shadow:inset 3px 0 0 var(--accent);}
   .rej-row-edit{margin-left:auto; border:1px solid var(--line); background:var(--accent); color:var(--accent-ink); font:inherit; font-weight:600; font-size:12.5px; padding:6px 14px; border-radius:var(--radius-sm); cursor:pointer;}
   .rej-editing{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;}
@@ -2221,6 +2226,7 @@
             <div class="rej-bulk" id="rejBulk" hidden>
               <span id="rejSelCount"></span>
               <button type="button" class="select-all-btn" id="rejSelAllBtn"></button>
+              <button type="button" class="select-all-btn" id="rejIgnBtn" title="Não notificar mais sobre os selecionados">Ignorar selecionados</button>
               <button type="button" class="rej-edit-btn" id="rejEditBtn">Editar selecionados</button>
             </div>
           </div>
@@ -4892,6 +4898,19 @@
 
   // ---------- Rejeições ----------
   let rejAds = [];
+  let rejIgnoredAds = [];     // rejected too, but the user said he no longer cares: shown dimmed at the end, never notified
+  let rejIgnored = new Set();
+  let rejShowIgn = true;
+  const REJ_IGN_API = TOPUPS_API.replace(/\/topups$/, '') + '/rej-ignored';
+  function loadRejIgnored(){ return fetch(REJ_IGN_API, { cache: 'no-store' }).then(r => r.json()).then(j => { rejIgnored = new Set(j.ids || []); rejRecompute(); }).catch(() => {}); }
+  function setRejIgnored(ids, ignored){
+    ids.forEach(id => { if (ignored) rejIgnored.add(id); else rejIgnored.delete(id); });
+    rejSelected = new Set([...rejSelected].filter(id => !ids.includes(id)));
+    rejRecompute(); renderRejeicoes();
+    return fetch(REJ_IGN_API, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY }, body: JSON.stringify({ ids, ignored }) })
+      .then(r => r.json()).then(j => { if (j && j.ids) { rejIgnored = new Set(j.ids); rejRecompute(); renderRejeicoes(); } })
+      .catch(() => { ids.forEach(id => { if (ignored) rejIgnored.delete(id); else rejIgnored.add(id); }); rejRecompute(); renderRejeicoes(); alert('Não consegui salvar agora. Tente de novo.'); });
+  }
   let rejFailed = [];
   let rejLoading = false;
   let rejLoaded = false;
@@ -4946,7 +4965,9 @@
     });
     out.sort((x, y) => String(y.id).localeCompare(String(x.id)));
     const prevIds = rejKnown;
-    rejAds = out;
+    rejIgnoredAds = out.filter(a => rejIgnored.has(a.id));
+    rejAds = out.filter(a => !rejIgnored.has(a.id));
+    out.length = 0; rejAds.forEach(a => out.push(a));
     if (prevIds && rejLiveLoaded) {
       const fresh = out.filter(a => !prevIds.has(a.id));
       if (fresh.length) rejNotifyNew(fresh);
@@ -4961,7 +4982,7 @@
   function loadRejeicoes(){
     const b = document.getElementById('rejRefreshBtn');
     b.disabled = true; b.textContent = 'Atualizando…';
-    return loadLiveCampanhas().then(() => { rejRecompute(); renderRejeicoes(); }).finally(() => { b.disabled = false; b.textContent = 'Atualizar'; });
+    return Promise.all([loadLiveCampanhas(), loadRejIgnored()]).then(() => { rejRecompute(); renderRejeicoes(); }).finally(() => { b.disabled = false; b.textContent = 'Atualizar'; });
   }
 
   function rejVisible(){
@@ -4990,11 +5011,12 @@
           '<input type="checkbox" data-rej-check="' + a.id + '"' + (rejSelected.has(a.id) ? ' checked' : '') + ' title="Selecionar pra editar">' +
           media +
           '<div><div class="rej-title">' + ccEsc(a.name) + ' <span class="rej-chip">' + ccEsc(a.adAccountName) + '</span>' +
-          '<button type="button" class="rej-row-edit" data-rej-edit="' + a.id + '">Editar</button></div>' +
+          '<button type="button" class="rej-row-edit" data-rej-edit="' + a.id + '">Editar</button><button type="button" class="rej-row-ign" data-rej-ign="' + a.id + '" title="Não me interessa mais: parar de notificar e mandar pro fim da lista">Ignorar</button></div>' +
           '<div class="rej-path">' + ccEsc(a.campaignName) + ' › ' + ccEsc(a.adSetName) + '</div>' +
           '<div class="rej-copy"><b>' + ccEsc(a.headline || '') + '</b> — ' + ccEsc(a.description || '') + '</div>' +
           '<div class="rej-reason" title="' + ccEsc(a.statusTxt || '') + '">Rejeitado — ' + ccEsc(rejReason(a.statusTxt)) + '</div></div></div>';
       }).join('');
+      list.querySelectorAll('[data-rej-ign]').forEach(b => b.addEventListener('click', () => setRejIgnored([b.dataset.rejIgn], true)));
       list.querySelectorAll('[data-rej-edit]').forEach(b => b.addEventListener('click', () => {
         rejSelected = new Set([b.dataset.rejEdit]);
         renderRejeicoes();
@@ -5006,7 +5028,23 @@
       }));
       list.querySelectorAll('.rej-thumb').forEach(t => t.addEventListener('click', () => { const id = t.closest('.rej-row').dataset.rejId; if (rejSelected.has(id)) rejSelected.delete(id); else rejSelected.add(id); renderRejeicoes(); }));
     }
+    // ignored ones: dimmed, at the end, silent; one click brings them back
+    const ign = rejIgnoredAds.filter(a => rejAccFilter === 'all' || a.adAccountName === rejAccFilter);
+    if (rejLoaded && ign.length) {
+      const igRows = ign.map(a => {
+        const isVideo = a.creativeType === 'VIDEO';
+        const media = isVideo ? '<video class="rej-thumb" src="' + ccEsc(a.assetUrl) + '" muted preload="metadata"></video>' : '<img class="rej-thumb" src="' + ccEsc(a.assetUrl) + '" loading="lazy">';
+        return '<div class="rej-row ign" data-rej-id="' + a.id + '"><span></span>' + media +
+          '<div><div class="rej-title">' + ccEsc(a.name) + ' <span class="rej-chip">' + ccEsc(a.adAccountName) + '</span><button type="button" class="rej-row-ign" style="margin-left:auto;" data-rej-unign="' + a.id + '">Voltar a acompanhar</button></div>' +
+          '<div class="rej-path">' + ccEsc(a.campaignName) + ' › ' + ccEsc(a.adSetName) + '</div>' +
+          '<div class="rej-reason" title="' + ccEsc(a.statusTxt || '') + '">Rejeitado — ' + ccEsc(rejReason(a.statusTxt)) + '</div></div></div>';
+      }).join('');
+      list.insertAdjacentHTML('beforeend', '<div class="rej-ign-head" data-rej-ign-toggle>' + (rejShowIgn ? '▾' : '▸') + ' Ignorados (' + ign.length + ') — não notificam</div>' + (rejShowIgn ? igRows : ''));
+      list.querySelector('[data-rej-ign-toggle]').addEventListener('click', () => { rejShowIgn = !rejShowIgn; renderRejeicoes(); });
+      list.querySelectorAll('[data-rej-unign]').forEach(b => b.addEventListener('click', () => setRejIgnored([b.dataset.rejUnign], false)));
+    }
     const selVis = vis.filter(a => rejSelected.has(a.id)).length;
+    document.getElementById('rejIgnBtn').disabled = !selVis;
     document.getElementById('rejBulk').hidden = !vis.length;
     document.getElementById('rejSelCount').textContent = selVis + ' selecionado' + (selVis === 1 ? '' : 's');
     document.getElementById('rejSelAllBtn').textContent = selVis === vis.length ? 'Desmarcar todos' : 'Marcar todos (' + vis.length + ')';
@@ -5014,6 +5052,7 @@
   }
 
   document.getElementById('rejRefreshBtn').addEventListener('click', () => loadRejeicoes());
+  document.getElementById('rejIgnBtn').addEventListener('click', () => { const ids = rejVisible().filter(a => rejSelected.has(a.id)).map(a => a.id); if (ids.length) setRejIgnored(ids, true); });
   document.getElementById('rejSelAllBtn').addEventListener('click', () => {
     const vis = rejVisible();
     const all = vis.every(a => rejSelected.has(a.id));
@@ -7950,6 +7989,7 @@ function ccPreviewLines(adsets, nameOf){
     loadVturb();
     loadLivePainel();
     loadLiveCampanhas();
+    loadRejIgnored();
     loadMapaVendas();
     initCriarView();
     renderAccountsList();
