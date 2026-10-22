@@ -2617,7 +2617,7 @@ async function handleRequest(request, env) {
       const accountKey = url.searchParams.get("accountKey");
       const day = url.searchParams.get("day") || shiftDayKeySP(todayKeySaoPaulo(), -1);
       const dims = String(url.searchParams.get("dimensions") || "AD,PLACEMENT").split(",").map((x) => x.trim().toUpperCase()).filter(Boolean);
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || !dims.length || dims.some((d) => ["DATE", "AD_ACCOUNT", "CAMPAIGN", "AD_SET", "AD", "PLACEMENT"].indexOf(d) === -1)) return json({ error: "invalid_params" }, 400, origin);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || !dims.length || dims.some((d) => ["DATE", "HOUR", "AD_ACCOUNT", "CAMPAIGN", "AD_SET", "AD", "PLACEMENT"].indexOf(d) === -1)) return json({ error: "invalid_params" }, 400, origin);
       try {
         const token = await tokenForAccountKey(env, accountKey);
         const rows = await nbFetchReport(token, { fixed: day }, dims, ["IMPRESSION"]);
