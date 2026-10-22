@@ -866,7 +866,6 @@
     <button class="nav-item" data-view="mapa"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3z"/><path d="M9 3v15M15 6v15"/></svg></span>Mapa de Vendas</button>
     <button class="nav-item" data-view="vturb"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m10 8.5 5.5 3.5-5.5 3.5z"/></svg></span>VSL</button>
     <div class="sidenav-group-label">Configurações</div>
-    <button class="nav-item" data-view="contas"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></span>Contas</button>
     <button class="nav-item" data-view="notificacoes"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span>Notificações</button>
     <button class="nav-item" data-view="integracoes"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 2v6M15 2v6"/><path d="M6 8h12v4a6 6 0 0 1-12 0V8z"/><path d="M12 18v4"/></svg></span>Integrações</button>
     <div class="theme-toggle" id="themeToggle">
@@ -2310,7 +2309,7 @@
     </div>
 
     <div id="contasView" hidden>
-      <section class="panel">
+      <section class="panel" id="contasPanel">
         <div class="step-head">
           <div class="step-head-left"><span class="step-title">Contas</span></div>
           <span class="step-desc">desative uma conta pra ela parar de aparecer no Dashboard, nas Campanhas e na Criar Campanha. No dia em que você desativa ela ainda aparece (por exemplo, se foi restrita hoje); a partir do dia seguinte some e fica só nos registros (DRE, custos, vendas), sem apagar nada</span>
@@ -2446,6 +2445,7 @@
   let niches = [];
   const NB_ROOT = 'NEWSBREAK', SOURCE_ROOTS = ['NEWSBREAK', 'TABOOLA']; // declared here (not next to topNiches): renderAll runs before the gallery code
   let view = loadPref('view', 'painel');
+  const integFromContas = view === 'contas'; if (integFromContas) view = 'integracoes'; // "Contas" now lives inside Integrações > NewsBreak
   let criarSource = null;
   let scope = loadPref('scope', 'geral');
   let period = loadPref('period', 'today');
@@ -4418,7 +4418,7 @@
   // ---------- Integrações (uma guia por ferramenta; várias contas por ferramenta quando faz sentido) ----------
   const INTEG_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/integrations';
   const CONN_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/connections';
-  let integData = [], integFlags = {}, connData = { taboola: [] }, integOpen = null;
+  let integData = [], integFlags = {}, connData = { taboola: [] }, integOpen = integFromContas ? 'newsbreak' : null;
   const INTEG_TOOLS = [
     { key: 'newsbreak', name: 'NewsBreak', cat: 'Fonte de tráfego', kind: 'link' },
     { key: 'taboola', name: 'Taboola', cat: 'Fonte de tráfego', kind: 'multi' },
@@ -4443,7 +4443,7 @@
   function loadConnections(){ return connApi().then(j => { connData = { taboola: j.taboola || [] }; }).catch(() => {}); }
   function loadIntegrations(){ return Promise.all([loadIntegrationFlags(), loadConnections()]).then(renderIntegrations); }
   function integStatus(t){
-    if (t.kind === 'link') return { txt: 'Contas em "Contas"', cls: 'act' };
+    if (t.kind === 'link') return { txt: ACCOUNTS.length + (ACCOUNTS.length === 1 ? ' conta' : ' contas'), cls: 'act' };
     if (t.kind === 'soon') return { txt: 'Em breve', cls: '' };
     if (t.kind === 'multi') { const n = (connData[t.key] || []).length; return n ? { txt: n + (n === 1 ? ' conta conectada' : ' contas conectadas'), cls: 'act' } : { txt: 'Não configurada', cls: 'warn' }; }
     const i = integData.find(x => x.key === t.integKey);
@@ -4456,6 +4456,8 @@
     const el = document.getElementById('integList');
     if (!el) return;
     const tool = INTEG_TOOLS.find(t => t.key === integOpen);
+    const contasPanel = document.getElementById('contasPanel'); // the accounts manager lives inside NewsBreak; park it before the list is redrawn
+    if (contasPanel && !document.getElementById('contasView').contains(contasPanel)) document.getElementById('contasView').appendChild(contasPanel);
     if (!tool) {
       const cats = []; INTEG_TOOLS.forEach(t => { if (cats.indexOf(t.cat) === -1) cats.push(t.cat); });
       el.innerHTML = '<div class="integ-intro">Clique numa ferramenta para ver as contas dela e adicionar novas.</div>' + cats.map(c =>
@@ -4470,7 +4472,7 @@
     const st = integStatus(tool);
     let body = '';
     if (tool.kind === 'link') {
-      body = '<div class="integ-note">Os tokens da NewsBreak ficam por conta (cada conta tem o seu), na tela <b>Contas</b>. Lá você vê as que já existem e adiciona novas.</div><div class="integ-pad"><button type="button" class="rej-edit-btn" data-integ-goto="contas">Abrir Contas</button></div>';
+      body = '<div class="integ-note">Cada conta da NewsBreak tem o seu token. Aqui você vê as que já existem, desativa e adiciona novas.</div><div id="integContasHost"></div>';
     } else if (tool.kind === 'soon') {
       body = '<div class="integ-note">Em breve. Quando a integração com ' + ccEsc(tool.name) + ' for construída, você adiciona as contas aqui, uma por uma.</div>';
     } else if (tool.kind === 'multi') {
@@ -4495,6 +4497,8 @@
         '<div class="integ-note">Por enquanto o app usa uma conta de ' + ccEsc(tool.name) + '. Várias contas entram quando o painel precisar somar mais de uma.</div>';
     }
     el.innerHTML = head + '<div class="integ-status">' + '<span class="rule-chip ' + st.cls + '">' + ccEsc(st.txt) + '</span></div>' + body;
+    const host = document.getElementById('integContasHost');
+    if (host && contasPanel) { host.appendChild(contasPanel); renderAccountsList(); }
     el.querySelector('[data-integ-back]').addEventListener('click', () => { integOpen = null; renderIntegrations(); });
     const go = el.querySelector('[data-integ-goto]');
     if (go) go.addEventListener('click', () => { view = go.dataset.integGoto; savePref('view', view); renderAll(); });
