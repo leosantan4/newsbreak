@@ -470,6 +470,51 @@ async function rtFetchRegionReport(env, dateFrom, dateTo) {
   return resp.json();
 }
 
+// Daily history per account (the shape of data.json's "accounts"), straight from NewsBreak (+ RedTrack when a key exists), so accounts that the
+// hourly GitHub sync does not cover (PARETO has none) still fill Dashboard > Ontem / 7 dias / Este mês. Today is NOT here: it is live.
+async function computeHistory(env) {
+  const today = todayKeySaoPaulo();
+  const ke = await keyedEnv(env);
+  const rt = {};
+  if (ke.REDTRACK_API_KEY) {
+    try {
+      const from = new Date(Date.now() - 31 * 86400000).toISOString().slice(0, 10);
+      for (const r of await rtFetchReport(ke, from, today)) {
+        const key = redtrackAccountKey(r.source), day = r.date && String(r.date).slice(0, 10);
+        if (!key || !day) continue;
+        const cur = rt[key + "|" + day] || { venda: 0, faturamento: 0 };
+        cur.venda += r.convtype1 || 0; cur.faturamento += r.revenuetype1 || 0;
+        rt[key + "|" + day] = cur;
+      }
+    } catch { /* RedTrack down: NewsBreak's own sales numbers stay */ }
+  }
+  const accounts = {};
+  const tokens = await getAllTokens(env, { visibleOnly: true });
+  await Promise.all(tokens.map(async ([key, token]) => {
+    try {
+      const rows = await nbFetchReport(token, "LAST_30_DAYS", ["DATE"], ["IMPRESSION"]);
+      const byDay = {};
+      for (const r of rows) {
+        const day = rkDayOf(r.date);
+        if (!day || day >= today) continue;
+        const doc = nbRowToDoc(r);
+        doc.date = day;
+        if (day < today) delete doc.partial;
+        const x = rt[key + "|" + day];
+        if (x) {
+          doc.venda = x.venda; doc.faturamento = round2(x.faturamento);
+          doc.cpa = x.venda ? round2(doc.cost / x.venda) : null;
+          doc.roas = doc.cost ? round4(x.faturamento / doc.cost) : null;
+          doc.vendaSource = "redtrack";
+        }
+        byDay[day] = doc;
+      }
+      accounts[key] = byDay;
+    } catch { /* this account unreadable now: it just adds nothing */ }
+  }));
+  return { generatedAt: new Date().toISOString(), accounts };
+}
+
 async function computeVendasPorEstado(env, dateFrom, dateTo) {
   const rows = await rtFetchRegionReport(env, dateFrom, dateTo);
   const states = rows
@@ -3050,6 +3095,13 @@ async function handleRequest(request, env) {
         await env.COSTS_KV.put("balance_rules", JSON.stringify(next));
         return json({ rules: next }, 200, origin);
       }
+    }
+
+    if (url.pathname === "/history" && request.method === "GET") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      try { return json(await getCached(env, "history", 300, () => computeHistory(env)), 200, origin); }
+      catch (e) { return json({ error: "history_failed" }, 502, origin); }
     }
 
     // activity log (actions + errors, 30 days)

@@ -5696,6 +5696,7 @@
       subAccounts = json.subAccounts || {};
       mergeWorkerSubs();
       renderAll();
+      loadWorkerHistory();
     }).catch(() => {
       document.getElementById('footerNote').textContent = 'Não foi possível carregar os dados agora — tente recarregar a página.';
     });
@@ -5703,6 +5704,21 @@
     loadTopups();
     loadSaldoCosts();
     loadBalRules();
+  }
+  // Days the hourly data.json sync does not have (always the case for PARETO) come from the server, which asks NewsBreak itself.
+  // data.json stays the master where it has a day (it holds hand-corrected history); the server only fills gaps.
+  const HISTORY_API = TOPUPS_API.replace(/\/topups$/, '') + '/history';
+  function loadWorkerHistory(){
+    return fetch(HISTORY_API, { headers: { 'X-Access-Key': COSTS_API_KEY }, cache: 'no-store' }).then(r => r.json()).then(j => {
+      if (!j || !j.accounts) return;
+      let added = 0;
+      ACCOUNTS.forEach(a => {
+        const src = j.accounts[a.key]; if (!src) return;
+        data[a.key] = data[a.key] || {};
+        Object.keys(src).forEach(day => { if (!data[a.key][day]) { data[a.key][day] = src[day]; added++; } });
+      });
+      if (added) renderAll();
+    }).catch(() => {});
   }
   function loadLivePainel(){
     fetch(LIVE_PAINEL_API, {cache:'no-store'}).then(r => r.json()).then(json => {
