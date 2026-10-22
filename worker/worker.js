@@ -1033,6 +1033,7 @@ async function sendPush(env, title, text, type, onlyId) {
   const okCount = results.filter((r) => r.ok).length;
   const result = { ok: okCount > 0, sent: okCount, failed: results.length - okCount, status: (results.find((r) => !r.ok) || results[0]).status };
   await env.COSTS_KV.put("push_last", JSON.stringify({ at: Date.now(), title, ...result }));
+  if (!result.ok) await logErrorOnce(env, "push:" + (type || "test"), { src: "sistema", type: "erro", label: "Notificação não enviada", detail: type || "", err: "o Pushcut recusou ou não respondeu (status " + result.status + ")" });
   return result;
 }
 
@@ -1291,6 +1292,7 @@ async function runRulesEngine(env, data) {
   const logRaw = await env.COSTS_KV.get("rules_log");
   const log = logRaw ? JSON.parse(logRaw) : [];
   const lines = [];
+  const logBatch = [];
   const pausedNow = new Set();
   for (const p of plan) {
     const entry = { at: Date.now(), ruleId: p.rule.id, ruleName: p.rule.name, accountKey: p.accountKey, account: p.accountLabel, campaign: p.campaign, adset: p.adset, adsetId: p.adsetId, metrics: p.metrics, action: p.kind, result: "ok", detail: "" };
@@ -1313,9 +1315,13 @@ async function runRulesEngine(env, data) {
       lines.push("FALHOU (" + (p.kind === "pause_adset" ? "pausar" : p.kind === "set_budget" ? "mudar orçamento" : "avisar") + "): " + p.accountLabel + " · " + p.adset + " (" + p.rule.name + ")");
     }
     log.unshift(entry);
+    logBatch.push({ src: "regra", type: "regras", label: entry.result === "erro" ? "Regra falhou" : (p.kind === "pause_adset" ? "Regra pausou o conjunto" : p.kind === "set_budget" ? "Regra mudou o orçamento" : "Regra avisou"), item: p.adset, account: p.accountLabel, detail: p.rule.name + " · gasto US$" + p.metrics.cost + ", checkouts " + p.metrics.ic + ", vendas " + p.metrics.sales + (entry.detail ? " · " + entry.detail : ""), ok: entry.result !== "erro", err: entry.result === "erro" ? entry.detail : "" });
   }
   let tidied = 0;
+  const logLenBefore = log.length;
   try { tidied = await tidyRulePaused(env, data, rules, state, log); } catch (e) { /* tidy is best effort */ }
+  for (const t of log.slice(0, Math.max(0, log.length - logLenBefore))) logBatch.push({ src: "regra", type: "regras", label: "Regra: arrumação do que já tinha pausado", item: t.adset || t.campaign, account: t.account, detail: t.detail });
+  await logEvents(env, logBatch);
   if (tidied) { await env.COSTS_KV.put("rules_state", JSON.stringify(state)); await env.COSTS_KV.put("rules_log", JSON.stringify(log.slice(0, 200))); await env.COSTS_KV.delete("live_campanhas"); }
   if (plan.length) {
     await env.COSTS_KV.put("rules_state", JSON.stringify(state));
@@ -2072,6 +2078,144 @@ async function computeRank(env, daysKey) {
   };
 }
 
+
+// ================= Activity log: actions and errors, kept 30 days =================
+// One KV key per day ("log:YYYY-MM-DD", Brasília day) holding a list of events. Only things that CHANGE something and things that FAIL are recorded;
+// routine reads and notifications are not. Tokens, keys and message texts are never written.
+const LOG_DAYS = 30;
+const LOG_MAX_PER_DAY = 3000;
+function logDayKey(ts) { return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ts)); }
+function logClip(v, n) { return v == null ? "" : String(v).replace(/\s+/g, " ").trim().slice(0, n || 240); }
+async function logEvents(env, evs) {
+  try {
+    const list = (Array.isArray(evs) ? evs : [evs]).filter(Boolean);
+    if (!list.length) return;
+    const byDay = {};
+    for (const ev of list) {
+      const ts = ev.ts || Date.now();
+      const rec = { id: crypto.randomUUID().slice(0, 8), ts, src: ev.src || "painel", type: ev.type || "config", label: logClip(ev.label, 120), item: logClip(ev.item, 200), account: logClip(ev.account, 80), detail: logClip(ev.detail, 300), ok: ev.ok !== false };
+      if (!rec.ok && ev.err) rec.err = logClip(ev.err, 300);
+      (byDay[logDayKey(ts)] = byDay[logDayKey(ts)] || []).push(rec);
+    }
+    for (const [day, recs] of Object.entries(byDay)) {
+      const key = "log:" + day;
+      let arr = [];
+      try { arr = JSON.parse((await env.COSTS_KV.get(key)) || "[]"); } catch {}
+      arr = arr.concat(recs);
+      if (arr.length > LOG_MAX_PER_DAY) arr = arr.slice(-LOG_MAX_PER_DAY);
+      await env.COSTS_KV.put(key, JSON.stringify(arr), { expirationTtl: (LOG_DAYS + 1) * 86400 });
+    }
+  } catch { /* the log must never break the action that is being logged */ }
+}
+// The same error repeating every minute is written once per 10 minutes.
+async function logErrorOnce(env, sig, ev) {
+  try {
+    let st = {}; try { st = JSON.parse((await env.COSTS_KV.get("log_state")) || "{}"); } catch {}
+    const now = Date.now(), errs = st.errs || {};
+    if (errs[sig] && now - errs[sig] < 10 * 60 * 1000) return;
+    errs[sig] = now;
+    for (const k of Object.keys(errs)) if (now - errs[k] > 3600 * 1000) delete errs[k];
+    st.errs = errs;
+    await env.COSTS_KV.put("log_state", JSON.stringify(st));
+    await logEvents(env, { ...ev, ok: false });
+  } catch {}
+}
+async function logSnapshot(env) {
+  try {
+    const good = JSON.parse((await env.COSTS_KV.get("live_last_good")) || "null");
+    if (good && Array.isArray(good.campaigns)) return good.campaigns;
+    const live = JSON.parse((await env.COSTS_KV.get("live_campanhas")) || "null");
+    return (live && live.data && live.data.campaigns) || [];
+  } catch { return []; }
+}
+function logFind(camps, id) {
+  id = String(id || "");
+  for (const c of camps) {
+    const acc = c.adAccountName || c.accountKey;
+    if (c.id === id) return { kind: "campaign", name: c.name, account: acc, budget: c.activeBudget };
+    for (const st of c.adSets || []) {
+      if (st.id === id) return { kind: "adset", name: st.name, account: acc, budget: st.budget, campaign: c.name };
+      for (const ad of st.ads || []) if (ad.id === id) return { kind: "ad", name: ad.name, account: acc, adset: st.name };
+    }
+  }
+  return null;
+}
+const LOG_KIND = { campaign: "campanha", adset: "conjunto", ad: "anúncio" };
+function logBrt(epoch) {
+  const n = Number(epoch);
+  if (!isFinite(n) || n <= 0) return "";
+  if (n > 2100000000) return "sem término";
+  const d = new Date(n * 1000);
+  const day = new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", weekday: "short", day: "2-digit", month: "2-digit" }).format(d).replace(".", "");
+  const hm = new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit", hour12: false }).format(d);
+  return day + " " + hm + " BRT";
+}
+// Routes that only read, preview or test (POST but harmless) or that are view preferences: never logged as actions.
+const LOG_SKIP = [/^\/nb\/ads-detail$/, /^\/nb\/upload-asset$/, /^\/rules\/preview$/, /^\/connections\/test$/, /^\/integrations\/test$/, /^\/push\/test$/, /^\/push-test$/, /^\/col-presets/, /^\/log/, /preview$/];
+const LOG_AD_FIELDS = { headline: "título", description: "descrição", brandName: "marca", assetUrl: "criativo", imageUrl: "criativo", videoUrl: "criativo", clickThroughUrl: "link", callToAction: "botão", logoUrl: "logo" };
+// Turns a write request into one readable event (or null = not worth logging when it worked).
+function describeAction(method, path, body, camps, rj, ok) {
+  const b = body && typeof body === "object" ? body : {};
+  const ent = b.id ? logFind(camps, b.id) : null;
+  const acct = ent ? ent.account : (b.accountKey || "");
+  const kindWord = (k) => LOG_KIND[k] || "item";
+  if (path === "/nb/entity-status") { const k = ent ? ent.kind : b.entityType; return { type: "campanhas", label: (b.status === "ON" ? "Ativou " : "Pausou ") + kindWord(k), item: ent ? ent.name : b.id, account: acct }; }
+  if (path === "/nb/entity-delete") { const k = ent ? ent.kind : b.entityType; return { type: "campanhas", label: "Excluiu " + kindWord(k), item: ent ? ent.name : b.id, account: acct }; }
+  if (path === "/nb/rename") { const k = ent ? ent.kind : b.entityType; return { type: "campanhas", label: "Renomeou " + kindWord(k), item: b.name, account: acct, detail: ent ? "antes: " + ent.name : "" }; }
+  if (path === "/nb/adset-budget") { const nv = Number(b.budget); return { type: "campanhas", label: "Mudou o orçamento do conjunto", item: ent ? ent.name : b.id, account: acct, detail: (ent && ent.budget != null ? "US$" + ent.budget + " → " : "→ ") + "US$" + (isFinite(nv) ? nv : "?") }; }
+  if (path === "/nb/adset-schedule") return { type: "campanhas", label: "Mudou o término do conjunto", item: ent ? ent.name : b.id, account: acct, detail: logBrt(b.endTime == null ? 2146878847 : b.endTime) || "" };
+  if (path === "/nb/ad-update") { const f = Object.keys(b.fields || {}).map((k) => LOG_AD_FIELDS[k] || k); return { type: "campanhas", label: "Editou o anúncio", item: ent ? ent.name : b.id, account: acct, detail: [...new Set(f)].join(", ") }; }
+  if (path === "/nb/campaign") return { type: "campanhas", label: "Criou a campanha", item: b.name, account: acct };
+  if (path === "/nb/adset") { const bud = Number(b.budget); return { type: "campanhas", label: "Criou o conjunto", item: b.name, account: acct, detail: "início " + (logBrt(b.startTime) || "?") + " · fim " + (logBrt(b.endTime) || "?") + (isFinite(bud) && bud > 0 ? " · US$" + (bud >= 1000 ? bud / 100 : bud) + "/dia" : "") }; }
+  if (path === "/nb/ad") return ok ? null : { type: "campanhas", label: "Criar anúncio", item: b.name || "", account: acct };
+  if (path === "/rej-ignored") return { type: "campanhas", label: b.ignored === false ? "Voltou a acompanhar anúncios recusados" : "Ignorou anúncios recusados", detail: (Array.isArray(b.ids) ? b.ids.length : 0) + " anúncio(s)" };
+  if (path === "/rules" || path.startsWith("/rules/")) return { type: "regras", label: method === "DELETE" ? "Apagou uma regra" : "Salvou uma regra", item: b.name || "", detail: method === "DELETE" ? "" : (b.enabled === false ? "pausada" : "ligada") };
+  if (path.startsWith("/balance-rules")) return { type: "financeiro", label: method === "DELETE" ? "Apagou uma regra de saldo" : "Salvou uma regra de saldo", item: b.name || "", detail: b.threshold != null ? "avisar abaixo de US$" + b.threshold : "" };
+  if (path.startsWith("/topups")) return { type: "financeiro", label: method === "DELETE" ? "Apagou um depósito" : "Lançou depósito", detail: b.amount != null ? "US$" + b.amount : "" };
+  if (path.startsWith("/costs")) return { type: "financeiro", label: method === "DELETE" ? "Apagou um custo fixo" : "Lançou custo fixo", item: b.description || b.desc || "", detail: b.value != null ? "US$" + b.value : (b.amount != null ? "US$" + b.amount : "") };
+  if (path === "/account-settings") return { type: "contas", label: "Alterou ajustes de conta", item: b.key || b.accountKey || "", detail: b.active === false ? "desativada" : (b.active === true ? "ativada" : "") };
+  if (path === "/accounts") return { type: "contas", label: "Adicionou conta", item: b.label || b.key || "" };
+  if (/^\/accounts\//.test(path)) return { type: "contas", label: method === "DELETE" ? "Removeu conta" : "Alterou conta", item: decodeURIComponent(path.split("/")[2] || "") };
+  if (path === "/integrations" || path.startsWith("/integrations/")) return { type: "contas", label: method === "DELETE" ? "Removeu uma integração" : "Salvou chave de integração", item: b.key || decodeURIComponent(path.split("/")[2] || "") };
+  if (path.startsWith("/connections")) return { type: "contas", label: method === "DELETE" ? "Removeu conexão" : "Adicionou conexão", item: b.name || "" };
+  if (path === "/push/recipients" || path.startsWith("/push/recipients/")) return { type: "notificacoes", label: method === "DELETE" ? "Removeu pessoa das notificações" : "Salvou pessoa nas notificações", item: b.name || "" };
+  if (path.startsWith("/taboola/rules")) return { type: "regras", label: "Taboola: " + (method === "DELETE" ? "apagou regra" : path.endsWith("/run") ? "executou regras" : "salvou regra"), item: b.name || "" };
+  if (path.startsWith("/library")) return { type: "galeria", label: method === "DELETE" ? "Excluiu da galeria" : path.endsWith("/rename") ? "Renomeou na galeria" : path.endsWith("/category") ? "Mudou categoria na galeria" : "Enviou para a galeria", item: b.name || "" };
+  if (path.startsWith("/links")) return { type: "galeria", label: method === "DELETE" ? "Apagou um link" : "Salvou um link", item: b.name || "" };
+  if (path.startsWith("/niches")) return { type: "config", label: method === "DELETE" ? "Apagou um nicho" : path.endsWith("/move") ? "Moveu um nicho" : "Salvou um nicho", item: b.name || "" };
+  if (/^\/(niche|brand|copy)-presets/.test(path)) return { type: "config", label: method === "DELETE" ? "Apagou um preset" : "Salvou um preset", item: b.name || b.niche || "" };
+  if (path === "/cc-settings") return { type: "config", label: "Alterou ajustes do Criar Campanha" };
+  if (path.startsWith("/rank/")) return { type: "config", label: "Ranking: " + path.slice(6).replace("-", " ") };
+  if (path === "/sync-now") return { type: "sistema", label: "Pediu sincronização" };
+  return { type: "config", label: method + " " + path };
+}
+// Wraps the whole request handler: writes become action events, failures become error events.
+async function withActionLog(request, env, ctx, handler) {
+  const url = new URL(request.url), method = request.method, path = url.pathname;
+  const write = method === "POST" || method === "PUT" || method === "DELETE";
+  const skip = LOG_SKIP.some((re) => re.test(path));
+  let body = null;
+  if (write && !skip && (request.headers.get("content-type") || "").includes("json")) { try { body = await request.clone().json(); } catch { body = null; } }
+  let resp;
+  try { resp = await handler(request, env); }
+  catch (e) { ctx.waitUntil(logErrorOnce(env, "throw:" + path, { src: "servidor", type: "erro", label: "Erro no servidor", item: path, err: String((e && e.message) || e) })); throw e; }
+  if (method === "OPTIONS" || skip) return resp;
+  const status = resp.status;
+  if (!write && status < 500) return resp;
+  if (status === 401 || status === 403 || status === 404 || status === 405) return resp;
+  ctx.waitUntil((async () => {
+    let rj = null; try { rj = await resp.clone().json(); } catch {}
+    const ok = status < 400;
+    if (!write) { await logErrorOnce(env, "get:" + path + ":" + (rj && rj.error), { src: "servidor", type: "erro", label: "Leitura falhou", item: path, err: (rj && (rj.detail || rj.error)) || String(status) }); return; }
+    const camps = await logSnapshot(env);
+    const d = describeAction(method, path, body, camps, rj, ok);
+    if (!d) return;
+    if (ok) await logEvents(env, { ...d, src: "painel", ok: true });
+    else await logEvents(env, { ...d, label: "Falhou: " + String(d.label || "").charAt(0).toLowerCase() + String(d.label || "").slice(1), src: "painel", ok: false, err: (rj && (rj.detail || rj.error)) || ("HTTP " + status) });
+  })());
+  return resp;
+}
+
 export default {
   // Cron (every minute): keeps the live campaigns snapshot warm, so the page never waits on a cold read.
   async scheduled(event, env, ctx) {
@@ -2088,10 +2232,14 @@ export default {
           try { await pushRejectedAlerts(env, data); } catch (e) { note = "push_error:" + String((e && e.message) || e); }
           try { const sa = await pushSaleAlerts(env, data); if (sa && sa.sent) note += "; vendas_avisadas:" + sa.sent; } catch (e) { note += "; vendas_erro:" + String((e && e.message) || e).slice(0, 100); }
           try { const rr = await runRulesEngine(env, data); if (rr && rr.ran) note += "; rules_eval:" + rr.evaluated + " rules_acoes:" + rr.actions; } catch (e) { note += "; rules_error:" + String((e && e.message) || e); }
-          if ((data.failedAccounts || []).length) note = (note === "ok" ? "ok" : note) + "; failedAccounts:" + data.failedAccounts.join(",");
+          if ((data.failedAccounts || []).length) {
+            note = (note === "ok" ? "ok" : note) + "; failedAccounts:" + data.failedAccounts.join(",");
+            for (const k of data.failedAccounts) await logErrorOnce(env, "nbfail:" + k, { src: "sistema", type: "erro", label: "NewsBreak não respondeu", account: k, err: "usando as últimas campanhas guardadas até voltar" });
+          }
         }
       } catch (e) {
         note = "error:" + String((e && e.message) || e);
+        await logErrorOnce(env, "cron:" + note.slice(0, 60), { src: "sistema", type: "erro", label: "Erro no ciclo automático", err: note });
       }
       try {
         const at = new Date((event && event.scheduledTime) || Date.now());
@@ -2106,7 +2254,12 @@ export default {
       await env.COSTS_KV.put("cron_heartbeat", JSON.stringify({ at: started, ms: Date.now() - started, note }));
     })());
   },
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
+    return withActionLog(request, env, ctx, handleRequest);
+  },
+};
+
+async function handleRequest(request, env) {
     const origin = env.ALLOWED_ORIGIN;
     const url = new URL(request.url);
 
@@ -2894,6 +3047,28 @@ export default {
       }
     }
 
+    // activity log (actions + errors, 30 days)
+    if (url.pathname === "/log" && request.method === "GET") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      const days = Math.max(1, Math.min(LOG_DAYS, parseInt(url.searchParams.get("days") || "1", 10) || 1));
+      const skipToday = url.searchParams.get("from") === "yesterday";
+      const keys = [];
+      for (let i = skipToday ? 1 : 0; i < (skipToday ? 2 : days); i++) keys.push("log:" + logDayKey(Date.now() - i * 86400000));
+      const lists = await Promise.all(keys.map(async (k) => { try { return JSON.parse((await env.COSTS_KV.get(k)) || "[]"); } catch { return []; } }));
+      const entries = lists.flat().sort((a, b) => b.ts - a.ts).slice(0, 5000);
+      return json({ entries, days: LOG_DAYS }, 200, origin);
+    }
+    if (url.pathname === "/log/client" && request.method === "POST") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      let body; try { body = await request.json(); } catch { return json({ error: "invalid_json" }, 400, origin); }
+      const msg = logClip(body && body.message, 200);
+      if (!msg) return json({ error: "invalid_body" }, 400, origin);
+      await logErrorOnce(env, "client:" + msg.slice(0, 80), { src: "tela", type: "erro", label: "Erro na tela", item: logClip(body.view, 40), err: msg });
+      return json({ ok: true }, 200, origin);
+    }
+
     // rejected ads the user no longer cares about: they stay listed (dimmed) but never notify
     if (url.pathname === "/rej-ignored") {
       const load = async () => { try { return JSON.parse((await env.COSTS_KV.get("rej_ignored")) || "{}"); } catch { return {}; } };
@@ -3467,6 +3642,5 @@ export default {
     }
 
     return json({ error: "method_not_allowed" }, 405, origin);
-  },
-};
+}
 
