@@ -437,6 +437,11 @@
   .account-row .acc-row-status{font-size:12px; color:var(--muted); margin-top:2px;}
   .acc-sub-list{margin:6px 0 0; padding:10px 18px; background:var(--bg); border:1px solid var(--line); border-radius:var(--radius-md); display:flex; flex-direction:column; gap:7px;}
   .acc-sub-list.acc-sub-list-chips{flex-direction:row; flex-wrap:wrap; gap:8px 20px;}
+  .acc-nova{margin:6px 0 0; padding:10px 18px; border:1px dashed var(--line); border-radius:var(--radius-md); display:flex; flex-direction:column; gap:6px; font-size:12.5px;}
+  .acc-nova-form{display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
+  .acc-nova-form input{flex:1; min-width:220px;}
+  .acc-nova-help ol{margin:6px 0 0 18px; padding:0; display:flex; flex-direction:column; gap:3px;}
+  .acc-nova-help code{display:inline-block; margin-top:3px; padding:4px 7px; background:var(--neutral-bg); border-radius:6px; font-size:11.5px; user-select:all; overflow-wrap:anywhere;}
   .acc-sub-item{font-size:12.5px; font-weight:500; color:var(--ink);}
   .toggle-switch{position:relative; display:inline-block; width:40px; height:23px; flex:none;}
   .toggle-switch input{opacity:0; width:0; height:0;}
@@ -7902,20 +7907,21 @@ function ccPreviewLines(adsets, nameOf){
             if (!cs.assetUrl) {
               const cacheKey = acc.id + ':' + creative.libraryId;
               if (ccAssetCache[cacheKey]) {
-                cs.assetUrl = ccAssetCache[cacheKey];
+                cs.assetUrl = ccAssetCache[cacheKey].url; cs.mediaId = ccAssetCache[cacheKey].mediaId;
                 step();
               } else {
                 ccLog(cPrefix + 'Enviando criativo…');
                 const uploadResp = await post(NB_UPLOAD_ASSET_API, { accountKey: acc.accountKey, adAccountId: acc.id, libraryId: creative.libraryId, mediaName: creative.name });
                 if (uploadResp.error) { const er = new Error(uploadResp.detail || uploadResp.error); er.stage = 'upload'; throw er; }
-                cs.assetUrl = uploadResp.asset.assetUrl;
-                ccAssetCache[cacheKey] = cs.assetUrl;
+                cs.assetUrl = uploadResp.asset.assetUrl; cs.mediaId = uploadResp.asset.mediaId || uploadResp.asset.id || null;
+                ccAssetCache[cacheKey] = { url: cs.assetUrl, mediaId: cs.mediaId };
                 ccLog(cPrefix + 'Criativo enviado.', 'ok');
                 step();
               }
             }
             const adBody = {
-              accountKey: acc.accountKey, adSetId: ast.id, name: ccAdName(creative.name), status: 'ON',
+              accountKey: acc.accountKey, adAccountId: acc.id, adSetId: ast.id, name: ccAdName(creative.name), status: 'ON',
+              productUrl: link.productUrl || link.url, assetMediaId: cs.mediaId || undefined, // by default the product page is the same link; only used when the account requires it
               creative: {
                 type: creative.creativeType, headline: shared.headline, assetUrl: cs.assetUrl,
                 description: shared.description, callToAction: 'Learn More',
@@ -8059,6 +8065,12 @@ function ccPreviewLines(adsets, nameOf){
     }).catch(() => retryLater(loadCustomAccounts, attempt));
   }
 
+  const NOVA_SESSION_API = TOPUPS_API.replace(/\/topups$/, '') + '/nova-session';
+  let novaSessions = {};
+  function loadNovaSessions(){
+    return fetch(NOVA_SESSION_API, { headers: { 'X-Access-Key': COSTS_API_KEY }, cache: 'no-store' }).then(r => r.json())
+      .then(j => { novaSessions = {}; (j.sessions || []).forEach(x => { novaSessions[x.accountKey] = x; }); renderAccountsList(); }).catch(() => {});
+  }
   function renderAccountsList(){
     const el = document.getElementById('accountsList');
     if (!el) return;
@@ -8095,6 +8107,11 @@ function ccPreviewLines(adsets, nameOf){
           subsHtml = '<div class="acc-sub-list"><span class="cell-muted">Nenhuma subconta encontrada.</span></div>';
         }
       }
+      const ns = novaSessions[a.key];
+      const novaHtml = (active && !a.createOnly) ? '<div class="acc-nova"><div class="acc-nova-head"><b>Sessão do Ad Manager</b> <span class="cell-muted">— só para contas que exigem “URL de produto” (a NewsBreak passou a exigir em algumas)</span></div>' +
+        '<div class="acc-nova-state">' + (ns ? (ns.expired ? '<span style="color:var(--bad);">Venceu em ' + fmtDateShort(new Date(ns.expiresAt).toISOString().slice(0, 10)) + '. Cole uma nova.</span>' : '<span style="color:var(--good);">Salva · vale até ' + new Date(ns.expiresAt).toLocaleDateString('pt-BR') + '</span> <button type="button" class="remove-btn" data-nova-clear="' + a.key + '" title="Remover">×</button>') : '<span class="cell-muted">Nenhuma sessão salva</span>') + '</div>' +
+        '<div class="acc-nova-form"><input type="password" autocomplete="off" placeholder="Cole aqui o token (começa com eyJ…)" data-nova-input="' + a.key + '"><button type="button" class="select-all-btn" data-nova-save="' + a.key + '">Salvar</button><span class="cell-muted" data-nova-note="' + a.key + '"></span></div>' +
+        '<details class="acc-nova-help"><summary class="cell-muted">Como copiar o token</summary><ol><li>Abra o <b>Ad Manager</b> da NewsBreak, já logado nessa conta.</li><li>Aperte <b>F12</b> e abra a aba <b>Console</b>.</li><li>Cole esta linha e dê Enter (ela copia o token):<br><code>copy(document.cookie.split("; ").find(c=>c.startsWith("nb_nova_t=")).split("=")[1])</code></li><li>Volte aqui, cole no campo acima e clique em Salvar. Vale por 7 dias.</li></ol></details></div>' : '';
       return '<div class="account-row-wrap">' +
         '<div class="account-row' + (active ? '' : ' inactive') + '">' +
           '<div>' +
@@ -8110,7 +8127,7 @@ function ccPreviewLines(adsets, nameOf){
             '</label>' +
           '</div>' +
         '</div>' +
-        subsHtml +
+        subsHtml + novaHtml +
       '</div>';
     }).join('');
     el.querySelectorAll('[data-account-toggle]').forEach(input => input.addEventListener('change', (e) => {
@@ -8125,6 +8142,17 @@ function ccPreviewLines(adsets, nameOf){
         renderAll();
         loadAllSubAccounts();
       }).catch(() => { e.target.checked = !active; renderAccountsList(); });
+    }));
+    el.querySelectorAll('[data-nova-save]').forEach(btn => btn.addEventListener('click', () => {
+      const key = btn.dataset.novaSave, input = el.querySelector('[data-nova-input="' + key + '"]'), note = el.querySelector('[data-nova-note="' + key + '"]');
+      if (!input.value.trim()) return;
+      btn.disabled = true; note.textContent = 'Salvando…';
+      fetch(NOVA_SESSION_API, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY }, body: JSON.stringify({ accountKey: key, token: input.value.trim() }) })
+        .then(r => r.json()).then(j => { if (j.error) throw new Error(j.detail || j.error); input.value = ''; return loadNovaSessions(); })
+        .catch(e => { note.textContent = e.message || 'Não consegui salvar.'; note.style.color = 'var(--bad)'; }).finally(() => { btn.disabled = false; });
+    }));
+    el.querySelectorAll('[data-nova-clear]').forEach(btn => btn.addEventListener('click', () => {
+      fetch(NOVA_SESSION_API + '/' + encodeURIComponent(btn.dataset.novaClear), { method: 'DELETE', headers: { 'X-Access-Key': COSTS_API_KEY } }).then(() => loadNovaSessions());
     }));
     el.querySelectorAll('[data-account-records]').forEach(btn => btn.addEventListener('click', () => {
       archiveScope = btn.dataset.accountRecords; scope = archiveScope; savePref('scope', scope);
@@ -8219,6 +8247,7 @@ function ccPreviewLines(adsets, nameOf){
   }
 
   renderAddAccountForm();
+  loadNovaSessions();
   let appStarted = false;
   const startApp = () => {
     if (appStarted) return; appStarted = true;

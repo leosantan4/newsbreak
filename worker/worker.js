@@ -747,6 +747,39 @@ async function nbCreateAdSet(token, fields) {
   return nbApi(token, "ad-set/create", { method: "POST", body: JSON.stringify(fields) });
 }
 
+// ---- Ad Manager web session (only for ad accounts that require a "Product URL") ----
+// NewsBreak's public API cannot send the Product URL, but the Ad Manager's own endpoint can. It does not take the API token: it takes the
+// web login (a JWT in the cookie "nb_nova_t", valid 7 days). The user pastes it once in Integrações; it is kept per account key, never shown or logged.
+const NOVA = "https://nova.newsbreak.com/api/v1";
+function jwtExpMs(t) {
+  try { const p = JSON.parse(atob(String(t).split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))); return p.exp ? p.exp * 1000 : null; } catch { return null; }
+}
+async function novaSessions(env) { try { return JSON.parse((await env.COSTS_KV.get("nova_sessions")) || "{}"); } catch { return {}; } }
+async function novaFetch(token, path, init) {
+  const resp = await fetch(NOVA + path, { ...(init || {}), headers: { Accept: "application/json", Authorization: "Bearer " + token, ...((init && init.headers) || {}) } });
+  let j = {}; try { j = await resp.json(); } catch {}
+  if (!resp.ok || j.code !== 0) { const e = new Error(j.errMsg || ("nova " + resp.status)); e.novaCode = j.code; throw e; }
+  return j.data;
+}
+// Creates an image/GIF ad through the Ad Manager endpoint, with the Product URL. fields = the same body the public API would get.
+async function novaCreateAd(env, accountKey, adAccountId, fields, extra) {
+  const sessions = await novaSessions(env), ss = sessions[accountKey];
+  const needMsg = "Esta conta exige URL de produto. Cole a sessão do Ad Manager em Integrações > NewsBreak (vale 7 dias) e tente de novo.";
+  if (!ss || !ss.token) throw new Error(needMsg);
+  if (ss.exp && ss.exp < Date.now()) throw new Error("A sessão do Ad Manager desta conta venceu. Cole uma nova em Integrações > NewsBreak e tente de novo.");
+  const cr = fields.creative || {};
+  if (!["IMAGE", "GIF"].includes(cr.type)) throw new Error("Esta conta exige URL de produto, e por enquanto isso só funciona com imagem ou GIF (não vídeo).");
+  if (!extra.assetMediaId) throw new Error("Faltou o código da mídia enviada; envie o criativo de novo.");
+  let m = {};
+  try { m = await novaFetch(ss.token, "/admin/" + adAccountId + "/media/" + extra.assetMediaId); } catch { /* size comes from the library; fall back below */ }
+  const body = {
+    name: fields.name, type: cr.type, productUrl: extra.productUrl, imageType: cr.type, adSetId: fields.adSetId,
+    nativeCreative: { width: m.width || 400, height: m.height || 712, assetMediaId: String(extra.assetMediaId), brandName: cr.brandName, clickThroughUrl: cr.clickThroughUrl, headline: cr.headline, description: cr.description, callToAction: cr.callToAction, assetUrl: cr.assetUrl, type: cr.type, ...(cr.logoUrl ? { logoUrl: cr.logoUrl } : {}) },
+  };
+  const out = await novaFetch(ss.token, "/admin/ads", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  return { id: out && out.id, via: "ad-manager" };
+}
+
 async function nbCreateAd(token, fields) {
   return nbApi(token, "ad/create", { method: "POST", body: JSON.stringify(fields) });
 }
@@ -2221,7 +2254,7 @@ function describeAction(method, path, body, camps, rj, ok) {
   if (path === "/nb/ad-update") { const f = Object.keys(b.fields || {}).map((k) => LOG_AD_FIELDS[k] || k); return { type: "campanhas", label: "Editou o anúncio", item: ent ? ent.name : b.id, account: acct, detail: [...new Set(f)].join(", ") }; }
   if (path === "/nb/campaign") return { type: "campanhas", label: "Criou a campanha", item: b.name, account: acct };
   if (path === "/nb/adset") { const bud = Number(b.budget); return { type: "campanhas", label: "Criou o conjunto", item: b.name, account: acct, detail: "início " + (logBrt(b.startTime) || "?") + " · fim " + (logBrt(b.endTime) || "?") + (isFinite(bud) && bud > 0 ? " · US$" + (bud >= 1000 ? bud / 100 : bud) + "/dia" : "") }; }
-  if (path === "/nb/ad") return ok ? null : { type: "campanhas", label: "Criar anúncio", item: b.name || "", account: acct };
+  if (path === "/nb/ad") return ok ? ((rj && rj.ad && rj.ad.via === "ad-manager") ? { type: "campanhas", label: "Criou o anúncio (pelo Ad Manager, com URL de produto)", item: b.name || "", account: acct } : null) : { type: "campanhas", label: "Criar anúncio", item: b.name || "", account: acct };
   if (path === "/rej-ignored") return { type: "campanhas", label: b.ignored === false ? "Voltou a acompanhar anúncios recusados" : "Ignorou anúncios recusados", detail: (Array.isArray(b.ids) ? b.ids.length : 0) + " anúncio(s)" };
   if (path === "/rules" || path.startsWith("/rules/")) return { type: "regras", label: method === "DELETE" ? "Apagou uma regra" : "Salvou uma regra", item: b.name || "", detail: method === "DELETE" ? "" : (b.enabled === false ? "pausada" : "ligada") };
   if (path.startsWith("/balance-rules")) return { type: "financeiro", label: method === "DELETE" ? "Apagou uma regra de saldo" : "Salvou uma regra de saldo", item: b.name || "", detail: b.threshold != null ? "avisar abaixo de US$" + b.threshold : "" };
@@ -2240,6 +2273,7 @@ function describeAction(method, path, body, camps, rj, ok) {
   if (/^\/(niche|brand|copy)-presets/.test(path)) return { type: "config", label: method === "DELETE" ? "Apagou um preset" : "Salvou um preset", item: b.name || b.niche || "" };
   if (path === "/cc-settings") return { type: "config", label: "Alterou ajustes do Criar Campanha" };
   if (path.startsWith("/rank/")) return { type: "config", label: "Ranking: " + path.slice(6).replace("-", " ") };
+  if (path.startsWith("/nova-session")) return { type: "contas", label: method === "DELETE" ? "Removeu a sessão do Ad Manager" : "Salvou a sessão do Ad Manager", item: b.accountKey || decodeURIComponent(path.split("/")[2] || "") };
   if (path === "/sync-now") return { type: "sistema", label: "Pediu sincronização" };
   return { type: "config", label: method + " " + path };
 }
@@ -3096,9 +3130,18 @@ async function handleRequest(request, env) {
       try { body = await request.json(); } catch { return json({ error: "invalid_json" }, 400, origin); }
       try {
         const token = await tokenForAccountKey(env, body.accountKey);
-        const { accountKey, ...fields } = body;
-        const ad = await nbCreateAd(token, fields);
-        return json({ ad }, 201, origin);
+        const { accountKey, productUrl, assetMediaId, adAccountId, ...fields } = body;
+        try {
+          const ad = await nbCreateAd(token, fields);
+          return json({ ad }, 201, origin);
+        } catch (e) {
+          // the account now requires a Product URL, which only the Ad Manager's own endpoint accepts
+          if (/product url/i.test(String((e && e.message) || e))) {
+            const ad = await novaCreateAd(env, accountKey, adAccountId, fields, { productUrl: productUrl || (fields.creative || {}).clickThroughUrl, assetMediaId });
+            return json({ ad }, 201, origin);
+          }
+          throw e;
+        }
       } catch (e) {
         return json({ error: "nb_create_ad_failed", detail: String(e.message || e) }, 502, origin);
       }
@@ -3132,6 +3175,30 @@ async function handleRequest(request, env) {
       if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
       try { return json(await getCached(env, "history", 300, () => computeHistory(env)), 200, origin); }
       catch (e) { return json({ error: "history_failed" }, 502, origin); }
+    }
+
+    // Ad Manager web session per account (see novaCreateAd): list without secrets, save (validated), remove
+    if (url.pathname === "/nova-session" || url.pathname.startsWith("/nova-session/")) {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      const sessions = await novaSessions(env);
+      if (request.method === "GET") return json({ sessions: Object.entries(sessions).map(([k, v]) => ({ accountKey: k, expiresAt: v.exp || null, expired: !!(v.exp && v.exp < Date.now()), savedAt: v.at })) }, 200, origin);
+      if (request.method === "POST") {
+        let body; try { body = await request.json(); } catch { return json({ error: "invalid_json" }, 400, origin); }
+        const accountKey = String(body.accountKey || ""), token = String(body.token || "").trim().replace(/^Bearer\s+/i, "").replace(/^nb_nova_t=/, "");
+        if (!accountKey || !/^eyJ[\w-]+\.[\w-]+\.[\w-]+$/.test(token)) return json({ error: "token_invalid", detail: "Isso não parece o token do Ad Manager (começa com eyJ…)." }, 400, origin);
+        const exp = jwtExpMs(token);
+        if (exp && exp < Date.now()) return json({ error: "token_expired", detail: "Esse token já venceu. Copie de novo no Ad Manager." }, 400, origin);
+        try { await novaFetch(token, "/users/current"); } catch (e) { return json({ error: "token_rejected", detail: "A NewsBreak não aceitou esse token. Confirme que você está logado no Ad Manager e copie de novo." }, 400, origin); }
+        sessions[accountKey] = { token, exp, at: Date.now() };
+        await env.COSTS_KV.put("nova_sessions", JSON.stringify(sessions));
+        return json({ ok: true, expiresAt: exp }, 200, origin);
+      }
+      if (request.method === "DELETE") {
+        delete sessions[decodeURIComponent(url.pathname.split("/")[2] || "")];
+        await env.COSTS_KV.put("nova_sessions", JSON.stringify(sessions));
+        return json({ ok: true }, 200, origin);
+      }
     }
 
     // activity log (actions + errors, 30 days)
