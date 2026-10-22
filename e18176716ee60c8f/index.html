@@ -2411,8 +2411,15 @@
     {key:'troya', label:'Troya'},
   ];
   let customAccounts = [];
+  // The account list and settings are remembered in this browser: if the server hiccups while the page opens (a deploy, a bad minute),
+  // the app starts from the last good copy instead of showing "0 contas" until a reload.
+  let accountsFromCache = false;
   let ACCOUNTS = STATIC_ACCOUNTS.slice();
   let accountSettings = {};
+  try {
+    const ca = JSON.parse(loadPref('accountsCache', 'null')), cs = JSON.parse(loadPref('accountSettingsCache', 'null'));
+    if (Array.isArray(ca) && cs && typeof cs === 'object') { customAccounts = ca; ACCOUNTS = STATIC_ACCOUNTS.concat(ca); accountSettings = cs; accountsFromCache = true; }
+  } catch (e) {}
   function isAccountActive(key){ return accountSettings[key] ? accountSettings[key].active !== false : true; }
   // createOnly accounts (e.g. PARETO) are used only to create campaigns: no data, cards or totals in the dashboard
   function todaySP(){ return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()); }
@@ -3019,7 +3026,7 @@
     return String(day).padStart(2,'0') + '/' + String(m).padStart(2,'0');
   }
 
-  function sortedDates(map){ return Object.keys(map).sort(); }
+  function sortedDates(map){ return Object.keys(map || {}).sort(); }
 
   // all=true: every account, even the switched-off ones (DRE keeps the whole history)
   function geralDocs(all){
@@ -3030,7 +3037,7 @@
     Array.from(dates).sort().forEach(d => {
       let cost=0, click=0, ic=0, venda=0, fat=0, partial=false;
       list.forEach(a => {
-        const row = data[a.key][d];
+        const row = (data[a.key] || {})[d];
         if (!row) return;
         cost += row.cost||0; click += row.click||0; ic += row.ic||0; venda += row.venda||0; fat += row.faturamento||0;
         if (row.partial) partial = true;
@@ -3048,7 +3055,7 @@
 
   function scopeDocs(){
     if (scope === 'geral') return geralDocs();
-    return data[scope];
+    return data[scope] || {};
   }
 
   function aggregate(docsMap, dates){
@@ -3163,12 +3170,12 @@
     const periodLabel = periodLabelOf(period);
     // on any other day than today only the accounts that spent are shown, so the page is not full of $0 cards
     const hideZero = period !== 'today' && !dashShowZero;
-    const spentIn = (a) => aggregate(data[a.key], dates).cost > 0;
+    const spentIn = (a) => aggregate(data[a.key] || {}, dates).cost > 0;
     const shownAccts = activeAccounts().filter(a => !hideZero || spentIn(a));
     const hiddenN = activeAccounts().length - shownAccts.length;
     const cards = [{key:'geral', label:'Total (' + activeAccounts().length + ' contas)', total:true}, ...shownAccts];
     grid.innerHTML = cards.map(c => {
-      const docs = c.total ? geralDocs() : data[c.key];
+      const docs = c.total ? geralDocs() : (data[c.key] || {});
       const agg = aggregate(docs, dates);
       const rc = roasClass(agg.roas);
       const roasTxt = agg.roas != null ? agg.roas.toFixed(2)+'x' : '–';
@@ -4423,6 +4430,7 @@
   }
 
   function renderAll(){
+    ensureDataKeys(); // an account in the list without data yet must never blank the whole screen
     renderPageTitle();
     renderNav();
     renderPeriodTabs();
@@ -5762,7 +5770,7 @@
       ACCOUNTS.forEach(a => {
         if (failedNB.has(a.key)) return;
         const doc = json.accounts && json.accounts[a.key];
-        if (doc) data[a.key][json.date] = doc;
+        if (doc) (data[a.key] = data[a.key] || {})[json.date] = doc;
       });
       if (json.subAccountCosts) {
         Object.entries(json.subAccountCosts).forEach(([id, sc]) => {
@@ -8010,13 +8018,14 @@ function ccPreviewLines(adsets, nameOf){
   });
 
   // A failed read (e.g. the Worker restarting for a second) must never leave the account list empty: retry.
-  function retryLater(fn, attempt){
-    return attempt < 8 ? new Promise(res => setTimeout(res, 800 * (attempt + 1))).then(() => fn(attempt + 1)) : undefined;
+  function retryLater(fn, attempt){ // never gives up: waits longer each time (up to 20 s) until the server answers
+    return new Promise(res => setTimeout(res, Math.min(20000, 800 * (attempt + 1)))).then(() => fn(attempt + 1));
   }
   function loadAccountSettings(attempt = 0){
     return fetch(ACCOUNT_SETTINGS_API, {cache:'no-store'}).then(r => { if (!r.ok) throw new Error('http ' + r.status); return r.json(); }).then(json => {
       if (!json || typeof json.settings !== 'object') throw new Error('bad payload');
       accountSettings = json.settings || {};
+      savePref('accountSettingsCache', JSON.stringify(accountSettings));
     }).catch(() => retryLater(loadAccountSettings, attempt));
   }
 
@@ -8025,6 +8034,7 @@ function ccPreviewLines(adsets, nameOf){
       if (!json || !Array.isArray(json.accounts)) throw new Error('bad payload');
       customAccounts = json.accounts;
       ACCOUNTS = STATIC_ACCOUNTS.concat(customAccounts);
+      savePref('accountsCache', JSON.stringify(customAccounts));
       ensureDataKeys();
     }).catch(() => retryLater(loadCustomAccounts, attempt));
   }
@@ -8189,7 +8199,10 @@ function ccPreviewLines(adsets, nameOf){
   }
 
   renderAddAccountForm();
-  Promise.all([loadAccountSettings(), loadCustomAccounts()]).then(() => {
+  let appStarted = false;
+  const startApp = () => {
+    if (appStarted) return; appStarted = true;
+    ensureDataKeys();
     loadData();
     loadVturb();
     loadLivePainel();
@@ -8198,7 +8211,12 @@ function ccPreviewLines(adsets, nameOf){
     loadMapaVendas();
     initCriarView();
     renderAccountsList();
+  };
+  if (accountsFromCache) startApp(); // the last good list is enough to start; the server copy replaces it as soon as it answers
+  Promise.all([loadAccountSettings(), loadCustomAccounts()]).then(() => {
+    if (appStarted) { try { loadCustomAccountsApplied(); } catch (e) {} } else startApp();
   });
+  function loadCustomAccountsApplied(){ ensureDataKeys(); renderAccountsList(); renderAll(); if (typeof ctFillSelects === 'function' && campV2Ready) ctFillSelects(); }
   setInterval(loadData, 2 * 60 * 1000);
   setInterval(loadCosts, 30000);
   setInterval(loadVturb, 15000);
