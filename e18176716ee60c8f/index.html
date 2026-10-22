@@ -7809,7 +7809,10 @@ function ccPreviewLines(adsets, nameOf){
       body: JSON.stringify(body),
     }).then(r => r.json());
 
+    // the saved link is read from the server right now: a link changed in another tab or on the phone must never be missed (nor an old copy used)
+    try { const lj = await fetch(LINKS_API, { cache: 'no-store' }).then(r => r.json()); if (lj && lj.links) { ccLinks = lj.links; renderCcSummary(); } } catch (e) { /* keep the copy we have */ }
     const link = ccLinks[acc.id];
+    if (link && link.url) ccLog(prefix + 'Link em uso: ' + ccLinkHost(link.url) + ' (salvo em Links das contas)');
     if (!link || !link.url) {
       run.status = 'error';
       run.error = 'sem link cadastrado — cadastra na aba Links';
