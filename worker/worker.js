@@ -2080,32 +2080,37 @@ async function computeRank(env, daysKey) {
 
 
 // ================= Activity log: actions and errors, kept 30 days =================
-// One KV key per day ("log:YYYY-MM-DD", Brasília day) holding a list of events. Only things that CHANGE something and things that FAIL are recorded;
-// routine reads and notifications are not. Tokens, keys and message texts are never written.
+// Every event is its OWN key ("log:YYYY-MM-DD:<time>-<rand>", Brasília day) with the event stored in the key's metadata, so two events that happen at
+// the same moment can never overwrite each other and reading a day is a single list call. Only things that CHANGE something and things that FAIL
+// are recorded; routine reads and notifications are not. Tokens, keys and message texts are never written.
 const LOG_DAYS = 30;
-const LOG_MAX_PER_DAY = 3000;
 function logDayKey(ts) { return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ts)); }
-function logClip(v, n) { return v == null ? "" : String(v).replace(/\s+/g, " ").trim().slice(0, n || 240); }
+function logClip(v, n) { return v == null ? "" : String(v).replace(/\s+/g, " ").trim().slice(0, n || 200); }
 async function logEvents(env, evs) {
   try {
     const list = (Array.isArray(evs) ? evs : [evs]).filter(Boolean);
-    if (!list.length) return;
-    const byDay = {};
-    for (const ev of list) {
+    await Promise.all(list.map(async (ev) => {
       const ts = ev.ts || Date.now();
-      const rec = { id: crypto.randomUUID().slice(0, 8), ts, src: ev.src || "painel", type: ev.type || "config", label: logClip(ev.label, 120), item: logClip(ev.item, 200), account: logClip(ev.account, 80), detail: logClip(ev.detail, 300), ok: ev.ok !== false };
-      if (!rec.ok && ev.err) rec.err = logClip(ev.err, 300);
-      (byDay[logDayKey(ts)] = byDay[logDayKey(ts)] || []).push(rec);
-    }
-    for (const [day, recs] of Object.entries(byDay)) {
-      const key = "log:" + day;
-      let arr = [];
-      try { arr = JSON.parse((await env.COSTS_KV.get(key)) || "[]"); } catch {}
-      arr = arr.concat(recs);
-      if (arr.length > LOG_MAX_PER_DAY) arr = arr.slice(-LOG_MAX_PER_DAY);
-      await env.COSTS_KV.put(key, JSON.stringify(arr), { expirationTtl: (LOG_DAYS + 1) * 86400 });
-    }
+      const rec = { ts, src: ev.src || "painel", type: ev.type || "config", label: logClip(ev.label, 90), item: logClip(ev.item, 130), account: logClip(ev.account, 60), detail: logClip(ev.detail, 230), ok: ev.ok !== false };
+      if (!rec.ok && ev.err) rec.err = logClip(ev.err, 200);
+      // KV metadata is limited to 1024 bytes: trim the longest free-text field until it fits
+      for (const f of ["detail", "err", "item"]) { while (new TextEncoder().encode(JSON.stringify(rec)).length > 950 && rec[f] && rec[f].length > 20) rec[f] = rec[f].slice(0, Math.floor(rec[f].length * 0.8)) + "…"; }
+      rec.id = crypto.randomUUID().slice(0, 8);
+      const key = "log:" + logDayKey(ts) + ":" + String(ts).padStart(14, "0") + "-" + rec.id;
+      await env.COSTS_KV.put(key, "1", { metadata: rec, expirationTtl: (LOG_DAYS + 1) * 86400 });
+    }));
   } catch { /* the log must never break the action that is being logged */ }
+}
+async function logReadDay(env, day) {
+  const out = [];
+  let cursor;
+  for (let i = 0; i < 20; i++) {
+    const r = await env.COSTS_KV.list({ prefix: "log:" + day + ":", cursor, limit: 1000 });
+    for (const k of r.keys) if (k.metadata) out.push(k.metadata);
+    if (r.list_complete) break;
+    cursor = r.cursor;
+  }
+  return out;
 }
 // The same error repeating every minute is written once per 10 minutes.
 async function logErrorOnce(env, sig, ev) {
@@ -3055,7 +3060,7 @@ async function handleRequest(request, env) {
       const skipToday = url.searchParams.get("from") === "yesterday";
       const keys = [];
       for (let i = skipToday ? 1 : 0; i < (skipToday ? 2 : days); i++) keys.push("log:" + logDayKey(Date.now() - i * 86400000));
-      const lists = await Promise.all(keys.map(async (k) => { try { return JSON.parse((await env.COSTS_KV.get(k)) || "[]"); } catch { return []; } }));
+      const lists = await Promise.all(keys.map(async (k) => { try { return await logReadDay(env, k.slice(4)); } catch { return []; } }));
       const entries = lists.flat().sort((a, b) => b.ts - a.ts).slice(0, 5000);
       return json({ entries, days: LOG_DAYS }, 200, origin);
     }
