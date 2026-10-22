@@ -2155,6 +2155,7 @@
             <div class="cc-summary-row"><span class="cc-label">Fim</span><span class="cc-value" id="ccSumEnd">—</span></div>
             <div class="cc-summary-row"><span class="cc-label">Segmentação</span><span class="cc-value" id="ccSumTargeting">—</span></div>
             <div class="cc-summary-row"><span class="cc-label">Plataforma</span><span class="cc-value" id="ccSumPlatform">Todas</span></div>
+            <div class="cc-summary-row"><span class="cc-label">Link</span><span class="cc-value" id="ccSumLink">—</span></div>
             <div class="cc-summary-row"><span class="cc-label">Criativos</span><span class="cc-value" id="ccSumCreative">nenhum</span></div>
             <div id="ccSumStatus"></div>
             <button type="button" id="ccSubmitBtn" class="cc-submit-btn">Criar campanha</button>
@@ -5347,6 +5348,7 @@
     if (/tracking/.test(t)) return 'Não achei o tracking id dessa conta de anúncios.';
     if (/duplicate|already exist/.test(t)) return 'Já existe algo com esse nome na conta.';
     if (/name length|name must|name is/.test(t)) return 'A NewsBreak não aceitou o nome (muito curto ou muito longo; mínimo 3 caracteres).';
+    if (/product url/.test(t)) return 'A NewsBreak exige uma URL de produto (a página real do produto) para esta conta de anúncios e não aceitou o link.';
     if (/clickthrough|click through|url|link/.test(t)) return 'A NewsBreak não aceitou o link do anúncio.';
     if (/celebrit|policy|violation/.test(t)) return 'A NewsBreak barrou o conteúdo por política de anúncios.';
     if (/headline|description|invalid|must be/.test(t)) return 'A NewsBreak não aceitou o texto (título ou descrição fora do permitido).';
@@ -6888,6 +6890,11 @@
     });
   }
 
+  // The site the ads will send people to, up to the .com (the account's saved link, read right now, never a remembered copy).
+  function ccLinkHost(url){
+    try { const u = new URL(String(url || '').trim()); return u.protocol + '//' + u.host; }
+    catch (e) { const m = String(url || '').match(/^(https?:\/\/[^\/?#]+)/i); return m ? m[1] : (String(url || '').trim().slice(0, 40) || 'inválido'); }
+  }
   function shortLinkForDisplay(url){
     const noScheme = url.replace(/^https?:\/\//, '');
     const hpidMatch = noScheme.match(/^(.*?hpid=[^&]*)/);
@@ -7594,6 +7601,16 @@ function ccPreviewLines(adsets, nameOf){
     const usedNames = Array.from(ccAllUsedIds()).map(ccNameOf);
     sumCreative.textContent = usedNames.length ? usedNames.length + ' (' + usedNames.join(', ') + ')' : 'nenhum';
     sumCreative.title = usedNames.join(', ');
+    // link that will be used, per ad account, from what is saved in "Links das contas" at this very moment
+    const linkEl = document.getElementById('ccSumLink');
+    if (!accounts.length) linkEl.textContent = '—';
+    else {
+      const rows = accounts.map(a => ({ a, l: ccLinks[a.id] }));
+      const hosts = [...new Set(rows.map(r => r.l && r.l.url ? ccLinkHost(r.l.url) : ''))];
+      linkEl.innerHTML = hosts.length === 1 && hosts[0] ? '<b>' + ccEsc(hosts[0]) + '</b>' : rows.map(r =>
+        '<span style="display:block;">' + ccEsc(subAccountLabel(r.a)) + ': ' + (r.l && r.l.url ? '<b>' + ccEsc(ccLinkHost(r.l.url)) + '</b>' : '<b style="color:var(--bad);">sem link</b>') + '</span>').join('');
+      linkEl.title = rows.map(r => subAccountLabel(r.a) + ': ' + ((r.l && r.l.url) || 'sem link')).join('\n');
+    }
     renderCcCards();
 
     const missing = [];
@@ -7903,7 +7920,7 @@ function ccPreviewLines(adsets, nameOf){
                 ...(run.logoUrl ? { logoUrl: run.logoUrl } : {}),
               },
             };
-            ccLog(cPrefix + 'Criando anúncio…');
+            ccLog(cPrefix + 'Criando anúncio… (link: ' + ccLinkHost(link.url) + ')');
             const adResp = await post(NB_AD_API, adBody);
             if (adResp.error) { const er = new Error(adResp.detail || adResp.error); er.stage = 'ad'; throw er; }
             ccLog(cPrefix + 'Anúncio criado (id ' + adResp.ad.id + '). Pronto.', 'ok');
@@ -7911,7 +7928,7 @@ function ccPreviewLines(adsets, nameOf){
             step();
           } catch (err) {
             cs.status = 'error';
-            cs.error = friendlyError(err.message, err.stage);
+            cs.error = friendlyError(err.message, err.stage) + (err.stage === 'ad' ? ' (link usado: ' + ccLinkHost(link.url) + ')' : '');
             ccLog(cPrefix + cs.error, 'err', err.message);
           }
         }
