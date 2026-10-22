@@ -1036,10 +1036,11 @@ async function sendPush(env, title, text, type, onlyId) {
   return result;
 }
 
-// First alert right away; then a reminder every PUSH_REPEAT_MIN minutes (default 30) while it stays rejected + active.
+// A rejected ad notifies three times: right away, 10 minutes later and 30 minutes after the first alert. Then it stays quiet while it stays rejected;
+// if it leaves the list (paused, fixed, ignored) and is rejected again, the cycle starts over.
+const REJ_ALERT_AT_MIN = [0, 10, 30];
 async function pushRejectedAlerts(env, data) {
   if (!(await pushTargets(env, "rejections")).length) return;
-  const repeatMs = Math.max(5, Number(env.PUSH_REPEAT_MIN) || 30) * 60 * 1000;
   const now = Date.now();
   const raw = await env.COSTS_KV.get("push_state");
   const state = raw ? JSON.parse(raw) : {};
@@ -1053,9 +1054,12 @@ async function pushRejectedAlerts(env, data) {
   const reminders = [];
   for (const ad of active) {
     const prev = state[ad.id];
-    if (!prev) { fresh.push(ad); next[ad.id] = { first: now, last: now, acc: ad.acc }; }
-    else if (now - prev.last >= repeatMs) { reminders.push(ad); next[ad.id] = { first: prev.first, last: now, acc: ad.acc }; }
-    else next[ad.id] = { ...prev, acc: ad.acc };
+    if (!prev) { fresh.push(ad); next[ad.id] = { first: now, last: now, n: 1, acc: ad.acc }; continue; }
+    const elapsedMin = (now - prev.first) / 60000;
+    // alerts already sent: older entries had no counter, so infer it from their age instead of repeating anything
+    let n = Number(prev.n) || (elapsedMin >= REJ_ALERT_AT_MIN[2] ? 3 : elapsedMin >= REJ_ALERT_AT_MIN[1] ? 2 : 1);
+    if (n < REJ_ALERT_AT_MIN.length && elapsedMin >= REJ_ALERT_AT_MIN[n]) { reminders.push(ad); n++; next[ad.id] = { first: prev.first, last: now, n, acc: ad.acc }; }
+    else next[ad.id] = { ...prev, n, acc: ad.acc };
   }
   const line = (a) => a.account + " · " + a.name + " — " + a.reason;
   let sentOk = true;
@@ -1066,7 +1070,7 @@ async function pushRejectedAlerts(env, data) {
   }
   if (reminders.length) {
     const r = await sendPush(env, "Ainda recusado" + (reminders.length > 1 ? "s (" + reminders.length + ")" : ""), reminders.slice(0, 6).map(line).join("\n"), "rejections");
-    if (!r.ok) reminders.forEach((a) => { next[a.id] = state[a.id]; });
+    if (!r.ok) reminders.forEach((a) => { next[a.id] = state[a.id]; }); // try again next minute
   }
   await env.COSTS_KV.put("push_state", JSON.stringify(next)); // ads that left the list are forgotten, so a new rejection alerts again
 }

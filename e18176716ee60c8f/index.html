@@ -289,6 +289,13 @@
   .rej-row{display:grid; grid-template-columns:24px 64px minmax(0,1fr); gap:14px; align-items:start; padding:14px 18px; border-top:1px solid var(--line);}
   .rej-row.ign{opacity:.5;}
   .rej-row.ign:hover{opacity:.85;}
+  .rej-actions{margin-left:auto; display:inline-flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;}
+  .rej-actions .rej-row-edit{margin-left:0;}
+  .rej-row-ign.danger{color:var(--bad);}
+  .rej-row-ign.danger:hover{border-color:var(--bad); color:var(--bad);}
+  .rej-chev{display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:8px; background:var(--surface-raised); border:1px solid var(--line); color:var(--ink); font-size:18px; line-height:1;}
+  .rej-ign-head:hover .rej-chev{border-color:var(--ink);}
+  .rej-ign-head{font-size:14px !important; padding:14px 18px !important; color:var(--ink) !important;}
   .rej-row-ign{margin-left:8px; border:1px solid var(--line); background:none; color:var(--muted); font:inherit; font-size:12.5px; padding:6px 12px; border-radius:var(--radius-xs); cursor:pointer;}
   .rej-row-ign:hover{color:var(--ink); border-color:var(--ink);}
   .rej-ign-head{display:flex; align-items:center; gap:10px; padding:12px 18px; border-top:1px solid var(--line); background:var(--neutral-bg); font-size:13px; color:var(--muted); cursor:pointer; user-select:none;}
@@ -3949,9 +3956,11 @@
     setTimeout(() => { msg.textContent = ''; }, 6000);
     await loadLiveCampanhas();
   }
-  function ctOpenDelete(){
-    const rows = ctSelectedRows(); if (!rows.length) return;
-    const noun = { campaigns: 'campanha', adsets: 'conjunto', ads: 'anúncio' }[campTab];
+  let ctDelOverride = null; // rows chosen outside the Campanhas table (e.g. a rejected ad in Rejeições)
+  function ctOpenDelete(rowsArg){
+    ctDelOverride = Array.isArray(rowsArg) ? rowsArg : null;
+    const rows = ctDelOverride || ctSelectedRows(); if (!rows.length) return;
+    const noun = ctDelOverride ? 'anúncio' : { campaigns: 'campanha', adsets: 'conjunto', ads: 'anúncio' }[campTab];
     document.getElementById('ctDelTitle').textContent = 'Excluir ' + rows.length + ' ' + noun + (rows.length === 1 ? '' : 's') + '?';
     document.getElementById('ctDelWhat').innerHTML = rows.slice(0, 6).map(r => '• ' + ccEsc(r.name)).join('<br>') + (rows.length > 6 ? '<br>… e mais ' + (rows.length - 6) : '');
     document.getElementById('ctDelInput').value = ''; document.getElementById('ctDelGo').disabled = true; document.getElementById('ctDelLog').innerHTML = '';
@@ -3984,7 +3993,7 @@
     } finally { btn.disabled = false; }
   }
   async function ctRunDelete(){
-    const rows = ctSelectedRows(); if (!rows.length) return;
+    const rows = ctDelOverride || ctSelectedRows(); if (!rows.length) return;
     const log = document.getElementById('ctDelLog'), go = document.getElementById('ctDelGo');
     go.disabled = true; log.innerHTML = '';
     let ok = 0;
@@ -3993,7 +4002,7 @@
         const res = await fetch(NB_ENTITY_DELETE_API, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY }, body: JSON.stringify({ accountKey: r.accountKey, entityType: r.type, id: r.id, confirm: true }) });
         const j = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(j.detail || j.error || 'falhou');
-        ok++; ctSel[campTab].delete(r.id);
+        ok++; if (!ctDelOverride) ctSel[campTab].delete(r.id);
         const d = document.createElement('div'); d.className = 'ok'; d.textContent = 'Excluído: ' + r.name; log.appendChild(d);
       } catch (e) {
         const denied = /permission/i.test(String(e.message));
@@ -4003,6 +4012,7 @@
     }
     const end = document.createElement('div'); end.textContent = ok + ' de ' + rows.length + ' excluído(s).'; log.appendChild(end);
     await loadLiveCampanhas();
+    if (ctDelOverride) { rejRecompute(); renderRejeicoes(); }
     go.disabled = ok === rows.length;
   }
 
@@ -4028,7 +4038,7 @@
     document.getElementById('ctBulkBudget').addEventListener('input', ctBulkSync);
     document.getElementById('ctBulkBudget').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !document.getElementById('ctBulkApply').disabled) ctBulkApply(); });
     document.getElementById('ctBulkApply').addEventListener('click', ctBulkApply);
-    document.getElementById('ctBulkDel').addEventListener('click', ctOpenDelete);
+    document.getElementById('ctBulkDel').addEventListener('click', () => ctOpenDelete());
     document.getElementById('ctBulkEdit').addEventListener('click', () => ctOpenAdEdit());
     document.getElementById('ctBulkClear').addEventListener('click', () => { ctSel[campTab] = new Set(); renderCampanhas(); });
     document.getElementById('ctDelInput').addEventListener('input', (e) => { document.getElementById('ctDelGo').disabled = e.target.value.trim() !== 'EXCLUIR'; });
@@ -5013,7 +5023,10 @@
           '<input type="checkbox" data-rej-check="' + a.id + '"' + (rejSelected.has(a.id) ? ' checked' : '') + ' title="Selecionar pra editar">' +
           media +
           '<div><div class="rej-title">' + ccEsc(a.name) + ' <span class="rej-chip">' + ccEsc(a.adAccountName) + '</span>' +
-          '<button type="button" class="rej-row-edit" data-rej-edit="' + a.id + '">Editar</button><button type="button" class="rej-row-ign" data-rej-ign="' + a.id + '" title="Não me interessa mais: parar de notificar e mandar pro fim da lista">Ignorar</button></div>' +
+          '<span class="rej-actions"><button type="button" class="rej-row-edit" data-rej-edit="' + a.id + '">Editar</button>' +
+          '<button type="button" class="rej-row-ign" data-rej-pause="' + a.id + '" title="Pausar este anúncio na NewsBreak">Pausar</button>' +
+          '<button type="button" class="rej-row-ign danger" data-rej-del="' + a.id + '" title="Excluir este anúncio na NewsBreak (não dá pra desfazer)">Excluir</button>' +
+          '<button type="button" class="rej-row-ign" data-rej-ign="' + a.id + '" title="Não me interessa mais: parar de notificar e mandar pro fim da lista">Ignorar</button></span></div>' +
           '<div class="rej-path">' + ccEsc(a.campaignName) + ' › ' + ccEsc(a.adSetName) + '</div>' +
           '<div class="rej-copy"><b>' + ccEsc(a.headline || '') + '</b> — ' + ccEsc(a.description || '') + '</div>' +
           '<div class="rej-reason" title="' + ccEsc(a.statusTxt || '') + '">Rejeitado — ' + ccEsc(rejReason(a.statusTxt)) + '</div></div></div>';
@@ -5037,14 +5050,25 @@
         const isVideo = a.creativeType === 'VIDEO';
         const media = isVideo ? '<video class="rej-thumb" src="' + ccEsc(a.assetUrl) + '" muted preload="metadata"></video>' : '<img class="rej-thumb" src="' + ccEsc(a.assetUrl) + '" loading="lazy">';
         return '<div class="rej-row ign" data-rej-id="' + a.id + '"><span></span>' + media +
-          '<div><div class="rej-title">' + ccEsc(a.name) + ' <span class="rej-chip">' + ccEsc(a.adAccountName) + '</span><button type="button" class="rej-row-ign" style="margin-left:auto;" data-rej-unign="' + a.id + '">Voltar a acompanhar</button></div>' +
+          '<div><div class="rej-title">' + ccEsc(a.name) + ' <span class="rej-chip">' + ccEsc(a.adAccountName) + '</span><span class="rej-actions"><button type="button" class="rej-row-ign" data-rej-pause="' + a.id + '" title="Pausar este anúncio na NewsBreak">Pausar</button><button type="button" class="rej-row-ign danger" data-rej-del="' + a.id + '" title="Excluir este anúncio na NewsBreak (não dá pra desfazer)">Excluir</button><button type="button" class="rej-row-ign" data-rej-unign="' + a.id + '">Voltar a acompanhar</button></span></div>' +
           '<div class="rej-path">' + ccEsc(a.campaignName) + ' › ' + ccEsc(a.adSetName) + '</div>' +
           '<div class="rej-reason" title="' + ccEsc(a.statusTxt || '') + '">Rejeitado — ' + ccEsc(rejReason(a.statusTxt)) + '</div></div></div>';
       }).join('');
-      list.insertAdjacentHTML('beforeend', '<div class="rej-ign-head" data-rej-ign-toggle>' + (rejShowIgn ? '▾' : '▸') + ' Ignorados (' + ign.length + ') — não notificam</div>' + (rejShowIgn ? igRows : ''));
+      list.insertAdjacentHTML('beforeend', '<div class="rej-ign-head" data-rej-ign-toggle><span class="rej-chev">' + (rejShowIgn ? '▾' : '▸') + '</span> Ignorados (' + ign.length + ') — não notificam</div>' + (rejShowIgn ? igRows : ''));
       list.querySelector('[data-rej-ign-toggle]').addEventListener('click', () => { rejShowIgn = !rejShowIgn; renderRejeicoes(); });
       list.querySelectorAll('[data-rej-unign]').forEach(b => b.addEventListener('click', () => setRejIgnored([b.dataset.rejUnign], false)));
     }
+    const rejAdOf = (id) => rejAds.concat(rejIgnoredAds).find(x => x.id === id);
+    list.querySelectorAll('[data-rej-pause]').forEach(b => b.addEventListener('click', () => {
+      const a = rejAdOf(b.dataset.rejPause); if (!a) return;
+      b.disabled = true; b.textContent = 'Pausando…';
+      setEntityStatus(a.accountKey, 'ad', a.id, 'OFF').then(() => loadLiveCampanhas()).then(() => { rejRecompute(); renderRejeicoes(); })
+        .catch(() => { b.disabled = false; b.textContent = 'Pausar'; alert('Não consegui pausar agora. Tente de novo.'); });
+    }));
+    list.querySelectorAll('[data-rej-del]').forEach(b => b.addEventListener('click', () => {
+      const a = rejAdOf(b.dataset.rejDel); if (!a) return;
+      ctOpenDelete([{ accountKey: a.accountKey, type: 'ad', id: a.id, name: a.name + ' · ' + a.adAccountName }]);
+    }));
     const selVis = vis.filter(a => rejSelected.has(a.id)).length;
     document.getElementById('rejIgnBtn').disabled = !selVis;
     document.getElementById('rejBulk').hidden = !vis.length;
@@ -5748,7 +5772,7 @@
   let nichePresets = {};
   // Defaults used until the user saves their own preset for the niche.
   const DEFAULT_NICHE_PRESETS = {
-    ED: { gender: ['male'], age: ['31-44', '45-64', '65+'], language: ['en_us'], network: ['all'], platforms: ['APP_AND_WEB_UNLIMITED'], budget: 200, startTime: '04:00', endTime: '20:00', brandName: 'USA DAY' },
+    ED: { gender: ['male'], age: ['31-44', '45-64', '65+'], language: ['en_us'], network: ['all'], platforms: ['APP_AND_WEB_UNLIMITED'], budget: 200, startTime: '04:00', endTime: ccDefaultEndTime(), brandName: 'USA DAY' },
     HL: { gender: ['female'], age: ['31-44', '45-64', '65+'], language: ['en_us'], network: ['all'], platforms: ['NEWSBREAK'], budget: 200, startTime: '04:00', noEnd: true, brandName: 'Hair Loss Institute' },
   };
 
@@ -5809,7 +5833,7 @@
       platforms: platformSel.slice(), c: ccC(), s: ccS(), mirror: ccMirrorOn(),
       budget: parseFloat(g('ccBudget').value) || 200,
       startTime: g('ccStartTime').value || '04:00',
-      endTime: g('ccEndTime').value || '20:00', noEnd: endDayKey === null,
+      endTime: g('ccEndTime').value || ccDefaultEndTime(), noEnd: endDayKey === null,
       brandName: g('ccBrandDefault').value.trim(), logoLibraryId: selectedLogoLibraryId,
     };
   }
@@ -7281,6 +7305,14 @@ function ccPreviewLines(adsets, nameOf){
     const utcMillis = Date.UTC(y, mo - 1, d, hh, mm) - offsetMin * 60000;
     return Math.floor(utcMillis / 1000);
   }
+
+  // The field is a PDT clock, but "23:59" is what people read as the end of their day: this is 23:59 Brasília written in PDT (19:59 in summer time).
+  function ccDefaultEndTime(){
+    const [y, m, d] = todayKeyBR().split('-').map(Number);
+    const hm = new Intl.DateTimeFormat('en-GB', { timeZone: 'America/Los_Angeles', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(Date.UTC(y, m - 1, d, 23 + 3, 59)));
+    return hm.replace(/^24/, '00');
+  }
+  (() => { const el = document.getElementById('ccEndTime'); if (el) el.value = ccDefaultEndTime(); })();
 
   function laWallTimeToBrt(dateKey, timeStr){
     const epoch = laWallTimeToEpoch(dateKey, timeStr);
