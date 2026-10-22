@@ -578,7 +578,26 @@ async function computeLiveCampanhas(env) {
       }
     })
   );
-  return { campaigns: perAccount.flat(), failedAccounts, generatedAt: new Date().toISOString() };
+  // NewsBreak sometimes does not answer for a minute or two. An account that failed keeps its last good campaigns (marked stale) for up to
+  // 20 minutes, so a page opened during the hiccup still shows the accounts instead of an empty list. Stale rows never trigger rules.
+  const campaigns = perAccount.flat();
+  const accountTs = {};
+  const now = Date.now();
+  for (const [key] of tokenEntries) if (!failedAccounts.includes(key)) accountTs[key] = now;
+  if (failedAccounts.length) {
+    try {
+      const last = JSON.parse((await env.COSTS_KV.get("live_last_good")) || "null");
+      if (last && Array.isArray(last.campaigns)) {
+        for (const key of failedAccounts) {
+          const ts = (last.accountTs && last.accountTs[key]) || last.ts || 0;
+          if (now - ts > 20 * 60 * 1000) continue;
+          accountTs[key] = ts;
+          for (const c of last.campaigns) if (c.accountKey === key) campaigns.push({ ...c, stale: true });
+        }
+      }
+    } catch { /* no fallback available */ }
+  }
+  return { campaigns, failedAccounts, accountTs, generatedAt: new Date().toISOString() };
 }
 
 // ---- NewsBreak campaign-creation proxy (keeps real tokens server-side) ----
@@ -1188,7 +1207,7 @@ function planRules(data, life, rules, state) {
   let evaluated = 0;
   const active = rules.filter((r) => r.enabled);
   for (const c of (data && data.campaigns) || []) {
-    if (c.status !== "ON" || !life[c.accountKey]) continue;
+    if (c.stale || c.status !== "ON" || !life[c.accountKey]) continue;
     for (const s of c.adSets || []) {
       if (s.status !== "ON") continue;
       evaluated++;
@@ -1236,6 +1255,7 @@ async function tidyRulePaused(env, data, rules, state, log) {
   for (const k of Object.keys(state)) { const i = k.lastIndexOf(":"); if (i > 0 && pauseIds.has(k.slice(0, i))) ruled.add(k.slice(i + 1)); }
   let changed = 0;
   for (const c of (data && data.campaigns) || []) {
+    if (c.stale) continue;
     const sets = c.adSets || [];
     const mine = sets.filter((x) => ruled.has(x.id) && x.status === "OFF" && !state["tidy:" + x.id]);
     const needCamp = c.status === "ON" && sets.length && sets.every((x) => x.status === "OFF") && sets.some((x) => ruled.has(x.id));
@@ -2058,6 +2078,7 @@ export default {
         const data = await computeLiveCampanhas(env);
         if (data) {
           await env.COSTS_KV.put("live_campanhas", JSON.stringify({ ts: Date.now(), data }));
+          if ((data.campaigns || []).some((c) => !c.stale)) await env.COSTS_KV.put("live_last_good", JSON.stringify({ ts: Date.now(), accountTs: data.accountTs || {}, campaigns: data.campaigns }));
           try { await pushRejectedAlerts(env, data); } catch (e) { note = "push_error:" + String((e && e.message) || e); }
           try { const sa = await pushSaleAlerts(env, data); if (sa && sa.sent) note += "; vendas_avisadas:" + sa.sent; } catch (e) { note += "; vendas_erro:" + String((e && e.message) || e).slice(0, 100); }
           try { const rr = await runRulesEngine(env, data); if (rr && rr.ran) note += "; rules_eval:" + rr.evaluated + " rules_acoes:" + rr.actions; } catch (e) { note += "; rules_error:" + String((e && e.message) || e); }

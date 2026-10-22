@@ -5563,7 +5563,8 @@
       if (!json || json.error) return;
       const failedNB = new Set(json.failedAccounts || []);
       if (failedNB.size) {
-        const keepExisting = campaigns.filter(c => failedNB.has(c.accountKey));
+        let keepExisting = campaigns.filter(c => failedNB.has(c.accountKey));
+        if (!keepExisting.length) keepExisting = (json.campaigns || []).filter(c => failedNB.has(c.accountKey)); // page opened during the hiccup: use the server's last good copy
         const fresh = (json.campaigns || []).filter(c => !failedNB.has(c.accountKey));
         campaigns = keepExisting.concat(fresh);
       } else if (json.campaigns) {
