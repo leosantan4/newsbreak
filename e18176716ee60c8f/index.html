@@ -665,6 +665,8 @@
   .cc-summary-row:last-of-type{border-bottom:none;}
   .cc-summary-row .cc-label{color:var(--muted); flex:none;}
   .cc-summary-row .cc-value{font-weight:500; text-align:right; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .cc-summary-row .cc-value small{display:block; font-weight:400; font-size:11.5px; color:var(--muted); white-space:normal; line-height:1.35;}
+  .cc-summary-row .cc-value small.cc-warn{color:var(--bad); font-weight:500;}
   .cc-summary-accounts{margin-top:2px; margin-bottom:10px; font-size:12px; color:var(--ink); line-height:1.5;}
   .cc-summary-missing{margin-top:6px; padding:10px 12px; background:var(--bad-bg); color:var(--bad); border-radius:var(--radius-sm); font-size:11.5px; font-weight:500;}
   .cc-summary-ready{margin-top:6px; padding:10px 12px; background:var(--good-bg); color:var(--good); border-radius:var(--radius-sm); font-size:11.5px; font-weight:500;}
@@ -2118,7 +2120,7 @@
             <div class="cc-summary-row"><span class="cc-label">Orçamento/conjunto</span><span class="cc-value" id="ccSumBudget">$200</span></div>
             <div class="cc-summary-row"><span class="cc-label">Total/dia</span><span class="cc-value" id="ccSumBudgetTotal">—</span></div>
             <div class="cc-summary-row"><span class="cc-label">Início</span><span class="cc-value" id="ccSumStart">—</span></div>
-            <div class="cc-summary-row"><span class="cc-label">Fim</span><span class="cc-value" id="ccSumEnd">Hoje 20:00 PDT</span></div>
+            <div class="cc-summary-row"><span class="cc-label">Fim</span><span class="cc-value" id="ccSumEnd">—</span></div>
             <div class="cc-summary-row"><span class="cc-label">Segmentação</span><span class="cc-value" id="ccSumTargeting">—</span></div>
             <div class="cc-summary-row"><span class="cc-label">Plataforma</span><span class="cc-value" id="ccSumPlatform">Todas</span></div>
             <div class="cc-summary-row"><span class="cc-label">Criativos</span><span class="cc-value" id="ccSumCreative">nenhum</span></div>
@@ -5634,8 +5636,9 @@
   let ageSel = ['31-44', '45-64', '65+'];
   let languageSel = ['en_us'];
   let networkSel = ['all'];
-  let startDaySel = 0;
-  let endDaySel = 0;
+  // The chosen days are stored as real dates (YYYY-MM-DD), never as "today + N": a form left open across midnight must not move the campaign by a day.
+  let startDayKey = todayKeyBR();
+  let endDayKey = todayKeyBR();   // null = no end
 
   let mediaSearchQuery = '';
   let galleryOpenFolder = (function(){ const v = loadPref('galleryOpenFolder', '__root__'); return v === '__root__' ? null : v; })();
@@ -5772,10 +5775,10 @@
     if (p.budget) document.getElementById('ccBudget').value = String(p.budget);
     if (p.startTime) document.getElementById('ccStartTime').value = p.startTime;
     if (p.noEnd) {
-      endDaySel = null;
+      endDayKey = null;
       document.getElementById('ccEndTime').disabled = true;
     } else if (p.endTime) {
-      if (endDaySel === null) endDaySel = Math.max(0, startDaySel);
+      if (endDayKey === null) endDayKey = startDayKey > todayKeyBR() ? startDayKey : todayKeyBR();
       document.getElementById('ccEndTime').disabled = false;
       document.getElementById('ccEndTime').value = p.endTime;
     }
@@ -5806,7 +5809,7 @@
       platforms: platformSel.slice(), c: ccC(), s: ccS(), mirror: ccMirrorOn(),
       budget: parseFloat(g('ccBudget').value) || 200,
       startTime: g('ccStartTime').value || '04:00',
-      endTime: g('ccEndTime').value || '20:00', noEnd: endDaySel === null,
+      endTime: g('ccEndTime').value || '20:00', noEnd: endDayKey === null,
       brandName: g('ccBrandDefault').value.trim(), logoLibraryId: selectedLogoLibraryId,
     };
   }
@@ -7287,6 +7290,43 @@ function ccPreviewLines(adsets, nameOf){
     return brDay === dateKey ? hm : hm + ' (' + fmtDateShort(brDay) + ')';
   }
 
+  // Spelled-out moment for the summary: weekday + date + Brasília clock, then PDT clock, relative day and countdown.
+  function ccWhen(dayKey, timeStr, verb){
+    const epoch = laWallTimeToEpoch(dayKey, timeStr), d = new Date(epoch * 1000);
+    const brDay = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+    const hm = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hour12: false }).format(d);
+    const { wd, short } = fmtDate(brDay), today = todayKeyBR();
+    const rel = brDay === today ? 'hoje' : brDay === shiftDateKey(today, 1) ? 'amanhã' : '';
+    const diff = epoch - Math.floor(Date.now() / 1000);
+    let left;
+    if (diff <= 0) left = '⚠ esse horário já passou';
+    else { const h = Math.floor(diff / 3600), m = Math.floor((diff % 3600) / 60); left = verb + ' em ' + (h >= 24 ? Math.floor(h / 24) + 'd ' + (h % 24) + 'h' : h + 'h' + String(m).padStart(2, '0')); }
+    return { epoch, brDay, text: wd + ' ' + short + ' · ' + hm + ' BRT', sub: timeStr + ' PDT' + (rel ? ' · ' + rel : '') + ' · ' + left, bad: diff <= 0 };
+  }
+  // a form left open across midnight: relabel Hoje/Amanhã and re-check the chosen days, never move them
+  let ccSeenToday = todayKeyBR();
+  setInterval(() => { const t = todayKeyBR(); if (t !== ccSeenToday) { ccSeenToday = t; renderStartDayPills(); renderEndDayPills(); renderCcSummary(); } else ccRenderWhen(); }, 20000);
+
+  // when it goes up and when it ends, spelled out (also refreshed on a timer so the countdown stays true)
+  function ccRenderWhen(){
+    const startTimeStr = document.getElementById('ccStartTime').value || '05:00';
+    const sw = ccWhen(startDayKey, startTimeStr, 'sobe');
+    document.getElementById('ccSumStart').innerHTML = '<b>' + sw.text + '</b><small' + (sw.bad ? ' class="cc-warn"' : '') + '>' + sw.sub + '</small>';
+    document.getElementById('ccStartTimeBrt').textContent = '→ ' + laWallTimeToBrt(startDayKey, startTimeStr) + ' BRT';
+
+    const sumEnd = document.getElementById('ccSumEnd');
+    if (endDayKey === null) {
+      sumEnd.innerHTML = '<b>sem término</b>';
+      document.getElementById('ccEndTimeBrt').textContent = '';
+    } else {
+      const endTimeStr = document.getElementById('ccEndTime').value || '23:59';
+      const ew = ccWhen(endDayKey, endTimeStr, 'termina');
+      sumEnd.innerHTML = '<b>' + ew.text + '</b><small' + (ew.bad ? ' class="cc-warn"' : '') + '>' + ew.sub + '</small>';
+      document.getElementById('ccEndTimeBrt').textContent = '→ ' + laWallTimeToBrt(endDayKey, endTimeStr) + ' BRT';
+    }
+
+  }
+
   function renderStartDayPills(){
     const el = document.getElementById('ccStartDay');
     const todayBR = todayKeyBR();
@@ -7295,11 +7335,11 @@ function ccPreviewLines(adsets, nameOf){
       const dk = shiftDateKey(todayBR, i);
       const { wd, short } = fmtDate(dk);
       const label = i < labels.length ? labels[i] : (wd + ' ' + short);
-      return '<button type="button" class="pill' + (startDaySel === i ? ' active' : '') + '" data-day-offset="' + i + '">' + label + '</button>';
+      return '<button type="button" class="pill' + (startDayKey === dk ? ' active' : '') + '" data-day-key="' + dk + '">' + label + '</button>';
     }).join('');
     el.querySelectorAll('button').forEach(btn => btn.addEventListener('click', () => {
-      startDaySel = parseInt(btn.dataset.dayOffset, 10);
-      if (endDaySel !== null && endDaySel < startDaySel) endDaySel = startDaySel;
+      startDayKey = btn.dataset.dayKey;
+      if (endDayKey !== null && endDayKey < startDayKey) endDayKey = startDayKey;
       renderStartDayPills();
       renderEndDayPills();
       renderCcSummary();
@@ -7310,20 +7350,20 @@ function ccPreviewLines(adsets, nameOf){
     const el = document.getElementById('ccEndDay');
     const todayBR = todayKeyBR();
     const labels = ['Hoje', 'Amanhã'];
-    const opts = [{ offset: null, label: 'Sem término' }].concat(
+    const opts = [{ key: null, label: 'Sem término' }].concat(
       Array.from({ length: 7 }).map((_, i) => {
         const dk = shiftDateKey(todayBR, i);
         const { wd, short } = fmtDate(dk);
-        return { offset: i, label: i < labels.length ? labels[i] : (wd + ' ' + short) };
+        return { key: dk, label: i < labels.length ? labels[i] : (wd + ' ' + short) };
       })
     );
     el.innerHTML = opts.map(o => {
-      const before = o.offset !== null && o.offset < startDaySel;
-      return '<button type="button" class="pill' + (endDaySel === o.offset ? ' active' : '') + '" data-day-offset="' + (o.offset === null ? '' : o.offset) + '"' + (before ? ' disabled title="Antes do dia de início"' : '') + '>' + o.label + '</button>';
+      const before = o.key !== null && o.key < startDayKey;
+      return '<button type="button" class="pill' + (endDayKey === o.key ? ' active' : '') + '" data-day-key="' + (o.key === null ? '' : o.key) + '"' + (before ? ' disabled title="Antes do dia de início"' : '') + '>' + o.label + '</button>';
     }).join('');
     el.querySelectorAll('button').forEach(btn => btn.addEventListener('click', () => {
-      endDaySel = btn.dataset.dayOffset === '' ? null : parseInt(btn.dataset.dayOffset, 10);
-      document.getElementById('ccEndTime').disabled = endDaySel === null;
+      endDayKey = btn.dataset.dayKey === '' ? null : btn.dataset.dayKey;
+      document.getElementById('ccEndTime').disabled = endDayKey === null;
       renderEndDayPills();
       renderCcSummary();
     }));
@@ -7356,25 +7396,7 @@ function ccPreviewLines(adsets, nameOf){
       : '—';
     document.getElementById('ccSumBudgetTotal').textContent = plan.adsets ? '$' + (plan.adsets * (parseFloat(budget) || 0)).toLocaleString('en-US', { maximumFractionDigits: 2 }) : '—';
 
-    const dayKey = shiftDateKey(todayKeyBR(), startDaySel);
-    const { wd, short } = fmtDate(dayKey);
-    const timeStr = document.getElementById('ccStartTime').value || '05:00';
-    const dayLabel = startDaySel === 0 ? 'Hoje' : (startDaySel === 1 ? 'Amanhã' : wd + ' ' + short);
-    document.getElementById('ccSumStart').textContent = dayLabel + ' ' + timeStr + ' PDT';
-    document.getElementById('ccStartTimeBrt').textContent = '→ ' + laWallTimeToBrt(dayKey, timeStr) + ' BRT';
-
-    const sumEnd = document.getElementById('ccSumEnd');
-    if (endDaySel === null) {
-      sumEnd.textContent = 'sem término';
-      document.getElementById('ccEndTimeBrt').textContent = '';
-    } else {
-      const endDayKey = shiftDateKey(todayKeyBR(), endDaySel);
-      const { wd: ewd, short: eshort } = fmtDate(endDayKey);
-      const endTimeStr = document.getElementById('ccEndTime').value || '23:59';
-      const endDayLabel = endDaySel === 0 ? 'Hoje' : (endDaySel === 1 ? 'Amanhã' : ewd + ' ' + eshort);
-      sumEnd.textContent = endDayLabel + ' ' + endTimeStr + ' PDT';
-      document.getElementById('ccEndTimeBrt').textContent = '→ ' + laWallTimeToBrt(endDayKey, endTimeStr) + ' BRT';
-    }
+    ccRenderWhen();
 
     document.getElementById('ccSumPlatform').textContent = platformSummary();
     const genderLabel = { all: 'Todos', male: 'Masc', female: 'Fem', notdisclosed: 'N/I' }[genderSel[0]] || genderSel[0];
@@ -7389,8 +7411,9 @@ function ccPreviewLines(adsets, nameOf){
 
     const missing = [];
     if (platformProblem()) missing.push('plataforma: Newsletter sozinha não é suportada');
-    if (endDaySel !== null && laWallTimeToEpoch(shiftDateKey(todayKeyBR(), endDaySel), document.getElementById('ccEndTime').value || '23:59') <= laWallTimeToEpoch(shiftDateKey(todayKeyBR(), startDaySel), document.getElementById('ccStartTime').value || '05:00')) missing.push('o término precisa ser depois do início');
-    if (endDaySel !== null && laWallTimeToEpoch(shiftDateKey(todayKeyBR(), endDaySel), document.getElementById('ccEndTime').value || '23:59') <= Math.floor(Date.now() / 1000)) missing.push('o término já passou (a campanha seria encerrada na hora)');
+    if (startDayKey < todayKeyBR()) missing.push('o dia de início escolhido (' + fmtDateShort(startDayKey) + ') já passou: escolha o dia de novo');
+    if (endDayKey !== null && laWallTimeToEpoch(endDayKey, document.getElementById('ccEndTime').value || '23:59') <= laWallTimeToEpoch(startDayKey, document.getElementById('ccStartTime').value || '05:00')) missing.push('o término precisa ser depois do início');
+    if (endDayKey !== null && laWallTimeToEpoch(endDayKey, document.getElementById('ccEndTime').value || '23:59') <= Math.floor(Date.now() / 1000)) missing.push('o término já passou (a campanha seria encerrada na hora)');
     if (!accounts.length) missing.push('marque pelo menos uma conta');
     if (!document.getElementById('ccHeadline').value.trim()) missing.push('título');
     if (!document.getElementById('ccBrandDefault').value.trim()) missing.push('marca padrão');
@@ -7757,12 +7780,12 @@ function ccPreviewLines(adsets, nameOf){
 
     const multi = selectedSubAccountIds.length > 1;
     const budgetCents = Math.round(parseFloat(document.getElementById('ccBudget').value || '200') * 100);
-    const dayKey = shiftDateKey(todayKeyBR(), startDaySel);
+    const dayKey = startDayKey;
     const timeStr = document.getElementById('ccStartTime').value || '05:00';
     const startTime = laWallTimeToEpoch(dayKey, timeStr);
-    const endTime = endDaySel === null
+    const endTime = endDayKey === null
       ? 2146878847
-      : laWallTimeToEpoch(shiftDateKey(todayKeyBR(), endDaySel), document.getElementById('ccEndTime').value || '23:59');
+      : laWallTimeToEpoch(endDayKey, document.getElementById('ccEndTime').value || '23:59');
     const headline = document.getElementById('ccHeadline').value.trim();
     const brandName = document.getElementById('ccBrandDefault').value.trim();
     const description = document.getElementById('ccDescription').value.trim();
@@ -7770,7 +7793,8 @@ function ccPreviewLines(adsets, nameOf){
     if (!selectedSubAccountIds.length) { ccLog('Marca pelo menos uma sub-conta.', 'err'); btn.disabled = false; return; }
     if (!headline || !brandName || !description) { ccLog('Preenche título, marca padrão e descrição.', 'err'); btn.disabled = false; return; }
     if (endTime <= startTime) { ccLog('A hora de término precisa ser depois da hora de início.', 'err'); btn.disabled = false; return; }
-    if (endDaySel !== null && endTime <= Math.floor(Date.now() / 1000)) { ccLog('O horário de término já passou — a campanha seria encerrada na hora. Ajuste o dia/hora de término.', 'err'); btn.disabled = false; return; }
+    if (dayKey < todayKeyBR()) { ccLog('O dia de início escolhido (' + fmtDateShort(dayKey) + ') já passou. Escolha o dia de novo — não criei nada.', 'err'); btn.disabled = false; return; }
+    if (endDayKey !== null && endTime <= Math.floor(Date.now() / 1000)) { ccLog('O horário de término já passou — a campanha seria encerrada na hora. Ajuste o dia/hora de término.', 'err'); btn.disabled = false; return; }
     if (platformProblem()) { ccLog('Plataforma: ' + platformProblem() + '.', 'err'); btn.disabled = false; return; }
 
     const toCreative = (id) => {
@@ -7788,6 +7812,8 @@ function ccPreviewLines(adsets, nameOf){
     const baseNameFor = (acc) => multi ? ((accountCampaigns[acc.id] || {}).name || '').trim() : document.getElementById('ccName').value.trim();
     accountList.forEach(acc => { if (!baseNameFor(acc)) problems.push(subAccountLabel(acc) + ': falta nome'); });
     if (problems.length) { ccLog('Corrige antes de criar: ' + problems.join('; '), 'err'); btn.disabled = false; return; }
+    { const w1 = ccWhen(dayKey, timeStr, 'sobe'); const w2 = endDayKey === null ? null : ccWhen(endDayKey, document.getElementById('ccEndTime').value || '23:59', 'termina');
+      ccLog('Agendamento enviado: início ' + w1.text + ' (' + timeStr + ' PDT)' + (w2 ? ' · fim ' + w2.text : ' · sem término') + '.'); }
 
     const common = { logoLibraryId: selectedLogoLibraryId, budgetCents, startTime, endTime, headline, brandName, description };
     const runs = [];
