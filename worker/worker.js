@@ -254,10 +254,14 @@ async function getAllTokens(env, opts) {
 // "TODAY" uses NewsBreak's REALTIME data source (what RedTrack also shows). The default (HOURLY) is the settlement report and stays empty for
 // hours on a fresh account, which is why spend showed "–" while the money was already being spent. Other ranges only exist as HOURLY.
 async function nbFetchReport(token, dateRange, dimensions, extraMetrics) {
+  // dateRange may be { fixed: "YYYY-MM-DD" } = one specific day (today's date is served as TODAY, in real time)
+  let fixed = null;
+  if (dateRange && typeof dateRange === "object") { fixed = dateRange.fixed; dateRange = fixed === todayKeySaoPaulo() ? "TODAY" : "FIXED"; }
   const body = {
     name: "live worker",
     timezone: "America/Sao_Paulo",
     dateRange,
+    ...(dateRange === "FIXED" ? { startDate: fixed, endDate: fixed } : {}),
     dimensions: dimensions || ["DATE"],
     metrics: ["COST", "CLICK", "CPC", ...(extraMetrics || [])],
     eventMetrics: [
@@ -3248,10 +3252,14 @@ async function handleRequest(request, env) {
     if (url.pathname === "/metrics" && request.method === "GET") {
       const key = request.headers.get("X-Access-Key");
       if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
-      const range = url.searchParams.get("range") || "TODAY";
-      if (METRIC_RANGES.indexOf(range) === -1) return json({ error: "invalid_range" }, 400, origin);
+      let range = url.searchParams.get("range") || "TODAY", cacheKey = "metrics:" + range, ttl = range === "TODAY" ? 15 : 60;
+      if (range === "FIXED") {
+        const d = url.searchParams.get("date") || "";
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || d > todayKeySaoPaulo()) return json({ error: "invalid_date" }, 400, origin);
+        range = { fixed: d }; cacheKey = "metrics:FIXED:" + d; ttl = d === todayKeySaoPaulo() ? 15 : 300;
+      } else if (METRIC_RANGES.indexOf(range) === -1) return json({ error: "invalid_range" }, 400, origin);
       try {
-        const data = await getCached(env, "metrics:" + range, range === "TODAY" ? 15 : 60, () => computeMetricsByLevel(env, range));
+        const data = await getCached(env, cacheKey, ttl, () => computeMetricsByLevel(env, range));
         return json(data, 200, origin);
       } catch (e) {
         return json({ error: "metrics_failed", detail: String((e && e.message) || e) }, 502, origin);

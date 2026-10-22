@@ -1077,8 +1077,10 @@
           <input type="text" id="campSearchInput" class="camp-search ct-search" placeholder="Buscar por nome ou ID…">
           <select id="ctPeriod" class="camp-search" title="Período das métricas">
             <option value="TODAY">Hoje</option><option value="YESTERDAY">Ontem</option><option value="LAST_3_DAYS">Últimos 3 dias</option>
-            <option value="LAST_7_DAYS">Últimos 7 dias</option><option value="LAST_14_DAYS">Últimos 14 dias</option><option value="LAST_30_DAYS">Últimos 30 dias</option><option value="MONTH_TO_DATE">Este mês</option>
+            <option value="LAST_7_DAYS">Últimos 7 dias</option><option value="LAST_14_DAYS">Últimos 14 dias</option><option value="LAST_30_DAYS">Últimos 30 dias</option><option value="MONTH_TO_DATE">Este mês</option><option value="DATE">Escolher um dia…</option>
           </select>
+          <input type="date" id="ctDate" class="camp-search ct-date" title="Dia" hidden>
+          <label class="ct-spent" title="Mostrar só o que gastou no período"><input type="checkbox" id="ctSpentOnly"> Só com gasto</label>
           <select id="ctStatus" class="camp-search" title="Status">
             <option value="all">Todos os status</option><option value="active">Ativos</option><option value="inactive">Inativos</option>
             <option value="rejected">Recusados</option><option value="review">Em análise</option><option value="completed">Concluídos</option>
@@ -1468,6 +1470,12 @@
   .ct-bulk-budget{display:inline-flex; align-items:center; gap:4px; font-size:13px; font-weight:400; text-transform:none; letter-spacing:0; margin:0;}
   .ct-bulk-budget input{width:74px; padding:4px 6px; font-size:13px;}
   .ct-bulk[hidden]{display:none;}
+  .period-date{display:inline-flex; align-items:center; gap:6px; border:1px solid var(--line); background:var(--bg); border-radius:999px; padding:3px 6px 3px 12px; font-size:12.5px; font-weight:400; text-transform:none; letter-spacing:0; margin:0 0 0 4px; color:var(--muted); cursor:pointer;}
+  .period-date.active{border-color:var(--accent); color:var(--ink); background:color-mix(in srgb, var(--accent) 10%, var(--surface-raised));}
+  .period-date input{border:none; background:transparent; font:inherit; font-size:12.5px; color:var(--ink); padding:2px 4px; width:auto; outline:none; cursor:pointer;}
+  .ct-date{width:auto !important;}
+  .ct-spent{display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:400; text-transform:none; letter-spacing:0; margin:0; cursor:pointer; white-space:nowrap;}
+  .ct-spent input{width:auto; padding:0; margin:0; accent-color:var(--accent);}
   .log-toolbar{display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:0 18px 10px;}
   .log-toolbar .camp-search{width:auto; min-width:150px;}
   .log-toolbar input[type=text]{flex:1; min-width:180px;}
@@ -2867,6 +2875,7 @@
   function periodDates(p){
     const tk = todayKey();
     if (p === 'yesterday') return [shiftDateKey(tk,-1)];
+    if (/^date:\d{4}-\d{2}-\d{2}$/.test(p)) return [p.slice(5)];
     if (p === '7d'){ const a=[]; for(let i=6;i>=0;i--) a.push(shiftDateKey(tk,-i)); return a; }
     if (p === '14d'){ const a=[]; for(let i=13;i>=0;i--) a.push(shiftDateKey(tk,-i)); return a; }
     if (p === 'month'){ const [y,m,d]=tk.split('-').map(Number); const a=[]; for(let day=1; day<=d; day++) a.push(y+'-'+String(m).padStart(2,'0')+'-'+String(day).padStart(2,'0')); return a; }
@@ -3137,17 +3146,27 @@
     }).catch(() => {});
   }
 
+  let dashShowZero = false;
+  const isDatePeriod = (p) => /^date:\d{4}-\d{2}-\d{2}$/.test(p);
+  function periodLabelOf(p){ if (isDatePeriod(p)) { const { wd, short } = fmtDate(p.slice(5)); return wd + ' ' + short; } return (PERIODS.find(x => x.key === p) || {}).label || ''; }
   function renderPeriodTabs(){
     const wrap = document.getElementById('periodTabs');
-    wrap.innerHTML = PERIODS.map(p => '<button class="tab small' + (period===p.key?' active':'') + '" data-period="' + p.key + '">' + p.label + '</button>').join('');
-    wrap.querySelectorAll('.tab').forEach(btn => btn.addEventListener('click', () => { period = btn.dataset.period; savePref('period', period); renderAll(); }));
+    wrap.innerHTML = PERIODS.map(p => '<button class="tab small' + (period===p.key?' active':'') + '" data-period="' + p.key + '">' + p.label + '</button>').join('') +
+      '<label class="period-date' + (isDatePeriod(period) ? ' active' : '') + '" title="Escolher um dia"><span>Dia</span><input type="date" id="periodDate" max="' + todayKey() + '" value="' + (isDatePeriod(period) ? period.slice(5) : '') + '"></label>';
+    wrap.querySelectorAll('.tab').forEach(btn => btn.addEventListener('click', () => { period = btn.dataset.period; dashShowZero = false; savePref('period', period); renderAll(); }));
+    document.getElementById('periodDate').addEventListener('change', (e) => { const v = e.target.value; if (!v) return; period = v === todayKey() ? 'today' : 'date:' + v; dashShowZero = false; savePref('period', period); renderAll(); });
   }
 
   function renderSummary(){
     const grid = document.getElementById('summaryGrid');
     const dates = periodDates(period);
-    const periodLabel = PERIODS.find(p => p.key === period).label;
-    const cards = [{key:'geral', label:'Total (' + activeAccounts().length + ' contas)', total:true}, ...activeAccounts()];
+    const periodLabel = periodLabelOf(period);
+    // on any other day than today only the accounts that spent are shown, so the page is not full of $0 cards
+    const hideZero = period !== 'today' && !dashShowZero;
+    const spentIn = (a) => aggregate(data[a.key], dates).cost > 0;
+    const shownAccts = activeAccounts().filter(a => !hideZero || spentIn(a));
+    const hiddenN = activeAccounts().length - shownAccts.length;
+    const cards = [{key:'geral', label:'Total (' + activeAccounts().length + ' contas)', total:true}, ...shownAccts];
     grid.innerHTML = cards.map(c => {
       const docs = c.total ? geralDocs() : data[c.key];
       const agg = aggregate(docs, dates);
@@ -3171,7 +3190,9 @@
           '<span class="roas-pill ' + rc + ' num">' + roasTxt + '</span>' +
         '</div>' + netLine +
       '</div>';
-    }).join('');
+    }).join('') + (hiddenN || (period !== 'today' && dashShowZero) ? '<div class="cell-muted" style="grid-column:1/-1; font-size:12.5px;">' + (hiddenN ? hiddenN + ' conta' + (hiddenN === 1 ? '' : 's') + ' sem gasto neste período ' + (hiddenN === 1 ? 'oculta' : 'ocultas') + '. ' : '') + '<a href="#" id="dashZeroToggle">' + (dashShowZero ? 'Ocultar as sem gasto' : 'Mostrar') + '</a></div>' : '');
+    const zt = document.getElementById('dashZeroToggle');
+    if (zt) zt.addEventListener('click', (e) => { e.preventDefault(); dashShowZero = !dashShowZero; renderSummary(); });
   }
 
   function renderTabs(){
@@ -3197,7 +3218,7 @@
     const docs = scopeDocs();
     const dates = chartDates();
     const label = metric === 'cost' ? 'Gasto' : 'Faturamento';
-    const periodLabel = (PERIODS.find(p => p.key === period) || {}).label || '';
+    const periodLabel = periodLabelOf(period);
     document.getElementById('chartTitle').textContent = label + ' — ' + periodLabel;
     document.getElementById('chartRange').textContent = dates.length ? (dates.length === 1 ? fmtDateChart(dates[0]) : fmtDateChart(dates[0]) + ' – ' + fmtDateChart(dates[dates.length-1])) : '';
     const wrap = document.getElementById('chartWrap');
@@ -3530,7 +3551,12 @@
   if (['campaigns', 'adsets', 'ads'].indexOf(campTab) === -1) campTab = 'campaigns';
   let ctPeriod = 'TODAY';              // always starts on "Hoje" and on the active ones, every time the tab is opened
   let ctStatusF = 'active', campAccF = 'all', ctNicheF = 'all';
-  function ctResetDefaults(){ ctPeriod = 'TODAY'; ctStatusF = 'active'; if (campV2Ready) ctFillSelects(); }
+  let ctSpentOnly = false;
+  const ctIsDate = (p) => /^DATE:\d{4}-\d{2}-\d{2}$/.test(p);
+  const ctPeriodLabel = (p) => ctIsDate(p) ? 'o dia ' + fmtDateShort(p.slice(5)) : (CT_PERIOD_LABEL[p] || p);
+  function ctResetDefaults(){ ctPeriod = 'TODAY'; ctStatusF = 'active'; ctSpentOnly = false; if (campV2Ready) ctFillSelects(); }
+  // any day other than today: show everything that spent that day (whatever its status now); today: the active ones
+  function ctApplyPeriodDefaults(){ if (ctPeriod === 'TODAY') { ctStatusF = 'active'; ctSpentOnly = false; } else { ctStatusF = 'all'; ctSpentOnly = true; } }
   let campSort = { key: 'cost', dir: -1 };
   let ctSel = { campaigns: new Set(), adsets: new Set(), ads: new Set() };
   let ctMetrics = {};                  // range -> { data, ts }
@@ -3685,7 +3711,7 @@
     const e = ctMetrics[range];
     if (!force && e && Date.now() - e.ts < 45000) return Promise.resolve();
     document.getElementById('ctLoadMsg').textContent = 'Carregando ' + (CT_PERIOD_LABEL[range] || range) + '…';
-    return fetch(METRICS_API + '?range=' + range, { headers: { 'X-Access-Key': COSTS_API_KEY }, cache: 'no-store' }).then(r => r.json()).then(j => {
+    return fetch(METRICS_API + '?range=' + (ctIsDate(range) ? 'FIXED&date=' + range.slice(5) : range), { headers: { 'X-Access-Key': COSTS_API_KEY }, cache: 'no-store' }).then(r => r.json()).then(j => {
       if (j && !j.error) ctMetrics[range] = { data: j, ts: Date.now() };
     }).catch(() => {}).finally(() => { document.getElementById('ctLoadMsg').textContent = ''; });
   }
@@ -3703,8 +3729,10 @@
     const ni = document.getElementById('ctNiche');
     ni.innerHTML = '<option value="all">Todos os nichos</option>' + topNiches().map(n => '<option value="' + ccEsc(n) + '">' + ccEsc(n) + '</option>').join('') + '<option value="none">Sem nicho no nome</option>';
     ni.value = ctNicheF;
-    document.getElementById('ctPeriod').value = ctPeriod;
+    document.getElementById('ctPeriod').value = ctIsDate(ctPeriod) ? 'DATE' : ctPeriod;
+    const dt = document.getElementById('ctDate'); dt.hidden = !ctIsDate(ctPeriod) && document.getElementById('ctPeriod').value !== 'DATE'; if (ctIsDate(ctPeriod)) dt.value = ctPeriod.slice(5);
     document.getElementById('ctStatus').value = ctStatusF;
+    document.getElementById('ctSpentOnly').checked = ctSpentOnly;
   }
 
   // saved views ("visões"): a named set of columns (order + visibility + widths), kept on the server so they follow you to the phone
@@ -3814,7 +3842,7 @@
     if (ctSel.adsets.size) scopedAll.ads = scopedAll.ads.filter(r => ctSel.adsets.has(r.adsetId));
 
     const inTab = scopedAll[campTab];
-    const shown = inTab.filter(r => ctStatusF === 'all' || ctStatusKey(r) === ctStatusF);
+    const shown = inTab.filter(r => (ctStatusF === 'all' || ctStatusKey(r) === ctStatusF) && (!ctSpentOnly || (r.cost || 0) > 0));
     const dir = campSort.dir;
     const val = (r) => {
       const k = campSort.key;
@@ -3830,7 +3858,7 @@
     const chip = (t, label) => ctSel[t].size && campTab !== t && ((t === 'campaigns' && campTab !== 'campaigns') || (t === 'adsets' && campTab === 'ads'))
       ? '<span class="ct-chip">' + ctSel[t].size + ' ' + label + (ctSel[t].size > 1 ? 's' : '') + ' selecionad' + (t === 'campaigns' ? 'a' : 'o') + (ctSel[t].size > 1 ? 's' : '') + ' <button type="button" data-ct-clear="' + t + '" title="Tirar o filtro">✕</button></span>' : '';
     // the number on each tab is what you see: rows that pass the filters (status included); a tab you selected in shows how many you selected
-    const stOk = (r) => ctStatusF === 'all' || ctStatusKey(r) === ctStatusF;
+    const stOk = (r) => (ctStatusF === 'all' || ctStatusKey(r) === ctStatusF) && (!ctSpentOnly || (r.cost || 0) > 0);
     const tabCount = (t) => (t !== campTab && ctSel[t].size) ? ctSel[t].size : scopedAll[t].filter(stOk).length;
     const bar = '<div class="ct-tabbar"><div class="tabs">' + TABS.map(t => '<button class="tab' + (campTab === t.key ? ' active' : '') + '" data-ct-tab="' + t.key + '">' + t.label + ' <span class="cell-muted">' + tabCount(t.key) + '</span></button>').join('') + '</div>' +
       chip('campaigns', 'campanha') + chip('adsets', 'conjunto') + '</div>';
@@ -3877,7 +3905,7 @@
     wrap.innerHTML = bar + '<div class="table-scroll"><table class="ctable" style="min-width:' + tableW + 'px">' + colgroup + '<thead>' + head + '</thead><tbody>' +
       (body || '<tr><td class="l" colspan="' + (fixedCols + vis.length + 1) + '"><div class="empty-state">' + (loading ? 'Carregando…' : 'Nada encontrado com esses filtros.') + '</div></td></tr>') +
       '</tbody><tfoot>' + foot + '</tfoot></table></div>' +
-      '<p class="cell-muted" style="font-size:11.5px; padding:8px 18px 0;">Métricas d' + (ctPeriod === 'TODAY' ? 'e hoje' : 'o período: ' + CT_PERIOD_LABEL[ctPeriod]) + ' (fuso de Brasília), do relatório da NewsBreak — vendas aqui podem diferir do RedTrack. A NewsBreak atualiza a cada ~5 min e as <b>últimas 3 horas ainda não estão finalizadas</b>. “Inativo” = não está entregando.</p>';
+      '<p class="cell-muted" style="font-size:11.5px; padding:8px 18px 0;">Métricas d' + (ctPeriod === 'TODAY' ? 'e hoje' : 'o período: ' + ctPeriodLabel(ctPeriod)) + ' (fuso de Brasília), do relatório da NewsBreak — vendas aqui podem diferir do RedTrack. A NewsBreak atualiza a cada ~5 min e as <b>últimas 3 horas ainda não estão finalizadas</b>. “Inativo” = não está entregando.</p>';
 
     wrap.querySelectorAll('[data-ct-tab]').forEach(b => b.addEventListener('click', () => { campTab = b.dataset.ctTab; savePref('campTab', campTab); renderCampanhas(); }));
     wrap.querySelectorAll('[data-ct-clear]').forEach(b => b.addEventListener('click', () => { ctSel[b.dataset.ctClear] = new Set(); renderCampanhas(); }));
@@ -4055,7 +4083,14 @@
   function initCampV2(){
     ctFillSelects();
     renderCtColsPanel(); loadCtPresets();
-    document.getElementById('ctPeriod').addEventListener('change', (e) => { ctPeriod = e.target.value; ctLoadMetrics(ctPeriod).then(() => renderCampanhas()); renderCampanhas(); });
+    const ctGoPeriod = () => { ctApplyPeriodDefaults(); ctFillSelects(); ctLoadMetrics(ctPeriod).then(() => renderCampanhas()); renderCampanhas(); };
+    document.getElementById('ctPeriod').addEventListener('change', (e) => {
+      if (e.target.value === 'DATE') { const dt = document.getElementById('ctDate'); dt.hidden = false; dt.max = todayKeyBR(); if (!dt.value) { dt.value = shiftDateKey(todayKeyBR(), -1); } ctPeriod = 'DATE:' + dt.value; try { dt.showPicker && dt.showPicker(); } catch (er) {} }
+      else { ctPeriod = e.target.value; document.getElementById('ctDate').hidden = true; }
+      ctGoPeriod();
+    });
+    document.getElementById('ctDate').addEventListener('change', (e) => { if (!e.target.value) return; ctPeriod = e.target.value === todayKeyBR() ? 'TODAY' : 'DATE:' + e.target.value; ctGoPeriod(); });
+    document.getElementById('ctSpentOnly').addEventListener('change', (e) => { ctSpentOnly = e.target.checked; renderCampanhas(); });
     document.getElementById('ctStatus').addEventListener('change', (e) => { ctStatusF = e.target.value; renderCampanhas(); });
     document.getElementById('campAccSel').addEventListener('change', (e) => { campAccF = e.target.value; ctSel = { campaigns: new Set(), adsets: new Set(), ads: new Set() }; renderCampanhas(); });
     document.getElementById('ctNiche').addEventListener('change', (e) => { ctNicheF = e.target.value; renderCampanhas(); });
