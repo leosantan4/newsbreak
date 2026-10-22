@@ -2590,7 +2590,7 @@ async function handleRequest(request, env) {
         const custom = await loadCustomAccounts(env);
         if (url.searchParams.get("entity") === "ad-account") {
           // read-only: the raw ad-account objects as NewsBreak returns them (to look for an account status/restriction field)
-          let orgs = await nbGetAdminOrgs(token);
+          let orgs = url.searchParams.get("orgId") ? [{ id: url.searchParams.get("orgId") }] : await nbGetAdminOrgs(token);
           if (!orgs.length && custom[accountKey] && custom[accountKey].orgId) orgs = [{ id: custom[accountKey].orgId }];
           else if (!orgs.length && NB_ORG_ID_FALLBACK[accountKey]) orgs = [{ id: NB_ORG_ID_FALLBACK[accountKey] }];
           if (!orgs.length) return json({ error: "no_orgs" }, 404, origin);
