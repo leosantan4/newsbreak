@@ -2515,7 +2515,7 @@
   let taboolaState = { configured: false, ok: false, accounts: [] };
   const TABOOLA_STATUS_API = 'https://newbreak-costs-api.prof-leosantana.workers.dev/taboola/status';
   const SOURCE_SCOPED_VIEWS = ['painel', 'criar', 'campanhas', 'rejeicoes', 'regras'];
-  const VIEW_TITLES = { dre: 'DRE Mensal', custos: 'Custos Fixos', saldo: 'Saldo', links: 'Links das contas', galeria: 'Galeria de ads', mapa: 'Mapa de Vendas', vturb: 'VSL', contas: 'Contas', notificacoes: 'Notificações', integracoes: 'Integrações' };
+  const VIEW_TITLES = { dre: 'DRE Mensal', custos: 'Custos Fixos', saldo: 'Saldo', links: 'Links das contas', galeria: 'Galeria de ads', mapa: 'Mapa de Vendas', vturb: 'VSL', log: 'Log', notificacoes: 'Notificações', integracoes: 'Integrações' };
   function sourceDot(x){ return x.key === 'newsbreak' ? 'on' : (x.key === 'taboola' && taboolaState.configured && taboolaState.ok) ? 'part' : ''; }
   function sourcePanelText(key, what){
     const x = TRAFFIC_SOURCES.find(t => t.key === key) || { label: key };
@@ -4408,7 +4408,7 @@
     renderSourcePanels();
   }
 
-  document.querySelectorAll('.nav-item').forEach(btn => btn.addEventListener('click', () => { view = btn.dataset.view; savePref('view', view); renderAll(); if (view === 'rejeicoes') loadRejeicoes(); if (view === 'regras') loadRegras(); if (view === 'ranking') loadRanking(); if (view === 'campanhas') { ctResetDefaults(); renderCampanhas(); } if (view === 'notificacoes') loadNotifs(); if (view === 'integracoes') { integOpen = null; loadIntegrations(); } }));
+  document.querySelectorAll('.nav-item').forEach(btn => btn.addEventListener('click', () => { view = btn.dataset.view; savePref('view', view); renderAll(); if (view === 'rejeicoes') loadRejeicoes(); if (view === 'regras') loadRegras(); if (view === 'ranking') loadRanking(); if (view === 'campanhas') { ctResetDefaults(); renderCampanhas(); } if (view === 'notificacoes') loadNotifs(); if (view === 'log') loadLog(); if (view === 'integracoes') { integOpen = null; loadIntegrations(); } }));
 
   document.getElementById('costDate').value = todayKey();
   document.getElementById('costForm').addEventListener('submit', (e) => {
