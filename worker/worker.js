@@ -2588,6 +2588,15 @@ async function handleRequest(request, env) {
       try {
         const token = await tokenForAccountKey(env, accountKey);
         const custom = await loadCustomAccounts(env);
+        if (url.searchParams.get("entity") === "ad-account") {
+          // read-only: the raw ad-account objects as NewsBreak returns them (to look for an account status/restriction field)
+          let orgs = await nbGetAdminOrgs(token);
+          if (!orgs.length && custom[accountKey] && custom[accountKey].orgId) orgs = [{ id: custom[accountKey].orgId }];
+          else if (!orgs.length && NB_ORG_ID_FALLBACK[accountKey]) orgs = [{ id: NB_ORG_ID_FALLBACK[accountKey] }];
+          if (!orgs.length) return json({ error: "no_orgs" }, 404, origin);
+          const data = await nbApi(token, `ad-account/getGroupsByOrgIds?${orgs.map((o) => `orgIds=${encodeURIComponent(o.id)}`).join("&")}`, { method: "GET" });
+          return json({ orgs, raw: data }, 200, origin);
+        }
         const manual = custom[accountKey] && custom[accountKey].manualAccounts;
         const accs = url.searchParams.get("adAccountId") ? [{ id: url.searchParams.get("adAccountId") }] : (manual && manual.length ? manual : await nbGetAdAccountsForToken(token, accountKey, custom[accountKey] && custom[accountKey].orgId));
         for (const a of accs) {
