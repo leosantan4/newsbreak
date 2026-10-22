@@ -2610,6 +2610,23 @@ async function handleRequest(request, env) {
       }
     }
 
+    // read-only diagnostic: one-day report of one account with the chosen dimensions (e.g. AD,PLACEMENT)
+    if (url.pathname === "/nb/report-probe" && request.method === "GET") {
+      const key = request.headers.get("X-Access-Key");
+      if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
+      const accountKey = url.searchParams.get("accountKey");
+      const day = url.searchParams.get("day") || shiftDayKeySP(todayKeySaoPaulo(), -1);
+      const dims = String(url.searchParams.get("dimensions") || "AD,PLACEMENT").split(",").map((x) => x.trim().toUpperCase()).filter(Boolean);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || !dims.length || dims.some((d) => ["DATE", "AD_ACCOUNT", "CAMPAIGN", "AD_SET", "AD", "PLACEMENT"].indexOf(d) === -1)) return json({ error: "invalid_params" }, 400, origin);
+      try {
+        const token = await tokenForAccountKey(env, accountKey);
+        const rows = await nbFetchReport(token, { fixed: day }, dims, ["IMPRESSION"]);
+        return json({ day, dims, count: rows.length, rows: rows.slice(0, 500).map((r) => { const ids = {}; for (const [k2, v] of Object.entries(r)) if (typeof v !== "object" && !/decimal|^cost$|^click$|^impression$|^cpc$/i.test(k2)) ids[k2] = v; return { ...ids, ...nbRowToDoc(r) }; }) }, 200, origin);
+      } catch (e) {
+        return json({ error: "report_probe_failed", detail: String((e && e.message) || e).slice(0, 200) }, 502, origin);
+      }
+    }
+
     if (url.pathname === "/nb/tracking-id" && request.method === "GET") {
       const key = request.headers.get("X-Access-Key");
       if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
