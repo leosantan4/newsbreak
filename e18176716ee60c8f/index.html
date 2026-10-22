@@ -2161,6 +2161,7 @@
             <div class="cc-summary-row"><span class="cc-label">Segmentação</span><span class="cc-value" id="ccSumTargeting">—</span></div>
             <div class="cc-summary-row"><span class="cc-label">Plataforma</span><span class="cc-value" id="ccSumPlatform">Todas</span></div>
             <div class="cc-summary-row"><span class="cc-label">Link</span><span class="cc-value" id="ccSumLink">—</span></div>
+            <div class="cc-summary-row" id="ccSumNovaRow" hidden><span class="cc-label">Sessão Ad Manager</span><span class="cc-value" id="ccSumNova">—</span></div>
             <div class="cc-summary-row"><span class="cc-label">Criativos</span><span class="cc-value" id="ccSumCreative">nenhum</span></div>
             <div id="ccSumStatus"></div>
             <button type="button" id="ccSubmitBtn" class="cc-submit-btn">Criar campanha</button>
@@ -2254,6 +2255,7 @@
               <label class="rule-notify"><input type="checkbox" id="notifTypeRules" checked> Ações das regras</label>
               <label class="rule-notify"><input type="checkbox" id="notifTypeBal" checked> Saldo baixo</label>
               <label class="rule-notify"><input type="checkbox" id="notifTypeSales" checked> Vendas</label>
+              <label class="rule-notify"><input type="checkbox" id="notifTypeSession" checked> Sessão do Ad Manager</label>
             </div>
             <div class="rej-summary" id="notifMsg"></div>
             <button type="button" class="rej-edit-btn" id="notifAddBtn">Adicionar</button>
@@ -2417,6 +2419,7 @@
     {key:'troya', label:'Troya'},
   ];
   let customAccounts = [];
+  let novaSessions = {};   // Ad Manager web sessions per account (expiry only), see Integrações
   // The account list and settings are remembered in this browser: if the server hiccups while the page opens (a deploy, a bad minute),
   // the app starts from the last good copy instead of showing "0 contas" until a reload.
   let accountsFromCache = false;
@@ -4392,7 +4395,8 @@
     const bell = document.getElementById('balanceBell');
     const pop = document.getElementById('balancePop');
     const rej = (typeof rejAds !== 'undefined') ? rejAds : [];
-    const total = balAlerts.length + rej.length;
+    const novaWarn = Object.keys(novaSessions).filter(k => novaSoon(novaSessions[k])).map(k => ({ key: k, ns: novaSessions[k] }));
+    const total = balAlerts.length + rej.length + novaWarn.length;
     bell.classList.toggle('idle', !total);
     document.getElementById('balanceBellCount').textContent = total;
     bell.title = total ? total + ' alerta' + (total === 1 ? '' : 's') : 'Sem alertas';
@@ -4406,6 +4410,11 @@
     if (balAlerts.length) {
       html += '<div class="bell-pop-title"' + (rej.length ? ' style="margin-top:12px;"' : '') + '>' + balLabel + '</div>' +
         balAlerts.map(r => '<div class="bell-pop-row"><span>' + r.name + '<small class="cell-muted" style="display:block;">abaixo de ' + fmtUSD(r.threshold) + '</small></span><span class="bal">' + fmtUSD(r.balance) + '</span></div>').join('');
+    }
+    if (novaWarn.length) {
+      html += '<div class="bell-pop-title"' + (rej.length || balAlerts.length ? ' style="margin-top:12px;"' : '') + '>Sessão do Ad Manager</div>' +
+        novaWarn.map(w => '<div class="bell-pop-row"><span>' + ccEsc(accountLabelFor(w.key)) + '</span><span class="cell-muted">' + ccEsc(novaLeftText(w.ns)) + '</span></div>').join('') +
+        '<button type="button" class="bell-pop-link" data-goto-view="integracoes">Colar uma nova em Integrações →</button>';
     }
     if ('Notification' in window && Notification.permission === 'default') html += '<button type="button" class="bell-pop-link" id="enableNotifBtn">Ativar avisos do navegador</button>';
     html += '<button type="button" class="bell-pop-link" id="pushTestBtn" style="display:block;">Enviar aviso de teste pro celular</button><div class="cell-muted" id="pushTestMsg" style="font-size:12px;"></div>';
@@ -4672,7 +4681,7 @@
       '<div class="notif-row' + (r.enabled ? '' : ' off') + '"><div>' +
       '<div class="rule-name">' + ccEsc(r.name) + '</div>' +
       '<div class="rule-line notif-url">' + ccEsc(r.urlMasked) + '</div>' +
-      '<div class="rule-line"><label class="notif-type"><input type="checkbox" data-notif-type="rejections" data-id="' + ccEsc(r.id) + '"' + (r.types.rejections ? ' checked' : '') + '> Anúncios recusados</label><label class="notif-type"><input type="checkbox" data-notif-type="rules" data-id="' + ccEsc(r.id) + '"' + (r.types.rules ? ' checked' : '') + '> Ações das regras</label><label class="notif-type"><input type="checkbox" data-notif-type="balance" data-id="' + ccEsc(r.id) + '"' + (r.types.balance !== false ? ' checked' : '') + '> Saldo baixo</label><label class="notif-type"><input type="checkbox" data-notif-type="sales" data-id="' + ccEsc(r.id) + '"' + (r.types.sales !== false ? ' checked' : '') + '> Vendas</label></div></div>' +
+      '<div class="rule-line"><label class="notif-type"><input type="checkbox" data-notif-type="rejections" data-id="' + ccEsc(r.id) + '"' + (r.types.rejections ? ' checked' : '') + '> Anúncios recusados</label><label class="notif-type"><input type="checkbox" data-notif-type="rules" data-id="' + ccEsc(r.id) + '"' + (r.types.rules ? ' checked' : '') + '> Ações das regras</label><label class="notif-type"><input type="checkbox" data-notif-type="balance" data-id="' + ccEsc(r.id) + '"' + (r.types.balance !== false ? ' checked' : '') + '> Saldo baixo</label><label class="notif-type"><input type="checkbox" data-notif-type="sales" data-id="' + ccEsc(r.id) + '"' + (r.types.sales !== false ? ' checked' : '') + '> Vendas</label><label class="notif-type"><input type="checkbox" data-notif-type="session" data-id="' + ccEsc(r.id) + '"' + (r.types.session !== false ? ' checked' : '') + '> Sessão do Ad Manager</label></div></div>' +
       '<div class="rule-actions"><span class="cell-muted notif-res" data-res="' + ccEsc(r.id) + '"></span><label class="switch" title="' + (r.enabled ? 'Recebendo' : 'Pausado') + '"><input type="checkbox" data-notif-on="' + ccEsc(r.id) + '"' + (r.enabled ? ' checked' : '') + '><span class="switch-track"></span></label>' +
       '<button type="button" data-notif-test="' + ccEsc(r.id) + '">Teste</button><button type="button" class="danger" data-notif-del="' + ccEsc(r.id) + '">Excluir</button></div></div>'));
     el.innerHTML = rows.length ? rows.join('') : '<div class="empty-state">Ninguém cadastrado ainda. Adicione abaixo.</div>';
@@ -4699,7 +4708,7 @@
     if (!name) { msg.textContent = 'Escreva o nome da pessoa.'; return; }
     if (!url) { msg.textContent = 'Cole o endereço do Pushcut.'; return; }
     msg.textContent = 'Salvando…';
-    notifApi('/recipients', 'POST', { name, url, types: { rejections: document.getElementById('notifTypeRej').checked, rules: document.getElementById('notifTypeRules').checked, balance: document.getElementById('notifTypeBal').checked, sales: document.getElementById('notifTypeSales').checked } })
+    notifApi('/recipients', 'POST', { name, url, types: { rejections: document.getElementById('notifTypeRej').checked, rules: document.getElementById('notifTypeRules').checked, balance: document.getElementById('notifTypeBal').checked, sales: document.getElementById('notifTypeSales').checked, session: document.getElementById('notifTypeSession').checked } })
       .then(() => { document.getElementById('notifName').value = ''; document.getElementById('notifUrl').value = ''; msg.textContent = 'Adicionado. Use "Teste" pra confirmar que chega no celular.'; return loadNotifs(); })
       .catch(e => { msg.textContent = notifErrorText(e.message); });
   });
@@ -7616,6 +7625,11 @@ function ccPreviewLines(adsets, nameOf){
         '<span style="display:block;">' + ccEsc(subAccountLabel(r.a)) + ': ' + (r.l && r.l.url ? '<b>' + ccEsc(ccLinkHost(r.l.url)) + '</b>' : '<b style="color:var(--bad);">sem link</b>') + '</span>').join('');
       linkEl.title = rows.map(r => subAccountLabel(r.a) + ': ' + ((r.l && r.l.url) || 'sem link')).join('\n');
     }
+    // Ad Manager session (only shown when one is saved for a selected account: it is what lets the account's ads carry the Product URL)
+    const novaRow = document.getElementById('ccSumNovaRow'), novaEl = document.getElementById('ccSumNova');
+    const novaKeys = [...new Set(accounts.map(a => a.accountKey))].filter(k => novaSessions[k]);
+    novaRow.hidden = !novaKeys.length;
+    novaEl.innerHTML = novaKeys.map(k => { const ns = novaSessions[k], t = novaLeftText(ns), bad = novaSoon(ns); return (novaKeys.length > 1 ? ccEsc(accountLabelFor(k)) + ': ' : '') + '<b' + (bad ? ' style="color:var(--bad);"' : '') + '>' + ccEsc(t) + '</b>'; }).join('<br>');
     renderCcCards();
 
     const missing = [];
@@ -8066,10 +8080,17 @@ function ccPreviewLines(adsets, nameOf){
   }
 
   const NOVA_SESSION_API = TOPUPS_API.replace(/\/topups$/, '') + '/nova-session';
-  let novaSessions = {};
+  function novaLeftText(ns){
+    if (!ns || !ns.expiresAt) return '';
+    const ms = ns.expiresAt - Date.now();
+    if (ms <= 0) return 'venceu';
+    const h = Math.floor(ms / 3600000), d = Math.floor(h / 24);
+    return d >= 1 ? 'vale mais ' + d + (d === 1 ? ' dia' : ' dias') : 'vence em ' + Math.max(1, h) + ' h';
+  }
+  const novaSoon = (ns) => !!ns && !!ns.expiresAt && ns.expiresAt - Date.now() < 24 * 3600 * 1000;
   function loadNovaSessions(){
     return fetch(NOVA_SESSION_API, { headers: { 'X-Access-Key': COSTS_API_KEY }, cache: 'no-store' }).then(r => r.json())
-      .then(j => { novaSessions = {}; (j.sessions || []).forEach(x => { novaSessions[x.accountKey] = x; }); renderAccountsList(); }).catch(() => {});
+      .then(j => { novaSessions = {}; (j.sessions || []).forEach(x => { novaSessions[x.accountKey] = x; }); renderAccountsList(); renderBell(); if (document.getElementById('ccSumNova')) renderCcSummary(); }).catch(() => {});
   }
   function renderAccountsList(){
     const el = document.getElementById('accountsList');

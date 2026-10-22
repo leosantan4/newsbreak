@@ -780,6 +780,26 @@ async function novaCreateAd(env, accountKey, adAccountId, fields, extra) {
   return { id: out && out.id, via: "ad-manager" };
 }
 
+// One push when an Ad Manager session is about to expire (under 24 h) and another when it has expired; never repeated for the same session.
+async function pushNovaExpiry(env) {
+  const sessions = await novaSessions(env);
+  let warned = {}; try { warned = JSON.parse((await env.COSTS_KV.get("nova_warned")) || "{}"); } catch {}
+  const custom = await loadCustomAccounts(env), now = Date.now(), next = { ...warned }, lines = [];
+  for (const [k, v] of Object.entries(sessions)) {
+    if (!v.exp) continue;
+    const left = v.exp - now, stage = left <= 0 ? "expired" : left < 24 * 3600 * 1000 ? "soon" : null, was = warned[k];
+    if (!stage) { if (was && was.exp !== v.exp) delete next[k]; continue; }
+    if (was && was.exp === v.exp && (was.stage === stage || was.stage === "expired")) continue;
+    const label = (custom[k] && custom[k].label) || k;
+    lines.push(stage === "expired" ? label + ": a sessão do Ad Manager venceu. Cole uma nova em Integrações." : label + ": a sessão do Ad Manager vence em " + Math.max(1, Math.round(left / 3600000)) + " h. Cole uma nova em Integrações.");
+    next[k] = { exp: v.exp, stage };
+  }
+  if (!lines.length) return { sent: 0 };
+  const r = await sendPush(env, "Sessão do Ad Manager", lines.join("\n"), "session");
+  if (r.ok) await env.COSTS_KV.put("nova_warned", JSON.stringify(next));
+  return { sent: r.ok ? lines.length : 0 };
+}
+
 async function nbCreateAd(token, fields) {
   return nbApi(token, "ad/create", { method: "POST", body: JSON.stringify(fields) });
 }
@@ -1071,7 +1091,7 @@ function rejectedActiveAds(data) {
 }
 
 // ---- Push recipients: the server default (secret PUSHCUT_URL) + people who paste their own Pushcut URL in the app. ----
-const PUSH_TYPES = ["rejections", "rules", "balance", "sales"];
+const PUSH_TYPES = ["rejections", "rules", "balance", "sales", "session"];
 async function loadRecipients(env) {
   const raw = await env.COSTS_KV.get("push_recipients");
   if (!raw) return [];
@@ -2335,6 +2355,7 @@ export default {
         if (first || at.getUTCMinutes() % 10 === 0) {
           const rr = await rkRefresh(env, first ? { backfill: true } : { yesterday: at.getUTCMinutes() % 30 === 0 });
           note += "; rank:" + rr.mode + " dias:" + rr.days.length + (rr.failed.length ? " falhas:" + rr.failed.length : "");
+          try { const nv = await pushNovaExpiry(env); if (nv && nv.sent) note += "; sessao_avisos:" + nv.sent; } catch (e) { note += "; sessao_erro:" + String((e && e.message) || e).slice(0, 80); }
           try { const bl = await pushBalanceAlerts(env); if (bl && bl.sent) note += "; saldo_avisos:" + bl.sent; } catch (e) { note += "; saldo_erro:" + String((e && e.message) || e).slice(0, 100); }
         }
       } catch (e) { note += "; rank_erro:" + String((e && e.message) || e).slice(0, 120); }
@@ -3656,7 +3677,7 @@ async function handleRequest(request, env) {
       const key = request.headers.get("X-Access-Key");
       if (key !== env.ACCESS_KEY) return json({ error: "unauthorized" }, 401, origin);
       const recs = await loadRecipients(env);
-      return json({ serverDefault: !!env.PUSHCUT_URL, recipients: recs.map((r) => ({ id: r.id, name: r.name, urlMasked: maskPushUrl(r.url), enabled: r.enabled !== false, types: { rejections: (r.types || {}).rejections !== false, rules: (r.types || {}).rules !== false, balance: (r.types || {}).balance !== false, sales: (r.types || {}).sales !== false }, createdAt: r.createdAt })) }, 200, origin);
+      return json({ serverDefault: !!env.PUSHCUT_URL, recipients: recs.map((r) => ({ id: r.id, name: r.name, urlMasked: maskPushUrl(r.url), enabled: r.enabled !== false, types: { rejections: (r.types || {}).rejections !== false, rules: (r.types || {}).rules !== false, balance: (r.types || {}).balance !== false, sales: (r.types || {}).sales !== false, session: (r.types || {}).session !== false }, createdAt: r.createdAt })) }, 200, origin);
     }
 
     if (url.pathname === "/push/recipients" && request.method === "POST") {
