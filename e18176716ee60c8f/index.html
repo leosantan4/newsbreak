@@ -442,6 +442,16 @@
   .acc-nova-form input{flex:1; min-width:220px;}
   .acc-nova-help ol{margin:6px 0 0 18px; padding:0; display:flex; flex-direction:column; gap:3px;}
   .acc-nova-help code{display:inline-block; margin-top:3px; padding:4px 7px; background:var(--neutral-bg); border-radius:6px; font-size:11.5px; user-select:all; overflow-wrap:anywhere;}
+  /* inside the deposit form the generic form-button style must not turn the picker black */
+  .cost-form-grid .account-select-trigger{background:var(--surface-raised); color:var(--ink); border:2px solid var(--line); padding:10px 14px; font-size:14px; font-weight:500; border-radius:var(--radius-md); text-align:left;}
+  .cost-form-grid .account-select.open .account-select-trigger{border-color:var(--accent);}
+  .cost-form-grid .account-select-footer button{background:var(--accent); color:var(--accent-ink);}
+  .tp-select{padding:0; position:relative;}
+  .panel:has(#topupMs){overflow:visible;} /* the floating list must not be cut by the panel */
+  .tp-select .account-select-dropdown{position:absolute; top:100%; left:0; z-index:80; width:max(100%, 380px); max-height:340px; margin-top:6px; border-radius:var(--radius-md); box-shadow:0 14px 34px -10px rgba(0,0,0,.45);}
+  .tp-select .account-select-dropdown .account-card{padding:10px 14px;}
+  .tp-ok{position:sticky; bottom:-10px; display:flex; justify-content:flex-end; padding:8px 0 0; background:var(--bg);}
+  .cost-form-grid .tp-ok button{background:var(--accent); color:var(--accent-ink); border:none; font-weight:600; font-size:12.5px; padding:7px 20px; border-radius:var(--radius-sm); cursor:pointer;}
   .acc-sub-item{font-size:12.5px; font-weight:500; color:var(--ink);}
   .toggle-switch{position:relative; display:inline-block; width:40px; height:23px; flex:none;}
   .toggle-switch input{opacity:0; width:0; height:0;}
@@ -1874,7 +1884,10 @@
         <form class="cost-form-grid" id="topupForm">
           <div>
             <label>Contas</label>
-            <div class="chips" id="topupMs"></div>
+            <div class="account-select tp-select" id="topupMs">
+              <button type="button" class="account-select-trigger" id="topupTrigger"><span id="topupLabel">Escolher contas</span><span class="account-select-chevron">▾</span></button>
+              <div class="account-picker account-select-dropdown" id="topupDropdown" hidden></div>
+            </div>
           </div>
           <div>
             <label for="topupDate">Data</label>
@@ -4234,15 +4247,41 @@
     return Object.keys(subAccounts).filter(id => { const a = subAccounts[id]; return !a.accountKey || isAccountVisible(a.accountKey); })
       .sort((a,b) => subDisplayName(a).localeCompare(subDisplayName(b)));
   }
+  // Deposit account picker: the same little window as in Criar Campanha (trigger + list of cards + OK). The chosen set is changed IN PLACE:
+  // replacing it with a copy would leave the cards pointing at an old set and "Registrar" would see nobody selected.
+  let topupOpen = false;
+  function topupLabelText(ids){
+    if (!topupSel.size) return 'Escolher contas';
+    if (ids.length && ids.every(id => topupSel.has(id))) return 'Todas as contas';
+    if (topupSel.size === 1) return subDisplayName([...topupSel][0]);
+    return topupSel.size + ' contas selecionadas';
+  }
   function renderTopupAccountSelect(){
     const ids = topupAccountIds();
-    topupSel = new Set([...topupSel].filter(id => ids.indexOf(id) !== -1));
-    const box = document.getElementById('topupMs');
-    const sig = ids.map(id => id + ':' + subDisplayName(id)).join('|') + '#' + [...topupSel].join(',');
-    if (box.dataset.sig === sig) return;
-    box.dataset.sig = sig;
-    chipsRender(box, { options: ids.map(id => ({ id, name: subDisplayName(id) })), selected: topupSel, allLabel: 'Todas as contas', onChange: () => { box.dataset.sig = ''; } });
+    [...topupSel].forEach(id => { if (ids.indexOf(id) === -1) topupSel.delete(id); });
+    const wrap = document.getElementById('topupMs'), dd = document.getElementById('topupDropdown');
+    wrap.classList.toggle('open', topupOpen);
+    dd.hidden = !topupOpen;
+    document.getElementById('topupLabel').textContent = topupLabelText(ids);
+    const sig = ids.map(id => id + ':' + subDisplayName(id) + ':' + (topupSel.has(id) ? 1 : 0)).join('|');
+    if (dd.dataset.sig === sig) return;
+    dd.dataset.sig = sig;
+    const allOn = ids.length > 0 && ids.every(id => topupSel.has(id));
+    dd.innerHTML = ids.length ? '<div class="account-card' + (allOn ? ' selected' : '') + '" data-topup-all><span class="acc-check">✓</span><div class="acc-id"><div class="acc-name">Todas as contas</div></div></div>' +
+      ids.map(id => '<div class="account-card' + (topupSel.has(id) ? ' selected' : '') + '" data-topup-card="' + ccEsc(id) + '"><span class="acc-check">✓</span><div class="acc-id"><div class="acc-name">' + ccEsc(subDisplayName(id)) + '</div></div></div>').join('')
+      : '<span class="cell-muted">Nenhuma conta com depósito disponível.</span>';
+    dd.insertAdjacentHTML('beforeend', '<div class="tp-ok"><button type="button" data-topup-ok>OK</button></div>');
   }
+  document.getElementById('topupTrigger').addEventListener('click', () => { topupOpen = !topupOpen; renderTopupAccountSelect(); });
+  document.getElementById('topupDropdown').addEventListener('click', (e) => {
+    if (e.target.closest('[data-topup-ok]')) { topupOpen = false; renderTopupAccountSelect(); return; }
+    const all = e.target.closest('[data-topup-all]'), one = e.target.closest('[data-topup-card]');
+    if (!all && !one) return;
+    const ids = topupAccountIds();
+    if (all) { const on = ids.length > 0 && ids.every(id => topupSel.has(id)); topupSel.clear(); if (!on) ids.forEach(id => topupSel.add(id)); }
+    else { const id = one.dataset.topupCard; if (topupSel.has(id)) topupSel.delete(id); else topupSel.add(id); }
+    renderTopupAccountSelect();
+  });
 
   // ---- balance alert rules ----
   const BAL_RULES_API = TOPUPS_API.replace(/\/topups$/, '') + '/balance-rules';
@@ -4512,7 +4551,7 @@
     const dateVal = document.getElementById('topupDate').value;
     const amount = parseFloat(document.getElementById('topupValue').value);
     const note = document.getElementById('topupNote');
-    if (!ids.length) { note.textContent = 'Escolha pelo menos uma conta.'; return; }
+    if (!ids.length) { note.textContent = 'Escolha pelo menos uma conta.'; topupOpen = true; renderTopupAccountSelect(); return; }
     if (!dateVal || !isFinite(amount)) return;
     let ok = 0;
     for (let i = 0; i < ids.length; i++) {
