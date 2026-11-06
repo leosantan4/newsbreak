@@ -985,7 +985,16 @@
       <div class="rej-form">
         <label>Título <input type="text" id="rejHeadline" placeholder="(manter o atual)"></label>
         <label>Descrição <input type="text" id="rejDescription" placeholder="(manter a atual)"></label>
+        <label>Link do anúncio
+          <select id="rejLinkMode">
+            <option value="keep">Manter o link atual</option>
+            <option value="saved">Usar o link salvo da conta (aba Links)</option>
+            <option value="custom">Digitar outro link</option>
+          </select>
+        </label>
+        <label id="rejLinkWrap" hidden>Novo link <input type="text" id="rejLink" placeholder="https://…"></label>
       </div>
+      <div class="cell-muted" id="rejLinkInfo" style="font-size:12px; margin:-4px 0 10px;"></div>
       <div class="rej-pick">
         <div class="rej-pick-head">Trocar o criativo <span class="cell-muted">(opcional — escolha da galeria)</span></div>
         <div class="rej-chosen" id="rejChosen" hidden></div>
@@ -5344,19 +5353,26 @@
     const h = document.getElementById('rejHeadline').value.trim();
     const d = document.getElementById('rejDescription').value.trim();
     const b = '';
+    const lm = document.getElementById('rejLinkMode').value;
+    const lc = document.getElementById('rejLink').value.trim();
     let err = '';
     if (rejPickIds.length > 1 && rejPickIds.length !== ads.length) err = 'Escolha 1 criativo (vale pra todos) ou exatamente ' + ads.length + ' (um pra cada, na ordem da lista).';
-    if (!h && !d && !b && !rejPickIds.length) err = 'Preencha algum campo ou escolha um criativo.';
-    return { ads, h, d, b, err };
+    if (!h && !d && !b && !rejPickIds.length && lm === 'keep') err = 'Preencha algum campo, troque o link ou escolha um criativo.';
+    if (lm === 'custom' && !/^https?:\/\/\S+\.\S+/i.test(lc)) err = 'Digite o novo link completo (começando com https://).';
+    if (lm === 'saved') { const miss = ads.filter(a => !(ccLinks[a.adAccountId] && ccLinks[a.adAccountId].url)); if (miss.length) err = 'Sem link salvo na conta ' + [...new Set(miss.map(a => a.adAccountName))].join(', ') + ' — cadastre na aba Links.'; }
+    return { ads, h, d, b, lm, lc, err };
   }
 
   function renderRejSummary(){
-    const { ads, h, d, b, err } = rejPlan();
+    const { ads, h, d, b, lm, lc, err } = rejPlan();
     const parts = [];
+    if (lm === 'saved' && !err) parts.push('link → ' + [...new Set(ads.map(a => ccLinkHost((ccLinks[a.adAccountId] || {}).url)))].join(', ')); if (lm === 'custom' && !err) parts.push('link → ' + ccLinkHost(lc));
     if (h) parts.push('título → "' + h + '"'); if (d) parts.push('descrição → "' + d + '"'); if (b) parts.push('marca → "' + b + '"');
     if (rejPickIds.length) parts.push(rejPickIds.length === 1 ? 'criativo → ' + ((libraryItems.find(i => i.id === rejPickIds[0]) || {}).name) : 'criativos trocados na ordem');
     document.getElementById('rejSummary').textContent = err || ('Vai alterar ' + ads.length + ' anúncio' + (ads.length === 1 ? '' : 's') + ': ' + parts.join(' · ') + '.');
     document.getElementById('rejApply').disabled = rejBusy || !!err || !ads.length;
+    document.getElementById('rejLinkWrap').hidden = lm !== 'custom';
+    document.getElementById('rejLinkInfo').textContent = !ads.some(a => a.clickThroughUrl) ? '' : 'Link de hoje: ' + [...new Set(ads.filter(a => a.clickThroughUrl).map(a => ccLinkHost(a.clickThroughUrl)))].join(', ') + (lm === 'keep' ? ' — o link de um anúncio já criado não muda sozinho quando você troca o link da conta.' : '');
   }
 
   function ensureLibrary(){
@@ -5367,7 +5383,9 @@
   function openRejSheet(useOverride){
     if (useOverride !== true) rejEditOverride = null;
     if (!rejSelectedAds().length) return;
-    ['rejHeadline', 'rejDescription', 'rejPickSearch'].forEach(id => { document.getElementById(id).value = ''; });
+    ['rejHeadline', 'rejDescription', 'rejPickSearch', 'rejLink'].forEach(id => { document.getElementById(id).value = ''; });
+    document.getElementById('rejLinkMode').value = 'keep';
+    fetch(LINKS_API, { cache: 'no-store' }).then(r => r.json()).then(j => { if (j && j.links) { ccLinks = j.links; renderRejSummary(); } }).catch(() => {});
     rejPickIds = []; rejPickFull = false;
     document.getElementById('rejLog').innerHTML = '';
     document.getElementById('rejSheetTitle').textContent = 'Editar ' + rejSelectedAds().length + ' anúncio' + (rejSelectedAds().length === 1 ? '' : 's') + (rejEditOverride ? '' : ' recusado' + (rejSelectedAds().length === 1 ? '' : 's'));
@@ -5382,7 +5400,7 @@
   const rejCloseSheet = () => { document.getElementById('rejSheet').hidden = true; rejEditOverride = null; };
   document.getElementById('rejCancel').addEventListener('click', () => { if (!rejBusy) rejCloseSheet(); });
   document.getElementById('rejSheet').addEventListener('click', (e) => { if (e.target.id === 'rejSheet' && !rejBusy) rejCloseSheet(); });
-  ['rejHeadline', 'rejDescription'].forEach(id => document.getElementById(id).addEventListener('input', renderRejSummary));
+  ['rejHeadline', 'rejDescription', 'rejLink', 'rejLinkMode'].forEach(id => document.getElementById(id).addEventListener('input', renderRejSummary));
   document.getElementById('rejPickSearch').addEventListener('input', renderRejPick);
 
   // Plain-language errors (the technical text stays in the tooltip). Used by Rejeições and Criar Campanha.
@@ -5442,7 +5460,7 @@
   }
 
   async function rejApplyAll(){
-    const { ads, h, d, b, err } = rejPlan();
+    const { ads, h, d, b, lm, lc, err } = rejPlan();
     if (err || !ads.length || rejBusy) return;
     rejBusy = true; renderRejSummary();
     document.getElementById('rejLog').innerHTML = '';
@@ -5472,7 +5490,7 @@
         const creative = {
           type, assetUrl,
           headline: h || ad.headline, description: d || ad.description, brandName: b || ad.brandName,
-          callToAction: ad.callToAction, clickThroughUrl: ad.clickThroughUrl,
+          callToAction: ad.callToAction, clickThroughUrl: lm === 'saved' ? ccLinks[ad.adAccountId].url : lm === 'custom' ? lc : ad.clickThroughUrl,
           ...(ad.logoUrl ? { logoUrl: ad.logoUrl } : {}),
         };
         rejLog(tag + 'Atualizando anúncio…');
