@@ -438,11 +438,6 @@
   .account-row .acc-row-status{font-size:12px; color:var(--muted); margin-top:2px;}
   .acc-sub-list{margin:6px 0 0; padding:10px 18px; background:var(--bg); border:1px solid var(--line); border-radius:var(--radius-md); display:flex; flex-direction:column; gap:7px;}
   .acc-sub-list.acc-sub-list-chips{flex-direction:row; flex-wrap:wrap; gap:8px 20px;}
-  .acc-nova{margin:6px 0 0; padding:10px 18px; border:1px dashed var(--line); border-radius:var(--radius-md); display:flex; flex-direction:column; gap:6px; font-size:12.5px;}
-  .acc-nova-form{display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
-  .acc-nova-form input{flex:1; min-width:220px;}
-  .acc-nova-help ol{margin:6px 0 0 18px; padding:0; display:flex; flex-direction:column; gap:3px;}
-  .acc-nova-help code{display:inline-block; margin-top:3px; padding:4px 7px; background:var(--neutral-bg); border-radius:6px; font-size:11.5px; user-select:all; overflow-wrap:anywhere;}
   /* inside the deposit form the generic form-button style must not turn the picker black */
   .cost-form-grid .account-select-trigger{background:var(--surface-raised); color:var(--ink); border:2px solid var(--line); padding:10px 14px; font-size:14px; font-weight:500; border-radius:var(--radius-md); text-align:left;}
   .cost-form-grid .account-select.open .account-select-trigger{border-color:var(--accent);}
@@ -2207,7 +2202,6 @@
             <div class="cc-summary-row"><span class="cc-label">Segmentação</span><span class="cc-value" id="ccSumTargeting">—</span></div>
             <div class="cc-summary-row"><span class="cc-label">Plataforma</span><span class="cc-value" id="ccSumPlatform">Todas</span></div>
             <div class="cc-summary-row"><span class="cc-label">Link</span><span class="cc-value" id="ccSumLink">—</span></div>
-            <div class="cc-summary-row" id="ccSumNovaRow" hidden><span class="cc-label">Sessão Ad Manager</span><span class="cc-value" id="ccSumNova">—</span></div>
             <div class="cc-summary-row"><span class="cc-label">Criativos</span><span class="cc-value" id="ccSumCreative">nenhum</span></div>
             <div id="ccSumStatus"></div>
             <button type="button" id="ccSubmitBtn" class="cc-submit-btn">Criar campanha</button>
@@ -2473,7 +2467,6 @@
     {key:'troya', label:'Troya'},
   ];
   let customAccounts = [];
-  let novaSessions = {};   // Ad Manager web sessions per account (expiry only), see Integrações
   // The account list and settings are remembered in this browser: if the server hiccups while the page opens (a deploy, a bad minute),
   // the app starts from the last good copy instead of showing "0 contas" until a reload.
   let accountsFromCache = false;
@@ -4476,8 +4469,7 @@
     const bell = document.getElementById('balanceBell');
     const pop = document.getElementById('balancePop');
     const rej = (typeof rejAds !== 'undefined') ? rejAds : [];
-    const novaWarn = Object.keys(novaSessions).filter(k => novaSoon(novaSessions[k])).map(k => ({ key: k, ns: novaSessions[k] }));
-    const total = balAlerts.length + rej.length + novaWarn.length;
+    const total = balAlerts.length + rej.length;
     bell.classList.toggle('idle', !total);
     document.getElementById('balanceBellCount').textContent = total;
     bell.title = total ? total + ' alerta' + (total === 1 ? '' : 's') : 'Sem alertas';
@@ -4491,11 +4483,6 @@
     if (balAlerts.length) {
       html += '<div class="bell-pop-title"' + (rej.length ? ' style="margin-top:12px;"' : '') + '>' + balLabel + '</div>' +
         balAlerts.map(r => '<div class="bell-pop-row"><span>' + r.name + '<small class="cell-muted" style="display:block;">abaixo de ' + fmtUSD(r.threshold) + '</small></span><span class="bal">' + fmtUSD(r.balance) + '</span></div>').join('');
-    }
-    if (novaWarn.length) {
-      html += '<div class="bell-pop-title"' + (rej.length || balAlerts.length ? ' style="margin-top:12px;"' : '') + '>Sessão do Ad Manager</div>' +
-        novaWarn.map(w => '<div class="bell-pop-row"><span>' + ccEsc(accountLabelFor(w.key)) + '</span><span class="cell-muted">' + ccEsc(novaLeftText(w.ns)) + '</span></div>').join('') +
-        '<button type="button" class="bell-pop-link" data-goto-view="integracoes">Colar uma nova em Integrações →</button>';
     }
     if ('Notification' in window && Notification.permission === 'default') html += '<button type="button" class="bell-pop-link" id="enableNotifBtn">Ativar avisos do navegador</button>';
     html += '<button type="button" class="bell-pop-link" id="pushTestBtn" style="display:block;">Enviar aviso de teste pro celular</button><div class="cell-muted" id="pushTestMsg" style="font-size:12px;"></div>';
@@ -7807,11 +7794,6 @@ function ccPreviewLines(adsets, nameOf){
         '<span style="display:block;">' + ccEsc(subAccountLabel(r.a)) + ': ' + (r.l && r.l.url ? '<b>' + ccEsc(ccLinkHost(r.l.url)) + '</b>' + (r.l.viaNiche ? ' <span class="cell-muted">(nicho ' + ccEsc(r.l.viaNiche) + ')</span>' : '') : '<b style="color:var(--bad);">sem link</b>') + '</span>').join('');
       linkEl.title = rows.map(r => subAccountLabel(r.a) + ': ' + ((r.l && r.l.url) || 'sem link')).join('\n');
     }
-    // Ad Manager session (only shown when one is saved for a selected account: it is what lets the account's ads carry the Product URL)
-    const novaRow = document.getElementById('ccSumNovaRow'), novaEl = document.getElementById('ccSumNova');
-    const novaKeys = [...new Set(accounts.map(a => a.accountKey))].filter(k => novaSessions[k]);
-    novaRow.hidden = !novaKeys.length;
-    novaEl.innerHTML = novaKeys.map(k => { const ns = novaSessions[k], t = novaLeftText(ns), bad = novaSoon(ns); return (novaKeys.length > 1 ? ccEsc(accountLabelFor(k)) + ': ' : '') + '<b' + (bad ? ' style="color:var(--bad);"' : '') + '>' + ccEsc(t) + '</b>'; }).join('<br>');
     renderCcCards();
 
     const missing = [];
@@ -8261,19 +8243,6 @@ function ccPreviewLines(adsets, nameOf){
     }).catch(() => retryLater(loadCustomAccounts, attempt));
   }
 
-  const NOVA_SESSION_API = TOPUPS_API.replace(/\/topups$/, '') + '/nova-session';
-  function novaLeftText(ns){
-    if (!ns || !ns.expiresAt) return '';
-    const ms = ns.expiresAt - Date.now();
-    if (ms <= 0) return 'venceu';
-    const h = Math.floor(ms / 3600000), d = Math.floor(h / 24);
-    return d >= 1 ? 'vale mais ' + d + (d === 1 ? ' dia' : ' dias') : 'vence em ' + Math.max(1, h) + ' h';
-  }
-  const novaSoon = (ns) => !!ns && !!ns.expiresAt && ns.expiresAt - Date.now() < 24 * 3600 * 1000;
-  function loadNovaSessions(){
-    return fetch(NOVA_SESSION_API, { headers: { 'X-Access-Key': COSTS_API_KEY }, cache: 'no-store' }).then(r => r.json())
-      .then(j => { novaSessions = {}; (j.sessions || []).forEach(x => { novaSessions[x.accountKey] = x; }); renderAccountsList(); renderBell(); if (document.getElementById('ccSumNova')) renderCcSummary(); }).catch(() => {});
-  }
   function renderAccountsList(){
     const el = document.getElementById('accountsList');
     if (!el) return;
@@ -8310,11 +8279,6 @@ function ccPreviewLines(adsets, nameOf){
           subsHtml = '<div class="acc-sub-list"><span class="cell-muted">Nenhuma subconta encontrada.</span></div>';
         }
       }
-      const ns = novaSessions[a.key];
-      const novaHtml = (active && !a.createOnly) ? '<div class="acc-nova"><div class="acc-nova-head"><b>Sessão do Ad Manager</b> <span class="cell-muted">— só para contas que exigem “URL de produto” (a NewsBreak passou a exigir em algumas)</span></div>' +
-        '<div class="acc-nova-state">' + (ns ? (ns.expired ? '<span style="color:var(--bad);">Venceu em ' + fmtDateShort(new Date(ns.expiresAt).toISOString().slice(0, 10)) + '. Cole uma nova.</span>' : '<span style="color:var(--good);">Salva · vale até ' + new Date(ns.expiresAt).toLocaleDateString('pt-BR') + '</span> <button type="button" class="remove-btn" data-nova-clear="' + a.key + '" title="Remover">×</button>') : '<span class="cell-muted">Nenhuma sessão salva</span>') + '</div>' +
-        '<div class="acc-nova-form"><input type="password" autocomplete="off" placeholder="Cole aqui o token (começa com eyJ…)" data-nova-input="' + a.key + '"><button type="button" class="select-all-btn" data-nova-save="' + a.key + '">Salvar</button><span class="cell-muted" data-nova-note="' + a.key + '"></span></div>' +
-        '<details class="acc-nova-help"><summary class="cell-muted">Como copiar o token</summary><ol><li>Abra o <b>Ad Manager</b> da NewsBreak, já logado nessa conta.</li><li>Aperte <b>F12</b> e abra a aba <b>Console</b>.</li><li>Cole esta linha e dê Enter (ela copia o token):<br><code>copy(document.cookie.split("; ").find(c=>c.startsWith("nb_nova_t=")).split("=")[1])</code></li><li>Volte aqui, cole no campo acima e clique em Salvar. Vale por 7 dias.</li></ol></details></div>' : '';
       return '<div class="account-row-wrap">' +
         '<div class="account-row' + (active ? '' : ' inactive') + '">' +
           '<div>' +
@@ -8330,7 +8294,7 @@ function ccPreviewLines(adsets, nameOf){
             '</label>' +
           '</div>' +
         '</div>' +
-        subsHtml + novaHtml +
+        subsHtml +
       '</div>';
     }).join('');
     el.querySelectorAll('[data-account-toggle]').forEach(input => input.addEventListener('change', (e) => {
@@ -8345,17 +8309,6 @@ function ccPreviewLines(adsets, nameOf){
         renderAll();
         loadAllSubAccounts();
       }).catch(() => { e.target.checked = !active; renderAccountsList(); });
-    }));
-    el.querySelectorAll('[data-nova-save]').forEach(btn => btn.addEventListener('click', () => {
-      const key = btn.dataset.novaSave, input = el.querySelector('[data-nova-input="' + key + '"]'), note = el.querySelector('[data-nova-note="' + key + '"]');
-      if (!input.value.trim()) return;
-      btn.disabled = true; note.textContent = 'Salvando…';
-      fetch(NOVA_SESSION_API, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY }, body: JSON.stringify({ accountKey: key, token: input.value.trim() }) })
-        .then(r => r.json()).then(j => { if (j.error) throw new Error(j.detail || j.error); input.value = ''; return loadNovaSessions(); })
-        .catch(e => { note.textContent = e.message || 'Não consegui salvar.'; note.style.color = 'var(--bad)'; }).finally(() => { btn.disabled = false; });
-    }));
-    el.querySelectorAll('[data-nova-clear]').forEach(btn => btn.addEventListener('click', () => {
-      fetch(NOVA_SESSION_API + '/' + encodeURIComponent(btn.dataset.novaClear), { method: 'DELETE', headers: { 'X-Access-Key': COSTS_API_KEY } }).then(() => loadNovaSessions());
     }));
     el.querySelectorAll('[data-account-records]').forEach(btn => btn.addEventListener('click', () => {
       archiveScope = btn.dataset.accountRecords; scope = archiveScope; savePref('scope', scope);
@@ -8450,7 +8403,6 @@ function ccPreviewLines(adsets, nameOf){
   }
 
   renderAddAccountForm();
-  loadNovaSessions();
   let appStarted = false;
   const startApp = () => {
     if (appStarted) return; appStarted = true;
