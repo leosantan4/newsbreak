@@ -547,7 +547,11 @@
   .account-card .acc-link-edit{background:none; border:none; color:var(--muted); text-decoration:underline; font-size:12px; cursor:pointer; padding:0; flex:none;}
   .account-card .acc-niche-links{display:flex; flex-direction:column; gap:6px; margin-top:8px; padding-top:8px; border-top:1px dashed var(--line);}
   .account-card .acc-link-niche{align-items:center; gap:8px;}
-  .account-card .acc-niche-tag{flex:none; font-size:11px; font-weight:600; letter-spacing:.04em; padding:2px 8px; border-radius:999px; background:var(--neutral-bg); color:var(--ink);}
+  .account-card .acc-entry{align-items:center; gap:8px; justify-content:flex-start;}
+  .account-card .acc-entry .acc-link-url{flex:1; min-width:0; text-align:left;}
+  .account-card .acc-niche-tag.all{background:none; border:1px solid var(--line); color:var(--muted); font-weight:500;}
+  .account-card .acc-link-err{color:var(--bad); font-size:12px; margin-top:4px;}
+  .account-card .acc-niche-tag{min-width:44px; text-align:center;flex:none; font-size:11px; font-weight:600; letter-spacing:.04em; padding:2px 8px; border-radius:999px; background:var(--neutral-bg); color:var(--ink);}
   .account-card .acc-niche-actions{display:flex; gap:10px; flex:none;}
   .account-card .acc-niche-add{align-self:flex-start;}
   .account-card .acc-link-form select{border:1px solid var(--line); border-radius:var(--radius-xs); padding:8px 6px; font:inherit; font-size:12.5px; background:var(--bg); color:var(--ink);}
@@ -7366,90 +7370,68 @@ function ccPreviewLines(adsets, nameOf){
     renderAccountSelectTrigger();
   }
 
-  let linksEditingId = null;
-  let linksEditingN = null; // { id, niche } niche link being added ('' niche = choosing) or edited
-
+  // Every saved link of an account is one row: the default ("Todos os nichos") and/or one per niche. Each row can be edited
+  // (niche and address) or deleted. linksEdit = { id: adAccountId, key: '*' (default) | NICHE | '+' (new link) }.
+  let linksEdit = null, linksEditErr = '';
+  const linkUrlOk = (u) => /^https?:\/\/\S+\.\S+/i.test(String(u || '').trim());
+  function deleteLinkKey(key){
+    return fetch(LINKS_API + '/' + encodeURIComponent(key), { method: 'DELETE', headers: { 'X-Access-Key': COSTS_API_KEY } })
+      .then(r => r.json()).then(json => { ccLinks = json.links || {}; renderAccountCards(); renderLinksManager(); renderCcSummary(); });
+  }
   function renderLinksManager(){
     const el = document.getElementById('linksManagerList');
     if (!el) return;
     if (!allSubAccounts.length){ el.innerHTML = '<span class="cell-muted">Nenhuma sub-conta disponível (contas com token quebrado não aparecem aqui).</span>'; return; }
     el.innerHTML = allSubAccounts.map(a => {
-      const link = ccLinks[a.id];
-      const isEditing = linksEditingId === a.id;
-      let linkRow;
-      if (isEditing) {
-        linkRow = '<div class="acc-link-form">' +
-          '<input type="text" data-link-edit-input="' + a.id + '" value="' + (link ? link.url.replace(/"/g, '&quot;') : '') + '" placeholder="https://...">' +
-          '<button type="button" data-save-link="' + a.id + '">salvar</button>' +
-        '</div>';
-      } else {
-        linkRow = '<div class="acc-link-status">' +
-          (link ? '<span class="acc-link-url" title="' + link.url.replace(/"/g, '&quot;') + '">' + shortLinkForDisplay(link.url) + '</span>' : '<span class="acc-link-missing">sem link</span>') +
-          '<button type="button" class="acc-link-edit" data-edit-link="' + a.id + '">' + (link ? 'editar' : '+ adicionar') + '</button>' +
-        '</div>';
-      }
-      // links by niche (an account that runs more than one niche)
-      const used = nicheLinksOf(a.id);
-      const nicheRows = used.map(x => {
-        if (linksEditingN && linksEditingN.id === a.id && linksEditingN.niche === x.niche) {
-          return '<div class="acc-link-form acc-link-niche"><span class="acc-niche-tag">' + ccEsc(x.niche) + '</span>' +
-            '<input type="text" data-nlink-input value="' + ccEsc(x.link.url) + '" placeholder="https://...">' +
-            '<button type="button" data-nlink-save>salvar</button><button type="button" class="acc-link-edit" data-nlink-cancel>cancelar</button></div>';
-        }
-        return '<div class="acc-link-status acc-link-niche"><span class="acc-niche-tag">' + ccEsc(x.niche) + '</span>' +
-          '<span class="acc-link-url" title="' + ccEsc(x.link.url) + '">' + ccEsc(shortLinkForDisplay(x.link.url)) + '</span>' +
-          '<span class="acc-niche-actions"><button type="button" class="acc-link-edit" data-nlink-edit="' + ccEsc(x.niche) + '">editar</button>' +
-          '<button type="button" class="acc-link-edit" data-nlink-del="' + ccEsc(x.niche) + '" title="Apagar o link deste nicho">✕</button></span></div>';
-      }).join('');
-      let addRow = '';
-      if (linksEditingN && linksEditingN.id === a.id && linksEditingN.niche === '') {
-        const free = topNiches().filter(n => !used.some(x => x.niche === n.toUpperCase()));
-        addRow = '<div class="acc-link-form acc-link-niche"><select data-nlink-niche>' + free.map(n => '<option value="' + ccEsc(n) + '">' + ccEsc(n) + '</option>').join('') + '</select>' +
-          '<input type="text" data-nlink-input placeholder="https://... (link desse nicho)">' +
-          '<button type="button" data-nlink-save>salvar</button><button type="button" class="acc-link-edit" data-nlink-cancel>cancelar</button></div>';
-      } else if (link) {
-        addRow = '<button type="button" class="acc-link-edit acc-niche-add" data-nlink-add="' + a.id + '">+ link de outro nicho</button>';
-      }
+      const entries = [];
+      if (ccLinks[a.id] && ccLinks[a.id].url) entries.push({ key: '*', link: ccLinks[a.id] });
+      nicheLinksOf(a.id).forEach(x => entries.push({ key: x.niche, link: x.link }));
+      const editing = linksEdit && linksEdit.id === a.id ? linksEdit.key : null;
+      // niche choices: "Todos" plus the niches this account has no link for yet (the one being edited stays available)
+      const form = (cur) => {
+        const taken = entries.map(x => x.key).filter(k => k !== cur);
+        const opts = (taken.indexOf('*') === -1 ? [{ v: '*', t: 'Todos os nichos (padrão)' }] : []).concat(topNiches().filter(n => taken.indexOf(n.toUpperCase()) === -1).map(n => ({ v: n.toUpperCase(), t: n })));
+        if (cur && cur !== '+' && cur !== '*' && !opts.some(o => o.v === cur)) opts.push({ v: cur, t: cur });
+        const sel = cur && cur !== '+' ? cur : (opts[0] ? opts[0].v : '*');
+        const link = cur && cur !== '+' ? (cur === '*' ? ccLinks[a.id] : ccLinks[nicheLinkKey(a.id, cur)]) : null;
+        return '<div class="acc-link-form acc-entry"><select data-link-niche>' + opts.map(o => '<option value="' + ccEsc(o.v) + '"' + (o.v === sel ? ' selected' : '') + '>' + ccEsc(o.t) + '</option>').join('') + '</select>' +
+          '<input type="text" data-link-input value="' + ccEsc(link ? link.url : '') + '" placeholder="https://...">' +
+          '<button type="button" data-link-save>salvar</button><button type="button" class="acc-link-edit" data-link-cancel>cancelar</button></div>' +
+          (linksEditErr ? '<div class="acc-link-err">' + ccEsc(linksEditErr) + '</div>' : '');
+      };
+      const rows = entries.map(x => editing === x.key ? form(x.key) :
+        '<div class="acc-link-status acc-entry"><span class="acc-niche-tag' + (x.key === '*' ? ' all' : '') + '">' + (x.key === '*' ? 'Todos' : ccEsc(x.key)) + '</span>' +
+        '<span class="acc-link-url" title="' + ccEsc(x.link.url) + '">' + ccEsc(shortLinkForDisplay(x.link.url)) + '</span>' +
+        '<span class="acc-niche-actions"><button type="button" class="acc-link-edit" data-link-edit="' + ccEsc(x.key) + '">editar</button>' +
+        '<button type="button" class="acc-link-edit" data-link-del="' + ccEsc(x.key) + '" title="Apagar este link">✕</button></span></div>').join('');
+      const addRow = editing === '+' ? form('+') : '<button type="button" class="acc-link-edit acc-niche-add" data-link-add>' + (entries.length ? '+ link de outro nicho' : '+ adicionar') + '</button>';
       return '<div class="account-card links-row" data-account-card="' + a.id + '">' +
-        '<div class="acc-id">' +
-          '<div class="acc-name">' + subAccountLabel(a) + '</div>' +
-        '</div>' +
-        '<div class="acc-link-row">' + linkRow + (nicheRows || addRow ? '<div class="acc-niche-links">' + nicheRows + addRow + '</div>' : '') + '</div>' +
+        '<div class="acc-id"><div class="acc-name">' + subAccountLabel(a) + '</div></div>' +
+        '<div class="acc-link-row">' + (entries.length ? '' : '<span class="acc-link-missing">sem link</span>') + '<div class="acc-niche-links">' + rows + addRow + '</div></div>' +
       '</div>';
     }).join('');
 
-    el.querySelectorAll('[data-edit-link]').forEach(btn => btn.addEventListener('click', () => {
-      linksEditingId = btn.dataset.editLink;
-      renderLinksManager();
-      const input = el.querySelector('[data-link-edit-input="' + linksEditingId + '"]');
-      if (input) input.focus();
-    }));
-    el.querySelectorAll('[data-save-link]').forEach(btn => btn.addEventListener('click', () => {
-      const id = btn.dataset.saveLink;
-      const input = el.querySelector('[data-link-edit-input="' + id + '"]');
-      const acc = allSubAccounts.find(a => a.id === id);
-      const urlVal = input.value.trim();
-      if (!urlVal) return;
-      linksEditingId = null;
-      saveAccountLink(acc, urlVal);
-    }));
-    const cardAcc = (node) => { const id = node.closest('[data-account-card]').dataset.accountCard; return allSubAccounts.find(x => x.id === id); };
-    el.querySelectorAll('[data-nlink-add]').forEach(btn => btn.addEventListener('click', () => { linksEditingN = { id: btn.dataset.nlinkAdd, niche: '' }; linksEditingId = null; renderLinksManager(); const i = el.querySelector('[data-nlink-input]'); if (i) i.focus(); }));
-    el.querySelectorAll('[data-nlink-edit]').forEach(btn => btn.addEventListener('click', () => { linksEditingN = { id: cardAcc(btn).id, niche: btn.dataset.nlinkEdit }; linksEditingId = null; renderLinksManager(); const i = el.querySelector('[data-nlink-input]'); if (i) i.focus(); }));
-    el.querySelectorAll('[data-nlink-cancel]').forEach(btn => btn.addEventListener('click', () => { linksEditingN = null; renderLinksManager(); }));
-    el.querySelectorAll('[data-nlink-save]').forEach(btn => btn.addEventListener('click', () => {
+    const cardAcc = (node) => allSubAccounts.find(x => x.id === node.closest('[data-account-card]').dataset.accountCard);
+    const open = (id, key) => { linksEdit = { id, key }; linksEditErr = ''; renderLinksManager(); const i = el.querySelector('[data-link-input]'); if (i) i.focus(); };
+    el.querySelectorAll('[data-link-add]').forEach(btn => btn.addEventListener('click', () => open(cardAcc(btn).id, '+')));
+    el.querySelectorAll('[data-link-edit]').forEach(btn => btn.addEventListener('click', () => open(cardAcc(btn).id, btn.dataset.linkEdit)));
+    el.querySelectorAll('[data-link-cancel]').forEach(btn => btn.addEventListener('click', () => { linksEdit = null; linksEditErr = ''; renderLinksManager(); }));
+    el.querySelectorAll('[data-link-save]').forEach(btn => btn.addEventListener('click', () => {
       const acc = cardAcc(btn), form = btn.closest('.acc-link-form');
-      const niche = (form.querySelector('[data-nlink-niche]') ? form.querySelector('[data-nlink-niche]').value : linksEditingN.niche).toUpperCase();
-      const urlVal = form.querySelector('[data-nlink-input]').value.trim();
-      if (!acc || !niche || !urlVal) return;
-      linksEditingN = null;
-      saveAccountLink({ id: nicheLinkKey(acc.id, niche), accountKey: acc.accountKey, name: acc.name + ' · ' + niche }, urlVal);
+      const niche = form.querySelector('[data-link-niche]').value, urlVal = form.querySelector('[data-link-input]').value.trim();
+      if (!acc) return;
+      if (!linkUrlOk(urlVal)) { linksEditErr = 'Digite o link completo, começando com https://'; renderLinksManager(); const i = el.querySelector('[data-link-input]'); if (i) { i.value = urlVal; i.focus(); } return; }
+      const oldKey = linksEdit && linksEdit.key !== '+' ? (linksEdit.key === '*' ? acc.id : nicheLinkKey(acc.id, linksEdit.key)) : null;
+      const newKey = niche === '*' ? acc.id : nicheLinkKey(acc.id, niche);
+      linksEdit = null; linksEditErr = '';
+      // saved under its new key first; the old one (when the niche changed) is removed only after that worked
+      saveAccountLink({ id: newKey, accountKey: acc.accountKey, name: acc.name + (niche === '*' ? '' : ' · ' + niche) }, urlVal)
+        .then(() => (oldKey && oldKey !== newKey) ? deleteLinkKey(oldKey) : null).catch(() => {});
     }));
-    el.querySelectorAll('[data-nlink-del]').forEach(btn => btn.addEventListener('click', () => {
-      const acc = cardAcc(btn), niche = btn.dataset.nlinkDel;
-      if (!acc || !confirm('Apagar o link do nicho ' + niche + ' nesta conta? Ela volta a usar o link padrão.')) return;
-      fetch(LINKS_API + '/' + encodeURIComponent(nicheLinkKey(acc.id, niche)), { method: 'DELETE', headers: { 'X-Access-Key': COSTS_API_KEY } })
-        .then(r => r.json()).then(json => { ccLinks = json.links || {}; renderAccountCards(); renderLinksManager(); renderCcSummary(); }).catch(() => {});
+    el.querySelectorAll('[data-link-del]').forEach(btn => btn.addEventListener('click', () => {
+      const acc = cardAcc(btn), k = btn.dataset.linkDel;
+      if (!acc || !confirm(k === '*' ? 'Apagar o link padrão desta conta?' : 'Apagar o link do nicho ' + k + ' desta conta?')) return;
+      deleteLinkKey(k === '*' ? acc.id : nicheLinkKey(acc.id, k)).catch(() => {});
     }));
   }
 
