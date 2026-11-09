@@ -70,6 +70,7 @@
   .sidenav-brand{font-size:14px; font-weight:600; padding:6px 10px 18px; letter-spacing:-.01em;}
   .sidenav-group-label{font-size:10.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); font-weight:500; padding:16px 12px 6px;}
   .sidenav-group-label:first-of-type{padding-top:0;}
+  a.nav-item{text-decoration:none;}
   .nav-item{display:flex; align-items:center; gap:10px; text-align:left; border:none; background:none; color:var(--muted); font:inherit; font-size:13.5px; font-weight:500; padding:10px 12px; border-radius:var(--radius-sm); cursor:pointer; width:100%;}
   .nav-item .ic{font-size:15px; width:18px; text-align:center; flex:none;}
   .nav-item:hover{background:var(--neutral-bg); color:var(--ink);}
@@ -544,6 +545,12 @@
   .account-card .acc-link-url{color:var(--good); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .account-card .acc-link-missing{color:var(--bad);}
   .account-card .acc-link-edit{background:none; border:none; color:var(--muted); text-decoration:underline; font-size:12px; cursor:pointer; padding:0; flex:none;}
+  .account-card .acc-niche-links{display:flex; flex-direction:column; gap:6px; margin-top:8px; padding-top:8px; border-top:1px dashed var(--line);}
+  .account-card .acc-link-niche{align-items:center; gap:8px;}
+  .account-card .acc-niche-tag{flex:none; font-size:11px; font-weight:600; letter-spacing:.04em; padding:2px 8px; border-radius:999px; background:var(--neutral-bg); color:var(--ink);}
+  .account-card .acc-niche-actions{display:flex; gap:10px; flex:none;}
+  .account-card .acc-niche-add{align-self:flex-start;}
+  .account-card .acc-link-form select{border:1px solid var(--line); border-radius:var(--radius-xs); padding:8px 6px; font:inherit; font-size:12.5px; background:var(--bg); color:var(--ink);}
   .account-card .acc-link-form{display:flex; gap:8px; width:100%;}
   .account-card .acc-link-form input{flex:1; min-width:0; border:1px solid var(--line); border-radius:var(--radius-xs); padding:8px 10px; font:inherit; font-size:12.5px; background:var(--bg); color:var(--ink);}
   .account-card .acc-link-form button{border:none; background:var(--accent); color:var(--accent-ink); font:inherit; font-weight:500; font-size:12px; padding:8px 12px; border-radius:var(--radius-xs); cursor:pointer; flex:none;}
@@ -878,26 +885,26 @@
   <nav class="sidenav" id="sidenav">
     <div class="sidenav-brand"><button type="button" class="menu-btn" id="navToggleBtn" aria-label="Menu" title="Menu"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button><span>RASTRO</span></div>
     <div class="sidenav-group-label">Tráfego</div>
-    <button class="nav-item" data-view="painel"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg></span>Dashboard</button>
-    <button class="nav-item" data-view="criar"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg></span>Criar Campanha</button>
-    <button class="nav-item" data-view="campanhas"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5 9-5z"/><path d="m3 13 9 5 9-5"/></svg></span>Campanhas</button>
+    <a class="nav-item" data-view="painel" href="#painel"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg></span>Dashboard</a>
+    <a class="nav-item" data-view="criar" href="#criar"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg></span>Criar Campanha</a>
+    <a class="nav-item" data-view="campanhas" href="#campanhas"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5 9-5z"/><path d="m3 13 9 5 9-5"/></svg></span>Campanhas</a>
     <div class="sidenav-group-label">Financeiro</div>
-    <button class="nav-item" data-view="dre"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 4v16"/></svg></span>DRE Mensal</button>
-    <button class="nav-item" data-view="custos"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M14.8 9.2c-.5-.9-1.6-1.4-2.8-1.4-1.6 0-2.8.8-2.8 2s1.1 1.6 2.8 2 2.8.8 2.8 2-1.2 2-2.8 2c-1.3 0-2.4-.5-2.9-1.5M12 6.5v11"/></svg></span>Custos Fixos</button>
-    <button class="nav-item" data-view="saldo"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0 0 4h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5"/><path d="M16 13h.01"/></svg></span>Saldo</button>
+    <a class="nav-item" data-view="dre" href="#dre"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 4v16"/></svg></span>DRE Mensal</a>
+    <a class="nav-item" data-view="custos" href="#custos"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M14.8 9.2c-.5-.9-1.6-1.4-2.8-1.4-1.6 0-2.8.8-2.8 2s1.1 1.6 2.8 2 2.8.8 2.8 2-1.2 2-2.8 2c-1.3 0-2.4-.5-2.9-1.5M12 6.5v11"/></svg></span>Custos Fixos</a>
+    <a class="nav-item" data-view="saldo" href="#saldo"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0 0 4h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5"/><path d="M16 13h.01"/></svg></span>Saldo</a>
     <div class="sidenav-group-label">Mídia</div>
-    <button class="nav-item" data-view="links"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07l-1.5 1.5"/><path d="M14 11a5 5 0 0 0-7.07 0l-3 3a5 5 0 0 0 7.07 7.07l1.5-1.5"/></svg></span>Links das contas</button>
-    <button class="nav-item" data-view="galeria"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg></span>Galeria de ads</button>
+    <a class="nav-item" data-view="links" href="#links"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07l-1.5 1.5"/><path d="M14 11a5 5 0 0 0-7.07 0l-3 3a5 5 0 0 0 7.07 7.07l1.5-1.5"/></svg></span>Links das contas</a>
+    <a class="nav-item" data-view="galeria" href="#galeria"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg></span>Galeria de ads</a>
     <div class="sidenav-group-label">Acompanhamento</div>
-    <button class="nav-item" data-view="rejeicoes"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m5.6 5.6 12.8 12.8"/></svg></span>Rejeições<span class="nav-badge" id="rejNavBadge" hidden>0</span></button>
-    <button class="nav-item" data-view="regras"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></span>Regras</button>
-    <button class="nav-item" data-view="ranking"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></svg></span>Ranking</button>
-    <button class="nav-item" data-view="mapa"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3z"/><path d="M9 3v15M15 6v15"/></svg></span>Mapa de Vendas</button>
-    <button class="nav-item" data-view="vturb"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m10 8.5 5.5 3.5-5.5 3.5z"/></svg></span>VSL</button>
+    <a class="nav-item" data-view="rejeicoes" href="#rejeicoes"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m5.6 5.6 12.8 12.8"/></svg></span>Rejeições<span class="nav-badge" id="rejNavBadge" hidden>0</span></a>
+    <a class="nav-item" data-view="regras" href="#regras"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></span>Regras</a>
+    <a class="nav-item" data-view="ranking" href="#ranking"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></svg></span>Ranking</a>
+    <a class="nav-item" data-view="mapa" href="#mapa"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3z"/><path d="M9 3v15M15 6v15"/></svg></span>Mapa de Vendas</a>
+    <a class="nav-item" data-view="vturb" href="#vturb"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m10 8.5 5.5 3.5-5.5 3.5z"/></svg></span>VSL</a>
     <div class="sidenav-group-label">Configurações</div>
-    <button class="nav-item" data-view="notificacoes"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span>Notificações</button>
-    <button class="nav-item" data-view="integracoes"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 2v6M15 2v6"/><path d="M6 8h12v4a6 6 0 0 1-12 0V8z"/><path d="M12 18v4"/></svg></span>Integrações</button>
-    <button class="nav-item" data-view="log"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></span>Log</button>
+    <a class="nav-item" data-view="notificacoes" href="#notificacoes"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span>Notificações</a>
+    <a class="nav-item" data-view="integracoes" href="#integracoes"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 2v6M15 2v6"/><path d="M6 8h12v4a6 6 0 0 1-12 0V8z"/><path d="M12 18v4"/></svg></span>Integrações</a>
+    <a class="nav-item" data-view="log" href="#log"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></span>Log</a>
     <div class="theme-toggle" id="themeToggle">
       <button type="button" data-theme-set="light" title="Tema claro" aria-label="Tema claro"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg></button>
       <button type="button" data-theme-set="dark" title="Tema escuro" aria-label="Tema escuro"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></button>
@@ -988,7 +995,7 @@
         <label>Link do anúncio
           <select id="rejLinkMode">
             <option value="keep">Manter o link atual</option>
-            <option value="saved">Usar o link salvo da conta (aba Links)</option>
+            <option value="saved">Usar o link salvo da conta/nicho (aba Links)</option>
             <option value="custom">Digitar outro link</option>
           </select>
         </label>
@@ -2218,7 +2225,7 @@
         <section class="panel">
           <div class="step-head">
             <div class="step-head-left"><span class="step-title">Links das contas</span></div>
-            <span class="step-desc">cadastre o link de cada sub-conta aqui — na criação de campanha só aparece o nome, o link já vem junto sozinho</span>
+            <span class="step-desc">cadastre o link de cada sub-conta aqui — na criação de campanha só aparece o nome, o link já vem junto sozinho. Conta que roda mais de um nicho: use "+ link de outro nicho" (vale o link do nicho escolhido; sem ele, o padrão)</span>
           </div>
           <div class="account-picker" id="linksManagerList"></div>
         </section>
@@ -2545,7 +2552,8 @@
   let libraryItems = [];
   let niches = [];
   const NB_ROOT = 'NEWSBREAK', SOURCE_ROOTS = ['NEWSBREAK', 'TABOOLA']; // declared here (not next to topNiches): renderAll runs before the gallery code
-  let view = loadPref('view', 'painel');
+  // a menu item opened in a new tab (right-click / Ctrl-click) arrives as #view
+  let view = (() => { const h = String(location.hash || '').slice(1); return h && document.querySelector('.nav-item[data-view="' + h + '"]') ? h : loadPref('view', 'painel'); })();
   const integFromContas = view === 'contas'; if (integFromContas) view = 'integracoes'; // "Contas" now lives inside Integrações > NewsBreak
   let criarSource = null;
   let scope = loadPref('scope', 'geral');
@@ -4519,7 +4527,7 @@
     renderSourcePanels();
   }
 
-  document.querySelectorAll('.nav-item').forEach(btn => btn.addEventListener('click', () => { view = btn.dataset.view; savePref('view', view); renderAll(); if (view === 'rejeicoes') loadRejeicoes(); if (view === 'regras') loadRegras(); if (view === 'ranking') loadRanking(); if (view === 'campanhas') { ctResetDefaults(); renderCampanhas(); } if (view === 'notificacoes') loadNotifs(); if (view === 'log') loadLog(); if (view === 'integracoes') { integOpen = null; loadIntegrations(); } }));
+  document.querySelectorAll('.nav-item').forEach(btn => btn.addEventListener('click', (ev) => { if (ev && (ev.ctrlKey || ev.metaKey || ev.shiftKey || ev.altKey || ev.button > 0)) return; /* let the browser open it in a new tab/window */ if (ev) ev.preventDefault(); view = btn.dataset.view; savePref('view', view); try { history.replaceState(null, '', '#' + view); } catch (e) {} renderAll(); if (view === 'rejeicoes') loadRejeicoes(); if (view === 'regras') loadRegras(); if (view === 'ranking') loadRanking(); if (view === 'campanhas') { ctResetDefaults(); renderCampanhas(); } if (view === 'notificacoes') loadNotifs(); if (view === 'log') loadLog(); if (view === 'integracoes') { integOpen = null; loadIntegrations(); } }));
 
   document.getElementById('costDate').value = todayKey();
   document.getElementById('costForm').addEventListener('submit', (e) => {
@@ -5348,6 +5356,9 @@
       : (maxPick > 1 ? 'Escolha 1 criativo (vale pros ' + maxPick + ') ou até ' + maxPick + ' (um pra cada, na ordem da lista). Sem escolher, só os textos mudam.' : 'Sem troca de criativo: só os textos acima serão alterados.'));
   }
 
+  // the account's saved link for this ad: the niche's own link (niche = first word of the campaign name) when the account has one
+  function rejSavedLink(a){ const l = linkFor(a.adAccountId, nicheOfCampaignName(a.campaignName)); return l && l.url ? l : null; }
+
   function rejPlan(){
     const ads = rejSelectedAds();
     const h = document.getElementById('rejHeadline').value.trim();
@@ -5359,14 +5370,14 @@
     if (rejPickIds.length > 1 && rejPickIds.length !== ads.length) err = 'Escolha 1 criativo (vale pra todos) ou exatamente ' + ads.length + ' (um pra cada, na ordem da lista).';
     if (!h && !d && !b && !rejPickIds.length && lm === 'keep') err = 'Preencha algum campo, troque o link ou escolha um criativo.';
     if (lm === 'custom' && !/^https?:\/\/\S+\.\S+/i.test(lc)) err = 'Digite o novo link completo (começando com https://).';
-    if (lm === 'saved') { const miss = ads.filter(a => !(ccLinks[a.adAccountId] && ccLinks[a.adAccountId].url)); if (miss.length) err = 'Sem link salvo na conta ' + [...new Set(miss.map(a => a.adAccountName))].join(', ') + ' — cadastre na aba Links.'; }
+    if (lm === 'saved') { const miss = ads.filter(a => !rejSavedLink(a)); if (miss.length) err = 'Sem link salvo na conta ' + [...new Set(miss.map(a => a.adAccountName))].join(', ') + ' — cadastre na aba Links.'; }
     return { ads, h, d, b, lm, lc, err };
   }
 
   function renderRejSummary(){
     const { ads, h, d, b, lm, lc, err } = rejPlan();
     const parts = [];
-    if (lm === 'saved' && !err) parts.push('link → ' + [...new Set(ads.map(a => ccLinkHost((ccLinks[a.adAccountId] || {}).url)))].join(', ')); if (lm === 'custom' && !err) parts.push('link → ' + ccLinkHost(lc));
+    if (lm === 'saved' && !err) parts.push('link → ' + [...new Set(ads.map(a => ccLinkHost((rejSavedLink(a) || {}).url)))].join(', ')); if (lm === 'custom' && !err) parts.push('link → ' + ccLinkHost(lc));
     if (h) parts.push('título → "' + h + '"'); if (d) parts.push('descrição → "' + d + '"'); if (b) parts.push('marca → "' + b + '"');
     if (rejPickIds.length) parts.push(rejPickIds.length === 1 ? 'criativo → ' + ((libraryItems.find(i => i.id === rejPickIds[0]) || {}).name) : 'criativos trocados na ordem');
     document.getElementById('rejSummary').textContent = err || ('Vai alterar ' + ads.length + ' anúncio' + (ads.length === 1 ? '' : 's') + ': ' + parts.join(' · ') + '.');
@@ -5490,7 +5501,7 @@
         const creative = {
           type, assetUrl,
           headline: h || ad.headline, description: d || ad.description, brandName: b || ad.brandName,
-          callToAction: ad.callToAction, clickThroughUrl: lm === 'saved' ? ccLinks[ad.adAccountId].url : lm === 'custom' ? lc : ad.clickThroughUrl,
+          callToAction: ad.callToAction, clickThroughUrl: lm === 'saved' ? rejSavedLink(ad).url : lm === 'custom' ? lc : ad.clickThroughUrl,
           ...(ad.logoUrl ? { logoUrl: ad.logoUrl } : {}),
         };
         rejLog(tag + 'Atualizando anúncio…');
@@ -6929,6 +6940,17 @@
   });
 
   // ---- Links por sub-conta ----
+  // A link per ad account (the default) and, optionally, one per niche (saved under "<adAccountId>#<NICHE>"):
+  // an account that runs several niches uses the niche's link when it has one, else the account's default.
+  const nicheLinkKey = (accId, niche) => accId + '#' + String(niche || '').toUpperCase();
+  function linkFor(accId, niche){
+    const n = niche && ccLinks[nicheLinkKey(accId, niche)];
+    if (n && n.url) return Object.assign({}, n, { viaNiche: String(niche).toUpperCase() });
+    return ccLinks[accId] || null;
+  }
+  function nicheLinksOf(accId){
+    return Object.keys(ccLinks).filter(k => k.indexOf(accId + '#') === 0).map(k => ({ niche: k.slice(accId.length + 1), link: ccLinks[k] })).sort((x, y) => x.niche.localeCompare(y.niche));
+  }
   function loadCcLinks(){
     return fetch(LINKS_API, { cache: 'no-store' }).then(r => r.json()).then(json => {
       ccLinks = json.links || {};
@@ -7345,6 +7367,7 @@ function ccPreviewLines(adsets, nameOf){
   }
 
   let linksEditingId = null;
+  let linksEditingN = null; // { id, niche } niche link being added ('' niche = choosing) or edited
 
   function renderLinksManager(){
     const el = document.getElementById('linksManagerList');
@@ -7365,11 +7388,33 @@ function ccPreviewLines(adsets, nameOf){
           '<button type="button" class="acc-link-edit" data-edit-link="' + a.id + '">' + (link ? 'editar' : '+ adicionar') + '</button>' +
         '</div>';
       }
+      // links by niche (an account that runs more than one niche)
+      const used = nicheLinksOf(a.id);
+      const nicheRows = used.map(x => {
+        if (linksEditingN && linksEditingN.id === a.id && linksEditingN.niche === x.niche) {
+          return '<div class="acc-link-form acc-link-niche"><span class="acc-niche-tag">' + ccEsc(x.niche) + '</span>' +
+            '<input type="text" data-nlink-input value="' + ccEsc(x.link.url) + '" placeholder="https://...">' +
+            '<button type="button" data-nlink-save>salvar</button><button type="button" class="acc-link-edit" data-nlink-cancel>cancelar</button></div>';
+        }
+        return '<div class="acc-link-status acc-link-niche"><span class="acc-niche-tag">' + ccEsc(x.niche) + '</span>' +
+          '<span class="acc-link-url" title="' + ccEsc(x.link.url) + '">' + ccEsc(shortLinkForDisplay(x.link.url)) + '</span>' +
+          '<span class="acc-niche-actions"><button type="button" class="acc-link-edit" data-nlink-edit="' + ccEsc(x.niche) + '">editar</button>' +
+          '<button type="button" class="acc-link-edit" data-nlink-del="' + ccEsc(x.niche) + '" title="Apagar o link deste nicho">✕</button></span></div>';
+      }).join('');
+      let addRow = '';
+      if (linksEditingN && linksEditingN.id === a.id && linksEditingN.niche === '') {
+        const free = topNiches().filter(n => !used.some(x => x.niche === n.toUpperCase()));
+        addRow = '<div class="acc-link-form acc-link-niche"><select data-nlink-niche>' + free.map(n => '<option value="' + ccEsc(n) + '">' + ccEsc(n) + '</option>').join('') + '</select>' +
+          '<input type="text" data-nlink-input placeholder="https://... (link desse nicho)">' +
+          '<button type="button" data-nlink-save>salvar</button><button type="button" class="acc-link-edit" data-nlink-cancel>cancelar</button></div>';
+      } else if (link) {
+        addRow = '<button type="button" class="acc-link-edit acc-niche-add" data-nlink-add="' + a.id + '">+ link de outro nicho</button>';
+      }
       return '<div class="account-card links-row" data-account-card="' + a.id + '">' +
         '<div class="acc-id">' +
           '<div class="acc-name">' + subAccountLabel(a) + '</div>' +
         '</div>' +
-        '<div class="acc-link-row">' + linkRow + '</div>' +
+        '<div class="acc-link-row">' + linkRow + (nicheRows || addRow ? '<div class="acc-niche-links">' + nicheRows + addRow + '</div>' : '') + '</div>' +
       '</div>';
     }).join('');
 
@@ -7387,6 +7432,24 @@ function ccPreviewLines(adsets, nameOf){
       if (!urlVal) return;
       linksEditingId = null;
       saveAccountLink(acc, urlVal);
+    }));
+    const cardAcc = (node) => { const id = node.closest('[data-account-card]').dataset.accountCard; return allSubAccounts.find(x => x.id === id); };
+    el.querySelectorAll('[data-nlink-add]').forEach(btn => btn.addEventListener('click', () => { linksEditingN = { id: btn.dataset.nlinkAdd, niche: '' }; linksEditingId = null; renderLinksManager(); const i = el.querySelector('[data-nlink-input]'); if (i) i.focus(); }));
+    el.querySelectorAll('[data-nlink-edit]').forEach(btn => btn.addEventListener('click', () => { linksEditingN = { id: cardAcc(btn).id, niche: btn.dataset.nlinkEdit }; linksEditingId = null; renderLinksManager(); const i = el.querySelector('[data-nlink-input]'); if (i) i.focus(); }));
+    el.querySelectorAll('[data-nlink-cancel]').forEach(btn => btn.addEventListener('click', () => { linksEditingN = null; renderLinksManager(); }));
+    el.querySelectorAll('[data-nlink-save]').forEach(btn => btn.addEventListener('click', () => {
+      const acc = cardAcc(btn), form = btn.closest('.acc-link-form');
+      const niche = (form.querySelector('[data-nlink-niche]') ? form.querySelector('[data-nlink-niche]').value : linksEditingN.niche).toUpperCase();
+      const urlVal = form.querySelector('[data-nlink-input]').value.trim();
+      if (!acc || !niche || !urlVal) return;
+      linksEditingN = null;
+      saveAccountLink({ id: nicheLinkKey(acc.id, niche), accountKey: acc.accountKey, name: acc.name + ' · ' + niche }, urlVal);
+    }));
+    el.querySelectorAll('[data-nlink-del]').forEach(btn => btn.addEventListener('click', () => {
+      const acc = cardAcc(btn), niche = btn.dataset.nlinkDel;
+      if (!acc || !confirm('Apagar o link do nicho ' + niche + ' nesta conta? Ela volta a usar o link padrão.')) return;
+      fetch(LINKS_API + '/' + encodeURIComponent(nicheLinkKey(acc.id, niche)), { method: 'DELETE', headers: { 'X-Access-Key': COSTS_API_KEY } })
+        .then(r => r.json()).then(json => { ccLinks = json.links || {}; renderAccountCards(); renderLinksManager(); renderCcSummary(); }).catch(() => {});
     }));
   }
 
@@ -7681,10 +7744,10 @@ function ccPreviewLines(adsets, nameOf){
     const linkEl = document.getElementById('ccSumLink');
     if (!accounts.length) linkEl.textContent = '—';
     else {
-      const rows = accounts.map(a => ({ a, l: ccLinks[a.id] }));
+      const rows = accounts.map(a => ({ a, l: linkFor(a.id, selectedNiche) }));
       const hosts = [...new Set(rows.map(r => r.l && r.l.url ? ccLinkHost(r.l.url) : ''))];
-      linkEl.innerHTML = hosts.length === 1 && hosts[0] ? '<b>' + ccEsc(hosts[0]) + '</b>' : rows.map(r =>
-        '<span style="display:block;">' + ccEsc(subAccountLabel(r.a)) + ': ' + (r.l && r.l.url ? '<b>' + ccEsc(ccLinkHost(r.l.url)) + '</b>' : '<b style="color:var(--bad);">sem link</b>') + '</span>').join('');
+      linkEl.innerHTML = hosts.length === 1 && hosts[0] ? '<b>' + ccEsc(hosts[0]) + '</b>' + (rows.every(r => r.l && r.l.viaNiche) ? ' <span class="cell-muted">(link do nicho ' + ccEsc(selectedNiche) + ')</span>' : '') : rows.map(r =>
+        '<span style="display:block;">' + ccEsc(subAccountLabel(r.a)) + ': ' + (r.l && r.l.url ? '<b>' + ccEsc(ccLinkHost(r.l.url)) + '</b>' + (r.l.viaNiche ? ' <span class="cell-muted">(nicho ' + ccEsc(r.l.viaNiche) + ')</span>' : '') : '<b style="color:var(--bad);">sem link</b>') + '</span>').join('');
       linkEl.title = rows.map(r => subAccountLabel(r.a) + ': ' + ((r.l && r.l.url) || 'sem link')).join('\n');
     }
     // Ad Manager session (only shown when one is saved for a selected account: it is what lets the account's ads carry the Product URL)
@@ -7703,8 +7766,8 @@ function ccPreviewLines(adsets, nameOf){
     if (!document.getElementById('ccHeadline').value.trim()) missing.push('título');
     if (!document.getElementById('ccBrandDefault').value.trim()) missing.push('marca padrão');
     if (!document.getElementById('ccDescription').value.trim()) missing.push('descrição');
-    const withoutLink = accounts.filter(a => !ccLinks[a.id]);
-    if (withoutLink.length) missing.push('cadastre o link dessa conta na aba "Links das contas"');
+    const withoutLink = accounts.filter(a => !linkFor(a.id, selectedNiche));
+    if (withoutLink.length) missing.push('cadastre o link dessa conta' + (selectedNiche ? ' (ou do nicho ' + selectedNiche + ')' : '') + ' na aba "Links das contas"');
     if (multi) {
       const unnamed = selectedSubAccountIds.filter(id => { const camp = accountCampaigns[id]; return !camp || !camp.name.trim(); });
       if (unnamed.length) missing.push(unnamed.length + ' conta(s) sem nome de campanha');
@@ -7892,8 +7955,8 @@ function ccPreviewLines(adsets, nameOf){
 
     // the saved link is read from the server right now: a link changed in another tab or on the phone must never be missed (nor an old copy used)
     try { const lj = await fetch(LINKS_API, { cache: 'no-store' }).then(r => r.json()); if (lj && lj.links) { ccLinks = lj.links; renderCcSummary(); } } catch (e) { /* keep the copy we have */ }
-    const link = ccLinks[acc.id];
-    if (link && link.url) ccLog(prefix + 'Link em uso: ' + ccLinkHost(link.url) + ' (salvo em Links das contas)');
+    const link = linkFor(acc.id, selectedNiche);
+    if (link && link.url) ccLog(prefix + 'Link em uso: ' + ccLinkHost(link.url) + (link.viaNiche ? ' (link do nicho ' + link.viaNiche + ', salvo em Links das contas)' : ' (salvo em Links das contas)'));
     if (!link || !link.url) {
       run.status = 'error';
       run.error = 'sem link cadastrado — cadastra na aba Links';
