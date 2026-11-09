@@ -450,6 +450,11 @@
   .cost-form-grid .tp-ok button{background:var(--accent); color:var(--accent-ink); border:none; font-weight:600; font-size:12.5px; padding:7px 20px; border-radius:var(--radius-sm); cursor:pointer;}
   .acc-sub-item{font-size:12.5px; font-weight:500; color:var(--ink); display:inline-flex; align-items:center; gap:8px;}
   .acc-sub-item.off > span:first-child{opacity:.5; text-decoration:line-through;}
+  .acc-sub-add{padding:6px 18px 2px; font-size:12.5px;}
+  .acc-sub-add .acc-link-form{display:flex; gap:8px; flex-wrap:wrap; align-items:center;}
+  .acc-sub-add .acc-link-form input{flex:1 1 180px; min-width:0; border:1px solid var(--line); border-radius:var(--radius-xs); padding:8px 10px; font:inherit; font-size:12.5px; background:var(--bg); color:var(--ink);}
+  .acc-sub-add .acc-link-form button[data-sub-add-save]{border:none; background:var(--accent); color:var(--accent-ink); font:inherit; font-weight:500; font-size:12px; padding:8px 12px; border-radius:var(--radius-xs); cursor:pointer; flex:none;}
+  .acc-sub-add .acc-link-edit{background:none; border:none; color:var(--muted); text-decoration:underline; font-size:12px; cursor:pointer; padding:0;}
   .acc-sub-item .toggle-switch.toggle-mini{transform:scale(.72); transform-origin:left center; margin-right:-10px;}
   .toggle-switch{position:relative; display:inline-block; width:40px; height:23px; flex:none;}
   .toggle-switch input{opacity:0; width:0; height:0;}
@@ -5909,6 +5914,8 @@
   let brandPresets = [];
   let ccLinks = {};
   let allSubAccounts = [];      // the ad accounts that are switched ON (what Criar, Links, Saldo... use)
+  let subAddOpen = null;        // account key whose "+ adicionar subconta" form is open (Integrações)
+  let pendingSubs = [];         // ad accounts just added by hand: kept for 10 min even if the server's cached list (5 min) does not have them yet
   let allSubAccountsAll = [];   // every ad account NewsBreak lists, on or off (Integrações shows these)
   let subAccountsLoaded = false;
   let selectedSubAccountIds = [];
@@ -7000,6 +7007,8 @@
       return once(0).then(list => { if (list) return list; failed.push(a.key); return prev.filter(s => s.accountKey === a.key); });
     })).then(results => {
       allSubAccountsAll = results.flat();
+      const nowMs = Date.now(); pendingSubs = pendingSubs.filter(p => nowMs - p.at < 600000);
+      pendingSubs.forEach(p => { if (!allSubAccountsAll.some(x => x.id === p.sub.id)) allSubAccountsAll.push(p.sub); });
       allSubAccounts = allSubAccountsAll.filter(s => isSubActive(s.id));
       campaigns = campaigns.filter(c => isSubActive(c.adAccountId));
       subAccountsLoaded = true;
@@ -8274,7 +8283,9 @@ function ccPreviewLines(adsets, nameOf){
           subsHtml = '<div class="acc-sub-list acc-sub-list-chips">' + subs.map(s =>
             '<div class="acc-sub-item' + (isSubActive(s.id) ? '' : ' off') + '"><span>' + subAccountLabel(s) + '</span>' +
               '<label class="toggle-switch toggle-mini" title="' + (isSubActive(s.id) ? 'Ligada — desligue se a conta ficou restrita ou não é mais usada' : 'Desligada — não aparece em Campanhas, Rejeições, Criar, Links e Saldo') + '"><input type="checkbox" data-sub-toggle="' + s.id + '"' + (isSubActive(s.id) ? ' checked' : '') + '><span class="toggle-track"></span></label></div>'
-          ).join('') + '</div>';
+          ).join('') + '</div>' + (isCustom ? (subAddOpen === a.key
+            ? '<div class="acc-sub-add"><div class="acc-link-form"><input type="text" inputmode="numeric" data-sub-add-id placeholder="ID da subconta (só números)"><input type="text" data-sub-add-name placeholder="Nome (opcional)"><button type="button" data-sub-add-save="' + a.key + '">Adicionar</button><button type="button" class="acc-link-edit" data-sub-add-cancel>cancelar</button></div><div class="cell-muted" data-sub-add-note style="font-size:12px; margin-top:4px;">O ID está em Ad Account Management, na NewsBreak. A subconta entra nesta conta, sem tirar as que já existem.</div></div>'
+            : '<div class="acc-sub-add"><button type="button" class="acc-link-edit" data-sub-add="' + a.key + '">+ adicionar subconta</button></div>') : '');
         } else if (!subAccountsLoaded) {
           subsHtml = '<div class="acc-sub-list"><span class="cell-muted">carregando subcontas…</span></div>';
         } else if (isCustom) {
@@ -8326,6 +8337,29 @@ function ccPreviewLines(adsets, nameOf){
         renderAll();
         loadAllSubAccounts();
       }).catch(() => { e.target.checked = !active; renderAccountsList(); });
+    }));
+    el.querySelectorAll('[data-sub-add]').forEach(b => b.addEventListener('click', () => { subAddOpen = b.dataset.subAdd; renderAccountsList(); const i = el.querySelector('[data-sub-add-id]'); if (i) i.focus(); }));
+    el.querySelectorAll('[data-sub-add-cancel]').forEach(b => b.addEventListener('click', () => { subAddOpen = null; renderAccountsList(); }));
+    el.querySelectorAll('[data-sub-add-save]').forEach(btn => btn.addEventListener('click', () => {
+      const key = btn.dataset.subAddSave, box = btn.closest('.acc-sub-add'), note = box.querySelector('[data-sub-add-note]');
+      const id = box.querySelector('[data-sub-add-id]').value.replace(/\s+/g, ''), name = box.querySelector('[data-sub-add-name]').value.trim();
+      if (!/^\d{10,}$/.test(id)) { note.textContent = 'Digite o ID da subconta (só números, ele é longo).'; note.style.color = 'var(--bad)'; return; }
+      if (allSubAccountsAll.some(s => s.id === id)) { note.textContent = 'Essa subconta já está na lista.'; note.style.color = 'var(--bad)'; return; }
+      // the server keeps ONE list per account (when there is a manual list it replaces NewsBreak's): send the current ones plus the new one
+      const list = allSubAccountsAll.filter(s => s.accountKey === key).map(s => ({ id: s.id, name: s.name || '' })).concat({ id, name });
+      btn.disabled = true; note.style.color = ''; note.textContent = 'Salvando…';
+      fetch(ACCOUNTS_API + '/' + encodeURIComponent(key) + '/manual-accounts', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY },
+        body: JSON.stringify({ accounts: list }),
+      }).then(r => r.json()).then(j => {
+        if (j.error) throw new Error(j.error);
+        const acc = ACCOUNTS.find(x => x.key === key) || {};
+        const sub = { id, name: name || id, accountKey: key, accountLabel: acc.label || key };
+        pendingSubs.push({ sub, at: Date.now() });
+        allSubAccountsAll.push(sub); subAddOpen = null;
+        applySubFilter();
+        loadAllSubAccounts();
+      }).catch(() => { btn.disabled = false; note.style.color = 'var(--bad)'; note.textContent = 'Não consegui salvar. Tente de novo.'; });
     }));
     el.querySelectorAll('[data-sub-toggle]').forEach(input => input.addEventListener('change', (e) => {
       const key = e.target.dataset.subToggle, active = e.target.checked;
