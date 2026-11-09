@@ -547,6 +547,14 @@
   .account-card .acc-link-edit{background:none; border:none; color:var(--muted); text-decoration:underline; font-size:12px; cursor:pointer; padding:0; flex:none;}
   .account-card .acc-niche-links{display:flex; flex-direction:column; gap:6px; margin-top:8px; padding-top:8px; border-top:1px dashed var(--line);}
   .account-card .acc-link-niche{align-items:center; gap:8px;}
+  .links-bulk{display:flex; flex-wrap:wrap; align-items:center; gap:10px; padding:12px 20px 14px; border-bottom:1px solid var(--line);}
+  .links-bulk-all{display:flex; align-items:center; gap:6px; font-size:13px; font-weight:500; cursor:pointer;}
+  .links-bulk input[type=text]{flex:1 1 260px; min-width:0; border:1px solid var(--line); border-radius:var(--radius-xs); padding:8px 10px; font:inherit; font-size:12.5px; background:var(--bg); color:var(--ink);}
+  .links-bulk select{border:1px solid var(--line); border-radius:var(--radius-xs); padding:8px 6px; font:inherit; font-size:12.5px; background:var(--bg); color:var(--ink);}
+  .links-bulk button{border:none; background:var(--accent); color:var(--accent-ink); font:inherit; font-weight:500; font-size:12.5px; padding:9px 14px; border-radius:var(--radius-xs); cursor:pointer;}
+  .links-bulk button:disabled{opacity:.45; cursor:not-allowed;}
+  .links-bulk-note{flex:1 1 100%; font-size:12px; min-height:16px;}
+  .links-row .acc-id{display:flex; align-items:center; gap:10px;}
   .account-card .acc-entry{align-items:center; gap:8px; justify-content:flex-start;}
   .account-card .acc-entry .acc-link-url{flex:1; min-width:0; text-align:left;}
   .account-card .acc-niche-tag.all{background:none; border:1px solid var(--line); color:var(--muted); font-weight:500;}
@@ -2230,6 +2238,14 @@
           <div class="step-head">
             <div class="step-head-left"><span class="step-title">Links das contas</span></div>
             <span class="step-desc">cadastre o link de cada sub-conta aqui — na criação de campanha só aparece o nome, o link já vem junto sozinho. Conta que roda mais de um nicho: use "+ link de outro nicho" (vale o link do nicho escolhido; sem ele, o padrão)</span>
+          </div>
+          <div class="links-bulk" id="linksBulk">
+            <label class="links-bulk-all"><input type="checkbox" id="linksBulkAll"> Marcar todas</label>
+            <span class="cell-muted" id="linksBulkCount">0 contas marcadas</span>
+            <select id="linksBulkNiche" title="Nicho do link"></select>
+            <input type="text" id="linksBulkUrl" placeholder="https://... (link pras contas marcadas)">
+            <button type="button" id="linksBulkApply" disabled>Aplicar nas marcadas</button>
+            <div class="cell-muted links-bulk-note" id="linksBulkNote"></div>
           </div>
           <div class="account-picker" id="linksManagerList"></div>
         </section>
@@ -7373,6 +7389,7 @@ function ccPreviewLines(adsets, nameOf){
   // Every saved link of an account is one row: the default ("Todos os nichos") and/or one per niche. Each row can be edited
   // (niche and address) or deleted. linksEdit = { id: adAccountId, key: '*' (default) | NICHE | '+' (new link) }.
   let linksEdit = null, linksEditErr = '';
+  const linksBulkSel = new Set(); // ad accounts ticked for "apply this link to all of them"
   const linkUrlOk = (u) => /^https?:\/\/\S+\.\S+/i.test(String(u || '').trim());
   function deleteLinkKey(key){
     return fetch(LINKS_API + '/' + encodeURIComponent(key), { method: 'DELETE', headers: { 'X-Access-Key': COSTS_API_KEY } })
@@ -7406,11 +7423,22 @@ function ccPreviewLines(adsets, nameOf){
         '<button type="button" class="acc-link-edit" data-link-del="' + ccEsc(x.key) + '" title="Apagar este link">✕</button></span></div>').join('');
       const addRow = editing === '+' ? form('+') : '<button type="button" class="acc-link-edit acc-niche-add" data-link-add>' + (entries.length ? '+ link de outro nicho' : '+ adicionar') + '</button>';
       return '<div class="account-card links-row" data-account-card="' + a.id + '">' +
-        '<div class="acc-id"><div class="acc-name">' + subAccountLabel(a) + '</div></div>' +
+        '<div class="acc-id"><input type="checkbox" data-link-sel title="Marcar esta conta"' + (linksBulkSel.has(a.id) ? ' checked' : '') + '><div class="acc-name">' + subAccountLabel(a) + '</div></div>' +
         '<div class="acc-link-row">' + (entries.length ? '' : '<span class="acc-link-missing">sem link</span>') + '<div class="acc-niche-links">' + rows + addRow + '</div></div>' +
       '</div>';
     }).join('');
 
+    el.querySelectorAll('[data-link-sel]').forEach(cb => cb.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      const id = cb.closest('[data-account-card]').dataset.accountCard;
+      if (cb.checked) linksBulkSel.add(id); else linksBulkSel.delete(id);
+      linksBulkRefresh();
+    }));
+    // niche choices of the bulk bar (keeps what was picked)
+    const bn = document.getElementById('linksBulkNiche'), prev = bn.value || '*';
+    bn.innerHTML = '<option value="*">Todos os nichos (padrão)</option>' + topNiches().map(n => '<option value="' + ccEsc(n.toUpperCase()) + '">' + ccEsc(n) + '</option>').join('');
+    bn.value = [...bn.options].some(o => o.value === prev) ? prev : '*';
+    linksBulkRefresh();
     const cardAcc = (node) => allSubAccounts.find(x => x.id === node.closest('[data-account-card]').dataset.accountCard);
     const open = (id, key) => { linksEdit = { id, key }; linksEditErr = ''; renderLinksManager(); const i = el.querySelector('[data-link-input]'); if (i) i.focus(); };
     el.querySelectorAll('[data-link-add]').forEach(btn => btn.addEventListener('click', () => open(cardAcc(btn).id, '+')));
@@ -7434,6 +7462,53 @@ function ccPreviewLines(adsets, nameOf){
       deleteLinkKey(k === '*' ? acc.id : nicheLinkKey(acc.id, k)).catch(() => {});
     }));
   }
+
+  // Bulk: tick several ad accounts, pick the niche, paste the link, one click.
+  function linksBulkKey(a, niche){ return niche === '*' ? a.id : nicheLinkKey(a.id, niche); }
+  function linksBulkRefresh(){
+    const accs = allSubAccounts.filter(a => linksBulkSel.has(a.id)), niche = document.getElementById('linksBulkNiche').value || '*';
+    const url = document.getElementById('linksBulkUrl').value.trim();
+    const all = document.getElementById('linksBulkAll');
+    all.checked = !!allSubAccounts.length && accs.length === allSubAccounts.length;
+    all.indeterminate = accs.length > 0 && accs.length < allSubAccounts.length;
+    document.getElementById('linksBulkCount').textContent = accs.length + (accs.length === 1 ? ' conta marcada' : ' contas marcadas');
+    const replaced = accs.filter(a => { const l = ccLinks[linksBulkKey(a, niche)]; return l && l.url; }).length;
+    const note = document.getElementById('linksBulkNote');
+    if (!linksBulkBusy) note.textContent = !accs.length ? '' : (url && !linkUrlOk(url) ? 'Digite o link completo, começando com https://' : 'Vai salvar o link ' + (niche === '*' ? 'padrão (todos os nichos)' : 'do nicho ' + niche) + ' em ' + accs.length + (accs.length === 1 ? ' conta' : ' contas') + (replaced ? ' · ' + replaced + ' já ' + (replaced === 1 ? 'tem' : 'têm') + ' e será' + (replaced === 1 ? '' : 'ão') + ' substituído' + (replaced === 1 ? '' : 's') : '') + '.');
+    document.getElementById('linksBulkApply').disabled = linksBulkBusy || !accs.length || !linkUrlOk(url);
+  }
+  let linksBulkBusy = false;
+  async function linksBulkApply(){
+    const accs = allSubAccounts.filter(a => linksBulkSel.has(a.id)), niche = document.getElementById('linksBulkNiche').value || '*';
+    const urlEl = document.getElementById('linksBulkUrl'), url = urlEl.value.trim(), note = document.getElementById('linksBulkNote');
+    if (linksBulkBusy || !accs.length || !linkUrlOk(url)) return;
+    linksBulkBusy = true; linksBulkRefresh();
+    let ok = 0, fail = [];
+    // one after the other: the server saves the whole list on every call, so parallel saves could overwrite each other
+    for (const a of accs) {
+      note.textContent = 'Salvando ' + (ok + fail.length + 1) + ' de ' + accs.length + '…';
+      try {
+        const json = await fetch(LINKS_API, {
+          method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Access-Key': COSTS_API_KEY },
+          body: JSON.stringify({ adAccountId: linksBulkKey(a, niche), accountKey: a.accountKey, accountName: a.name + (niche === '*' ? '' : ' · ' + niche), url }),
+        }).then(r => r.json());
+        if (!json || !json.links) throw new Error('resposta inesperada');
+        ccLinks = json.links; ok++;
+      } catch (e) { fail.push(a); }
+    }
+    linksBulkBusy = false;
+    renderAccountCards(); renderLinksManager(); renderCcSummary();
+    note.textContent = fail.length ? ok + ' salvas; falhou em: ' + fail.map(subAccountLabel).join(', ') + '. As que falharam continuam marcadas — tente de novo.' : '✓ Link ' + (niche === '*' ? 'padrão' : 'do nicho ' + niche) + ' salvo em ' + ok + (ok === 1 ? ' conta.' : ' contas.');
+    if (!fail.length) urlEl.value = ''; else { linksBulkSel.clear(); fail.forEach(a => linksBulkSel.add(a.id)); renderLinksManager(); }
+    document.getElementById('linksBulkApply').disabled = true;
+  }
+  document.getElementById('linksBulkAll').addEventListener('click', () => {
+    const on = document.getElementById('linksBulkAll').checked;
+    linksBulkSel.clear(); if (on) allSubAccounts.forEach(a => linksBulkSel.add(a.id));
+    renderLinksManager();
+  });
+  ['linksBulkNiche', 'linksBulkUrl'].forEach(id => document.getElementById(id).addEventListener('input', linksBulkRefresh));
+  document.getElementById('linksBulkApply').addEventListener('click', linksBulkApply);
 
   // ---- Pills de segmentação (clique único, sem dropdown) ----
   function renderPillGroup(containerId, options, selArr, multi){
