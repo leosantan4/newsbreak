@@ -6711,8 +6711,21 @@
     form.append('name', name);
     form.append('category', category || 'logo');
     return fetch(LIBRARY_API, { method: 'POST', headers: { 'X-Access-Key': COSTS_API_KEY }, body: form })
-      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+      .then(r => r.json().catch(() => ({})).then(j => { if (!r.ok) { const e = new Error(j.error || ('http ' + r.status)); e.code = j.error || ''; e.status = r.status; throw e; } return j; }))
       .then(json => { libraryItems = json.items || []; });
+  }
+  // The server keeps each gallery file in one piece, up to 20 MB (bigger ones are refused). Said BEFORE sending, with the real size.
+  const GALLERY_MAX_MB = 20;
+  const fmtMB = (b) => (b / 1048576).toFixed(1).replace('.', ',') + ' MB';
+  function uploadFailText(e){
+    const c = e && e.code;
+    if (c === 'file_too_large') return 'passa do limite de ' + GALLERY_MAX_MB + ' MB';
+    if (c === 'name_conflict_in_folder') return 'já existe um anúncio com esse nome nessa pasta';
+    if (c === 'unauthorized') return 'o servidor não aceitou o acesso';
+    if (c === 'invalid_form' || c === 'missing_file') return 'o servidor não recebeu o arquivo direito (tente de novo)';
+    if (e && e.status >= 500) return 'o servidor falhou por um instante (tente de novo)';
+    if (e && !e.status) return 'sem conexão com o servidor (a internet caiu ou o envio demorou demais)';
+    return 'erro ' + (c || (e && e.message) || 'desconhecido');
   }
 
   function stripExt(filename){
@@ -6788,22 +6801,29 @@
       note.textContent = 'Todos os ' + skipped.length + ' já existem nessa pasta — nada novo pra enviar.';
       return;
     }
+    const failed = []; let sent = 0;
     for (let i = 0; i < toUpload.length; i++) {
-      note.textContent = 'Enviando ' + (i + 1) + '/' + toUpload.length + '…' + (skipped.length ? ' (' + skipped.length + ' já existiam e serão ignorados)' : '');
+      const f = toUpload[i].file;
+      if (f.size > GALLERY_MAX_MB * 1048576) { failed.push('"' + f.name + '" tem ' + fmtMB(f.size) + ' e o limite é ' + GALLERY_MAX_MB + ' MB — comprima o vídeo e envie de novo'); continue; }
+      note.textContent = 'Enviando ' + (i + 1) + '/' + toUpload.length + ' (' + f.name + ', ' + fmtMB(f.size) + ')…' + (skipped.length ? ' (' + skipped.length + ' já existiam e serão ignorados)' : '');
       try {
-        const clean = await stripImageMetadata(toUpload[i].file);
+        const clean = await stripImageMetadata(f);
         await uploadOneFile(clean, toUpload[i].name, folder);
-      } catch {
-        note.textContent = 'Falhou em "' + toUpload[i].file.name + '" — parei aqui.';
-        refreshLibraryViews();
-        return;
+        sent++;
+      } catch (e) {
+        failed.push('"' + f.name + '" (' + fmtMB(f.size) + '): ' + uploadFailText(e));
       }
     }
     refreshLibraryViews();
+    if (failed.length) {
+      // keep the form open so the ones that failed can be fixed and sent again
+      note.textContent = (sent ? sent + ' enviado(s). ' : 'Nada foi enviado. ') + 'Não enviou: ' + failed.join(' · ') + '.';
+      return;
+    }
     input.value = '';
     nameInput.value = '';
     document.getElementById('addAdsInline').hidden = true;
-    note.textContent = toUpload.length + ' enviado(s)' +
+    note.textContent = sent + ' enviado(s)' +
       (skipped.length ? ', ' + skipped.length + ' já existiam nessa pasta e foram ignorados: ' + Array.from(new Set(skipped)).join(', ') : '') + '.';
   });
 
