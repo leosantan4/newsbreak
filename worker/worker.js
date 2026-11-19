@@ -342,6 +342,35 @@ async function nbFillNames(env, token, accountKey, custom, list) {
   return out;
 }
 
+// Ad accounts NewsBreak lists for the token's organization, with the same 5-minute cache as /nb/ad-accounts (shared key), so the live view
+// does not hit NewsBreak every few seconds. Falls back to the last good list when NewsBreak does not answer.
+async function nbListedAdAccounts(env, key, token, custom) {
+  const ck = "adacc:" + key;
+  let cached = null;
+  try { cached = JSON.parse((await env.COSTS_KV.get(ck)) || "null"); } catch {}
+  if (cached && Array.isArray(cached.data) && Date.now() - cached.ts < 300000) return cached.data;
+  try {
+    const raw = await nbGetAdAccountsForToken(token, key, custom[key] && custom[key].orgId);
+    const accounts = await nbFillNames(env, token, key, custom, raw);
+    await env.COSTS_KV.put(ck, JSON.stringify({ ts: Date.now(), data: accounts }));
+    return accounts;
+  } catch (e) {
+    return cached && Array.isArray(cached.data) ? cached.data : [];
+  }
+}
+
+// Ad accounts to read in the live view for an account WITHOUT a manual list. The report-based list below only knows ad accounts that already
+// have settled spend in the last 30 days (that report is empty for hours on a brand-new ad account), so a new ad account was invisible: its
+// campaigns never reached Campanhas, Rejeições or the rules. Union it with the accounts NewsBreak lists directly.
+async function nbLiveAdAccounts(env, key, token, custom) {
+  let out = {}, reportErr = null;
+  try { out = await nbGetAdAccounts(token); } catch (e) { reportErr = e; }
+  const listed = await nbListedAdAccounts(env, key, token, custom);
+  if (reportErr && !listed.length) throw reportErr; // keep the old behaviour: nothing could be read -> the account counts as failed
+  for (const a of listed) if (a && a.id && (!out[a.id] || out[a.id] === a.id)) out[a.id] = a.name || a.id;
+  return out;
+}
+
 async function nbGetAdAccounts(token) {
   const rows = await nbFetchReport(token, "LAST_30_DAYS", ["AD_ACCOUNT"]);
   const seen = {};
@@ -594,7 +623,7 @@ async function computeLiveCampanhas(env) {
         const [adAccounts, campaignRows, adsetRows, adRows] = await Promise.all([
           manual && manual.length
             ? Object.fromEntries(manual.map((a) => [a.id, a.name]))
-            : nbGetAdAccounts(token),
+            : nbLiveAdAccounts(env, key, token, custom),
           nbFetchReport(token, "TODAY", ["CAMPAIGN"], extra).catch(() => []),
           nbFetchReport(token, "TODAY", ["AD_SET"], extra).catch(() => []),
           nbFetchReport(token, "TODAY", ["AD"], extra).catch(() => []),
