@@ -7804,9 +7804,11 @@ function ccPreviewLines(adsets, nameOf){
 
   // Different headline per ad set (same creative, e.g. 1 campaign - 4 ad sets - 1 ad): empty = the main headline above.
   let ccSetHeadlines = [], ccSetHeadlinesRendered = 0;
+  // With 2+ ad sets and a headline typed for EVERY one of them, the main headline is never used (and is not required).
+  function ccMainHeadlineNeeded(){ const S = ccS(); return !(S > 1 && Array.from({ length: S }).every((_, j) => (ccSetHeadlines[j] || '').trim())); }
   function ccSetHeadlinesNote(){
     const S = ccS(), n = ccSetHeadlines.slice(0, S).filter(x => x && x.trim()).length;
-    document.getElementById('ccSetHeadlinesNote').textContent = n ? '· ' + n + ' de ' + S + ' com título próprio' : '· (vazio = o título principal vale pra todos)';
+    document.getElementById('ccSetHeadlinesNote').textContent = n === S ? '· todos os ' + S + ' conjuntos têm título próprio — o título principal acima não será usado' : n ? '· ' + n + ' de ' + S + ' com título próprio (os outros usam o título principal)' : '· (vazio = o título principal vale pra todos)';
   }
   function renderSetHeadlines(){
     const S = ccS(), wrap = document.getElementById('ccSetHeadlinesWrap'), box = document.getElementById('ccSetHeadlines');
@@ -7814,7 +7816,7 @@ function ccPreviewLines(adsets, nameOf){
     if (S < 2) return;
     if (ccSetHeadlinesRendered !== S) {
       box.innerHTML = Array.from({ length: S }).map((_, j) => '<label class="cc-set-hl"><span>Conjunto ' + (j + 1) + '</span><input type="text" data-set-hl="' + j + '" value="' + ccEsc(ccSetHeadlines[j] || '') + '" placeholder="(vazio = usa o título principal)"></label>').join('');
-      box.querySelectorAll('[data-set-hl]').forEach(inp => inp.addEventListener('input', () => { ccSetHeadlines[Number(inp.dataset.setHl)] = inp.value; ccSetHeadlinesNote(); }));
+      box.querySelectorAll('[data-set-hl]').forEach(inp => inp.addEventListener('input', () => { ccSetHeadlines[Number(inp.dataset.setHl)] = inp.value; ccSetHeadlinesNote(); renderCcSummary(); }));
       ccSetHeadlinesRendered = S;
     }
     ccSetHeadlinesNote();
@@ -7876,7 +7878,7 @@ function ccPreviewLines(adsets, nameOf){
     if (endDayKey !== null && laWallTimeToEpoch(endDayKey, document.getElementById('ccEndTime').value || '23:59') <= laWallTimeToEpoch(startDayKey, document.getElementById('ccStartTime').value || '05:00')) missing.push('o término precisa ser depois do início');
     if (endDayKey !== null && laWallTimeToEpoch(endDayKey, document.getElementById('ccEndTime').value || '23:59') <= Math.floor(Date.now() / 1000)) missing.push('o término já passou (a campanha seria encerrada na hora)');
     if (!accounts.length) missing.push('marque pelo menos uma conta');
-    if (!document.getElementById('ccHeadline').value.trim()) missing.push('título');
+    if (ccMainHeadlineNeeded() && !document.getElementById('ccHeadline').value.trim()) missing.push('título (ou um título em cada conjunto)');
     if (!document.getElementById('ccBrandDefault').value.trim()) missing.push('marca padrão');
     if (!document.getElementById('ccDescription').value.trim()) missing.push('descrição');
     const withoutLink = accounts.filter(a => !linkFor(a.id, selectedNiche));
@@ -8256,7 +8258,7 @@ function ccPreviewLines(adsets, nameOf){
     const description = document.getElementById('ccDescription').value.trim();
 
     if (!selectedSubAccountIds.length) { ccLog('Marca pelo menos uma sub-conta.', 'err'); btn.disabled = false; return; }
-    if (!headline || !brandName || !description) { ccLog('Preenche título, marca padrão e descrição.', 'err'); btn.disabled = false; return; }
+    if ((ccMainHeadlineNeeded() && !headline) || !brandName || !description) { ccLog('Preenche título, marca padrão e descrição.', 'err'); btn.disabled = false; return; }
     if (endTime <= startTime) { ccLog('A hora de término precisa ser depois da hora de início.', 'err'); btn.disabled = false; return; }
     if (dayKey < todayKeyBR()) { ccLog('O dia de início escolhido (' + fmtDateShort(dayKey) + ') já passou. Escolha o dia de novo — não criei nada.', 'err'); btn.disabled = false; return; }
     if (endDayKey !== null && endTime <= Math.floor(Date.now() / 1000)) { ccLog('O horário de término já passou — a campanha seria encerrada na hora. Ajuste o dia/hora de término.', 'err'); btn.disabled = false; return; }
