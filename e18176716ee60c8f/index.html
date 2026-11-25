@@ -3986,11 +3986,15 @@
 
     const bulkEl = document.getElementById('ctBulk');
     document.getElementById('ctBulkHolder').appendChild(bulkEl); // keep it alive while the table is redrawn
+    const oldScroll = wrap.querySelector('.table-scroll');
+    const keepLeft = oldScroll && wrap.dataset.tab === campTab ? oldScroll.scrollLeft : 0;
+    wrap.dataset.tab = campTab;
     wrap.innerHTML = bar + '<div class="table-scroll"><table class="ctable" style="min-width:' + tableW + 'px">' + colgroup + '<thead>' + head + '</thead><tbody>' +
       (body || '<tr><td class="l" colspan="' + (fixedCols + vis.length + 1) + '"><div class="empty-state">' + (loading ? 'Carregando…' : 'Nada encontrado com esses filtros.') + '</div></td></tr>') +
       '</tbody><tfoot>' + foot + '</tfoot></table></div>' +
       '<p class="cell-muted" style="font-size:11.5px; padding:8px 18px 0;">Métricas d' + (ctPeriod === 'TODAY' ? 'e hoje' : 'o período: ' + ctPeriodLabel(ctPeriod)) + ' (fuso de Brasília), do relatório da NewsBreak — vendas aqui podem diferir do RedTrack. A NewsBreak atualiza a cada ~5 min e as <b>últimas 3 horas ainda não estão finalizadas</b>. “Inativo” = não está entregando.</p>';
 
+    if (keepLeft) { const ns = wrap.querySelector('.table-scroll'); ctKeepingScroll = true; ns.scrollLeft = keepLeft; requestAnimationFrame(() => requestAnimationFrame(() => { ctKeepingScroll = false; })); }
     wrap.querySelectorAll('[data-ct-tab]').forEach(b => b.addEventListener('click', () => { campTab = b.dataset.ctTab; savePref('campTab', campTab); renderCampanhas(); }));
     wrap.querySelectorAll('[data-ct-clear]').forEach(b => b.addEventListener('click', () => { ctSel[b.dataset.ctClear] = new Set(); renderCampanhas(); }));
     wrap.querySelectorAll('[data-ct-edit]').forEach(b => b.addEventListener('click', (e) => {
@@ -4213,7 +4217,19 @@
   }
 
   let campV2Ready = false;
+  // The live refresh redraws the table every few seconds: never under the user's hand (holding the scroll bar / swiping sideways),
+  // and the sideways position is kept when it redraws.
+  let ctHandDown = 0, ctLastScroll = 0, ctDeferred = 0, ctKeepingScroll = false;
+  const ctHandBusy = () => (ctHandDown && Date.now() - ctHandDown < 20000) || Date.now() - ctLastScroll < 800;
+  (() => {
+    const inTable = (t) => t && t.closest && t.closest('#campWrap .table-scroll');
+    document.addEventListener('pointerdown', (e) => { if (inTable(e.target)) ctHandDown = Date.now(); }, true);
+    ['pointerup', 'pointercancel'].forEach(n => document.addEventListener(n, () => { ctHandDown = 0; }, true));
+    window.addEventListener('blur', () => { ctHandDown = 0; });
+    document.addEventListener('scroll', (e) => { if (inTable(e.target) && !ctKeepingScroll) ctLastScroll = Date.now(); }, true);
+  })();
   function renderCampanhas(){
+    if (ctHandBusy()) { clearTimeout(ctDeferred); ctDeferred = setTimeout(renderCampanhas, 400); return; }
     renderCampSourcePills();
     const src = TRAFFIC_SOURCES.find(x => x.key === campSource);
     document.getElementById('campNbPanel').hidden = !src.connected;
